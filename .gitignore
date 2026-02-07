@@ -1,0 +1,44 @@
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python
+python-sidecar/venv/
+python-sidecar/__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.python-version
+
+# Rust / Tauri
+target/
+Cargo.lock
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build output
+dist/
+build/
+*.dmg
+*.app
+*.exe
+
+# Logs
+logs/
+*.log
