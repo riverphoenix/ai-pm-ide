@@ -107,3 +107,35 @@ export interface TokenUsageAggregate {
   cost: number;
   conversation_count: number;
 }
+
+export interface TemplateField {
+  id: string;
+  label: string;
+  type: 'text' | 'textarea' | 'number' | 'select' | 'checkbox';
+  required: boolean;
+  placeholder?: string;
+  options?: Array<{ value: string; label: string }>;
+  ai_assist_prompt?: string;
+}
+
+export interface TemplateDefinition {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  icon: string;
+  fields: TemplateField[];
+  computed_fields?: Array<{ id: string; formula: string }>;
+  output_template: string;
+}
+
+export interface TemplateInstance {
+  id: string;
+  project_id: string;
+  template_id: string;
+  name: string;
+  field_values: Record<string, any>;
+  output_markdown?: string;
+  created_at: number;
+  updated_at: number;
+}

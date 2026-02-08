@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import { Project, Conversation, Message, Settings, SettingsUpdate, TokenUsage, TokenUsageAggregate } from './types';
+import { Project, Conversation, Message, Settings, SettingsUpdate, TokenUsage, TokenUsageAggregate, TemplateInstance } from './types';
 
 export const projectsAPI = {
   async create(name: string, description?: string): Promise<Project> {
@@ -155,4 +155,90 @@ export const modelsAPI = {
       ];
     }
   },
+};
+
+export const templatesAPI = {
+  async create(projectId: string, templateId: string, name: string, fieldValues: Record<string, any>): Promise<TemplateInstance> {
+    return await invoke('create_template_instance', {
+      projectId,
+      templateId,
+      name,
+      fieldValues: JSON.stringify(fieldValues)
+    });
+  },
+
+  async list(projectId: string): Promise<TemplateInstance[]> {
+    const instances = await invoke<TemplateInstance[]>('list_template_instances', { projectId });
+    // Parse field_values JSON string back to object
+    return instances.map(instance => ({
+      ...instance,
+      field_values: typeof instance.field_values === 'string'
+        ? JSON.parse(instance.field_values)
+        : instance.field_values
+    }));
+  },
+
+  async get(id: string): Promise<TemplateInstance | null> {
+    const instance = await invoke<TemplateInstance | null>('get_template_instance', { id });
+    if (instance) {
+      return {
+        ...instance,
+        field_values: typeof instance.field_values === 'string'
+          ? JSON.parse(instance.field_values)
+          : instance.field_values
+      };
+    }
+    return null;
+  },
+
+  async update(id: string, name: string, fieldValues: Record<string, any>, outputMarkdown?: string): Promise<TemplateInstance> {
+    return await invoke('update_template_instance', {
+      id,
+      name,
+      fieldValues: JSON.stringify(fieldValues),
+      outputMarkdown
+    });
+  },
+
+  async delete(id: string): Promise<void> {
+    return await invoke('delete_template_instance', { id });
+  },
+
+  async suggestField(
+    projectId: string,
+    templateId: string,
+    fieldId: string,
+    aiPrompt: string,
+    currentValues: Record<string, any>
+  ): Promise<string> {
+    try {
+      const apiKey = await settingsAPI.getDecryptedApiKey();
+      if (!apiKey) {
+        throw new Error('API key not configured');
+      }
+
+      const response = await fetch(`${SIDECAR_URL}/suggest-field`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          project_id: projectId,
+          template_id: templateId,
+          field_id: fieldId,
+          field_prompt: aiPrompt,
+          current_values: currentValues,
+          api_key: apiKey
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to get suggestion: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return data.suggestion;
+    } catch (error) {
+      console.error('Error getting field suggestion:', error);
+      throw error;
+    }
+  }
 };

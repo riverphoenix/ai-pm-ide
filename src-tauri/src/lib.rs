@@ -32,6 +32,11 @@ pub fn run() {
             update_settings,
             get_decrypted_api_key,
             delete_api_key,
+            create_template_instance,
+            list_template_instances,
+            get_template_instance,
+            update_template_instance,
+            delete_template_instance,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

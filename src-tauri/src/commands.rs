@@ -272,6 +272,28 @@ pub fn init_db(app: &tauri::AppHandle) -> Result<(), String> {
         [],
     ).map_err(|e| format!("Failed to create token_usage date index: {}", e))?;
 
+    // Create template instances table
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS template_instances (
+            id TEXT PRIMARY KEY NOT NULL,
+            project_id TEXT NOT NULL,
+            template_id TEXT NOT NULL,
+            name TEXT NOT NULL,
+            field_values TEXT NOT NULL,
+            output_markdown TEXT,
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL,
+            FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+        )",
+        [],
+    ).map_err(|e| format!("Failed to create template_instances table: {}", e))?;
+
+    // Create index on project_id for efficient querying
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_template_instances_project_id ON template_instances(project_id)",
+        [],
+    ).map_err(|e| format!("Failed to create template_instances index: {}", e))?;
+
     // Create default settings if none exist
     let count: i64 = conn.query_row("SELECT COUNT(*) FROM settings", [], |row| row.get(0))
         .map_err(|e| format!("Failed to count settings: {}", e))?;
@@ -824,6 +846,151 @@ pub async fn delete_api_key(app: tauri::AppHandle) -> Result<(), String> {
         "UPDATE settings SET api_key_encrypted = NULL, updated_at = ?1 WHERE id = ?2",
         params![&now, "default"],
     ).map_err(|e| format!("Failed to delete API key: {}", e))?;
+
+    Ok(())
+}
+
+// Template Instance commands
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct TemplateInstance {
+    pub id: String,
+    pub project_id: String,
+    pub template_id: String,
+    pub name: String,
+    pub field_values: String,  // JSON string
+    pub output_markdown: Option<String>,
+    pub created_at: i64,
+    pub updated_at: i64,
+}
+
+#[tauri::command]
+pub async fn create_template_instance(
+    project_id: String,
+    template_id: String,
+    name: String,
+    field_values: String,
+    app: tauri::AppHandle,
+) -> Result<TemplateInstance, String> {
+    let conn = get_db_connection(&app)?;
+    let id = Uuid::new_v4().to_string();
+    let now = Utc::now().timestamp();
+
+    let instance = TemplateInstance {
+        id: id.clone(),
+        project_id: project_id.clone(),
+        template_id: template_id.clone(),
+        name: name.clone(),
+        field_values: field_values.clone(),
+        output_markdown: None,
+        created_at: now,
+        updated_at: now,
+    };
+
+    conn.execute(
+        "INSERT INTO template_instances (id, project_id, template_id, name, field_values, output_markdown, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        params![&id, &project_id, &template_id, &name, &field_values, &None::<String>, &now, &now],
+    ).map_err(|e| format!("Failed to create template instance: {}", e))?;
+
+    Ok(instance)
+}
+
+#[tauri::command]
+pub async fn list_template_instances(
+    project_id: String,
+    app: tauri::AppHandle,
+) -> Result<Vec<TemplateInstance>, String> {
+    let conn = get_db_connection(&app)?;
+
+    let mut stmt = conn.prepare(
+        "SELECT id, project_id, template_id, name, field_values, output_markdown, created_at, updated_at
+         FROM template_instances
+         WHERE project_id = ?1
+         ORDER BY updated_at DESC"
+    ).map_err(|e| format!("Failed to prepare statement: {}", e))?;
+
+    let instances = stmt.query_map(params![&project_id], |row| {
+        Ok(TemplateInstance {
+            id: row.get(0)?,
+            project_id: row.get(1)?,
+            template_id: row.get(2)?,
+            name: row.get(3)?,
+            field_values: row.get(4)?,
+            output_markdown: row.get(5)?,
+            created_at: row.get(6)?,
+            updated_at: row.get(7)?,
+        })
+    }).map_err(|e| format!("Failed to query template instances: {}", e))?;
+
+    let result: Result<Vec<TemplateInstance>, _> = instances.collect();
+    result.map_err(|e| format!("Failed to collect template instances: {}", e))
+}
+
+#[tauri::command]
+pub async fn get_template_instance(
+    id: String,
+    app: tauri::AppHandle,
+) -> Result<Option<TemplateInstance>, String> {
+    let conn = get_db_connection(&app)?;
+
+    let mut stmt = conn.prepare(
+        "SELECT id, project_id, template_id, name, field_values, output_markdown, created_at, updated_at
+         FROM template_instances
+         WHERE id = ?1"
+    ).map_err(|e| format!("Failed to prepare statement: {}", e))?;
+
+    let instance = stmt.query_row(params![&id], |row| {
+        Ok(TemplateInstance {
+            id: row.get(0)?,
+            project_id: row.get(1)?,
+            template_id: row.get(2)?,
+            name: row.get(3)?,
+            field_values: row.get(4)?,
+            output_markdown: row.get(5)?,
+            created_at: row.get(6)?,
+            updated_at: row.get(7)?,
+        })
+    }).optional()
+        .map_err(|e| format!("Failed to get template instance: {}", e))?;
+
+    Ok(instance)
+}
+
+#[tauri::command]
+pub async fn update_template_instance(
+    id: String,
+    name: String,
+    field_values: String,
+    output_markdown: Option<String>,
+    app: tauri::AppHandle,
+) -> Result<TemplateInstance, String> {
+    let conn = get_db_connection(&app)?;
+    let now = Utc::now().timestamp();
+
+    conn.execute(
+        "UPDATE template_instances
+         SET name = ?1, field_values = ?2, output_markdown = ?3, updated_at = ?4
+         WHERE id = ?5",
+        params![&name, &field_values, &output_markdown, &now, &id],
+    ).map_err(|e| format!("Failed to update template instance: {}", e))?;
+
+    // Fetch the updated instance
+    get_template_instance(id, app).await?
+        .ok_or_else(|| "Template instance not found after update".to_string())
+}
+
+#[tauri::command]
+pub async fn delete_template_instance(
+    id: String,
+    app: tauri::AppHandle,
+) -> Result<(), String> {
+    let conn = get_db_connection(&app)?;
+
+    conn.execute(
+        "DELETE FROM template_instances WHERE id = ?1",
+        params![&id],
+    ).map_err(|e| format!("Failed to delete template instance: {}", e))?;
 
     Ok(())
 }

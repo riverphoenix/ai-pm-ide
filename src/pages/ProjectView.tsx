@@ -4,6 +4,9 @@ import { projectsAPI, settingsAPI } from '../lib/ipc';
 import ChatInterface from '../components/ChatInterface';
 import ConversationHistory from '../components/ConversationHistory';
 import ResizableDivider from '../components/ResizableDivider';
+import TemplateLibrary from '../components/TemplateLibrary';
+import TemplateEditor from '../components/TemplateEditor';
+import TemplateInstanceList from '../components/TemplateInstanceList';
 
 const MIN_HISTORY_WIDTH = 180;
 const MAX_HISTORY_WIDTH = 400;
@@ -18,12 +21,17 @@ export default function ProjectView({ projectId }: ProjectViewProps) {
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [apiKey, setApiKey] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'documents' | 'chat'>('chat');
+  const [activeTab, setActiveTab] = useState<'documents' | 'chat' | 'templates'>('chat');
   const [currentConversationId, setCurrentConversationId] = useState<string | undefined>(undefined);
   const [historyWidth, setHistoryWidth] = useState<number>(() => {
     const saved = localStorage.getItem('conversationHistoryWidth');
     return saved ? parseInt(saved, 10) : DEFAULT_HISTORY_WIDTH;
   });
+
+  // Templates state
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [editingInstanceId, setEditingInstanceId] = useState<string | null>(null);
+  const [templatesRefreshTrigger, setTemplatesRefreshTrigger] = useState(0);
 
   useEffect(() => {
     loadProjectAndSettings();
@@ -71,6 +79,28 @@ export default function ProjectView({ projectId }: ProjectViewProps) {
   useEffect(() => {
     localStorage.setItem('conversationHistoryWidth', historyWidth.toString());
   }, [historyWidth]);
+
+  // Template handlers
+  const handleSelectTemplate = (templateId: string) => {
+    setSelectedTemplateId(templateId);
+    setEditingInstanceId(null);
+  };
+
+  const handleEditInstance = (instanceId: string, templateId: string) => {
+    setSelectedTemplateId(templateId);
+    setEditingInstanceId(instanceId);
+  };
+
+  const handleSaveTemplate = () => {
+    setSelectedTemplateId(null);
+    setEditingInstanceId(null);
+    setTemplatesRefreshTrigger((prev) => prev + 1); // Trigger refresh of instance list
+  };
+
+  const handleCancelTemplate = () => {
+    setSelectedTemplateId(null);
+    setEditingInstanceId(null);
+  };
 
   if (loading) {
     return (
@@ -136,6 +166,16 @@ export default function ProjectView({ projectId }: ProjectViewProps) {
         >
           💬 Chat
         </button>
+        <button
+          onClick={() => setActiveTab('templates')}
+          className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+            activeTab === 'templates'
+              ? 'bg-slate-700 text-white'
+              : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+          }`}
+        >
+          🎯 Templates
+        </button>
       </div>
 
       {/* Main Content */}
@@ -191,6 +231,47 @@ export default function ProjectView({ projectId }: ProjectViewProps) {
               </div>
             )}
           </>
+        )}
+
+        {activeTab === 'templates' && (
+          <div className="flex h-full">
+            {/* Left: Template Library */}
+            <div className="w-64 flex-shrink-0 border-r border-slate-700">
+              <TemplateLibrary onSelectTemplate={handleSelectTemplate} />
+            </div>
+
+            {/* Center: Template Editor (when template selected) */}
+            {selectedTemplateId ? (
+              <TemplateEditor
+                templateId={selectedTemplateId}
+                projectId={projectId}
+                instanceId={editingInstanceId || undefined}
+                onSave={handleSaveTemplate}
+                onCancel={handleCancelTemplate}
+              />
+            ) : (
+              <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/10">
+                <div className="text-center max-w-md px-8">
+                  <div className="text-3xl mb-3">🎯</div>
+                  <h3 className="text-sm font-semibold text-white mb-1">
+                    Select a Template
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Choose a template from the left to get started, or view your saved templates on the right.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Right: Saved Templates List */}
+            <div className="w-80 flex-shrink-0 border-l border-slate-700">
+              <TemplateInstanceList
+                projectId={projectId}
+                onEdit={handleEditInstance}
+                refreshTrigger={templatesRefreshTrigger}
+              />
+            </div>
+          </div>
         )}
       </div>
     </div>

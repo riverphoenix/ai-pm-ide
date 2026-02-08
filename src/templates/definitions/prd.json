@@ -1,0 +1,74 @@
+{
+  "id": "prd",
+  "name": "Product Requirements Document",
+  "description": "Define what you're building and why",
+  "category": "specification",
+  "icon": "📝",
+  "fields": [
+    {
+      "id": "feature_name",
+      "label": "Feature Name",
+      "type": "text",
+      "required": true,
+      "placeholder": "e.g., User Dashboard Redesign",
+      "ai_assist_prompt": "Suggest a clear feature name that describes what's being built"
+    },
+    {
+      "id": "problem",
+      "label": "Problem Statement",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "What problem are we solving?",
+      "ai_assist_prompt": "Describe the user problem or pain point this feature addresses"
+    },
+    {
+      "id": "solution",
+      "label": "Proposed Solution",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "How will we solve it?",
+      "ai_assist_prompt": "Describe the proposed solution based on the problem statement"
+    },
+    {
+      "id": "target_users",
+      "label": "Target Users",
+      "type": "text",
+      "required": false,
+      "placeholder": "e.g., B2B SaaS product managers",
+      "ai_assist_prompt": "Identify the target user segment for this feature"
+    },
+    {
+      "id": "success_metrics",
+      "label": "Success Metrics",
+      "type": "textarea",
+      "required": false,
+      "placeholder": "How will we measure success?",
+      "ai_assist_prompt": "Suggest 3-5 quantifiable success metrics for this feature"
+    },
+    {
+      "id": "user_stories",
+      "label": "User Stories",
+      "type": "textarea",
+      "required": false,
+      "placeholder": "As a [user], I want to [action], so that [benefit]",
+      "ai_assist_prompt": "Generate 3-5 user stories based on the problem and solution"
+    },
+    {
+      "id": "acceptance_criteria",
+      "label": "Acceptance Criteria",
+      "type": "textarea",
+      "required": false,
+      "placeholder": "- [ ] Criterion 1\n- [ ] Criterion 2",
+      "ai_assist_prompt": "Generate acceptance criteria to validate the solution works"
+    },
+    {
+      "id": "dependencies",
+      "label": "Dependencies & Risks",
+      "type": "textarea",
+      "required": false,
+      "placeholder": "What depends on this? What could go wrong?",
+      "ai_assist_prompt": "Identify potential dependencies, blockers, and risks"
+    }
+  ],
+  "output_template": "# {{feature_name}}\n\n## Problem Statement\n{{problem}}\n\n## Proposed Solution\n{{solution}}\n\n## Target Users\n{{target_users}}\n\n## Success Metrics\n{{success_metrics}}\n\n## User Stories\n{{user_stories}}\n\n## Acceptance Criteria\n{{acceptance_criteria}}\n\n## Dependencies & Risks\n{{dependencies}}"
+}
