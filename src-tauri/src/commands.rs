@@ -272,27 +272,61 @@ pub fn init_db(app: &tauri::AppHandle) -> Result<(), String> {
         [],
     ).map_err(|e| format!("Failed to create token_usage date index: {}", e))?;
 
-    // Create template instances table
+    // Create context documents table
     conn.execute(
-        "CREATE TABLE IF NOT EXISTS template_instances (
+        "CREATE TABLE IF NOT EXISTS context_documents (
             id TEXT PRIMARY KEY NOT NULL,
             project_id TEXT NOT NULL,
-            template_id TEXT NOT NULL,
             name TEXT NOT NULL,
-            field_values TEXT NOT NULL,
-            output_markdown TEXT,
+            type TEXT NOT NULL,
+            content TEXT NOT NULL,
+            url TEXT,
+            is_global INTEGER NOT NULL DEFAULT 0,
+            size_bytes INTEGER NOT NULL DEFAULT 0,
+            created_at INTEGER NOT NULL,
+            FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+        )",
+        [],
+    ).map_err(|e| format!("Failed to create context_documents table: {}", e))?;
+
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_context_documents_project_id ON context_documents(project_id)",
+        [],
+    ).map_err(|e| format!("Failed to create context_documents index: {}", e))?;
+
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_context_documents_global ON context_documents(is_global)",
+        [],
+    ).map_err(|e| format!("Failed to create context_documents global index: {}", e))?;
+
+    // Create framework outputs table
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS framework_outputs (
+            id TEXT PRIMARY KEY NOT NULL,
+            project_id TEXT NOT NULL,
+            framework_id TEXT NOT NULL,
+            category TEXT NOT NULL,
+            name TEXT NOT NULL,
+            user_prompt TEXT NOT NULL,
+            context_doc_ids TEXT NOT NULL,
+            generated_content TEXT NOT NULL,
+            format TEXT NOT NULL DEFAULT 'markdown',
             created_at INTEGER NOT NULL,
             updated_at INTEGER NOT NULL,
             FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
         )",
         [],
-    ).map_err(|e| format!("Failed to create template_instances table: {}", e))?;
+    ).map_err(|e| format!("Failed to create framework_outputs table: {}", e))?;
 
-    // Create index on project_id for efficient querying
     conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_template_instances_project_id ON template_instances(project_id)",
+        "CREATE INDEX IF NOT EXISTS idx_framework_outputs_project_id ON framework_outputs(project_id)",
         [],
-    ).map_err(|e| format!("Failed to create template_instances index: {}", e))?;
+    ).map_err(|e| format!("Failed to create framework_outputs index: {}", e))?;
+
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_framework_outputs_framework_id ON framework_outputs(framework_id)",
+        [],
+    ).map_err(|e| format!("Failed to create framework_outputs framework index: {}", e))?;
 
     // Create default settings if none exist
     let count: i64 = conn.query_row("SELECT COUNT(*) FROM settings", [], |row| row.get(0))
