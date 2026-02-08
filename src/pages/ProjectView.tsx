@@ -4,9 +4,6 @@ import { projectsAPI, settingsAPI } from '../lib/ipc';
 import ChatInterface from '../components/ChatInterface';
 import ConversationHistory from '../components/ConversationHistory';
 import ResizableDivider from '../components/ResizableDivider';
-import TemplateLibrary from '../components/TemplateLibrary';
-import TemplateEditor from '../components/TemplateEditor';
-import TemplateInstanceList from '../components/TemplateInstanceList';
 
 const MIN_HISTORY_WIDTH = 180;
 const MAX_HISTORY_WIDTH = 400;

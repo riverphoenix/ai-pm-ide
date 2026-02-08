@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import { Project, Conversation, Message, Settings, SettingsUpdate, TokenUsage, TokenUsageAggregate, TemplateInstance } from './types';
+import { Project, Conversation, Message, Settings, SettingsUpdate, TokenUsage, TokenUsageAggregate, ContextDocument, FrameworkOutput } from './types';
 
 export const projectsAPI = {
   async create(name: string, description?: string): Promise<Project> {
@@ -157,59 +157,94 @@ export const modelsAPI = {
   },
 };
 
-export const templatesAPI = {
-  async create(projectId: string, templateId: string, name: string, fieldValues: Record<string, any>): Promise<TemplateInstance> {
-    return await invoke('create_template_instance', {
+export const contextDocumentsAPI = {
+  async create(
+    projectId: string,
+    name: string,
+    docType: 'pdf' | 'url' | 'google_doc' | 'text',
+    content: string,
+    url?: string,
+    isGlobal: boolean = false
+  ): Promise<ContextDocument> {
+    return await invoke('create_context_document', {
       projectId,
-      templateId,
       name,
-      fieldValues: JSON.stringify(fieldValues)
+      docType,
+      content,
+      url,
+      isGlobal
     });
   },
 
-  async list(projectId: string): Promise<TemplateInstance[]> {
-    const instances = await invoke<TemplateInstance[]>('list_template_instances', { projectId });
-    // Parse field_values JSON string back to object
-    return instances.map(instance => ({
-      ...instance,
-      field_values: typeof instance.field_values === 'string'
-        ? JSON.parse(instance.field_values)
-        : instance.field_values
-    }));
+  async list(projectId: string): Promise<ContextDocument[]> {
+    return await invoke('list_context_documents', { projectId });
   },
 
-  async get(id: string): Promise<TemplateInstance | null> {
-    const instance = await invoke<TemplateInstance | null>('get_template_instance', { id });
-    if (instance) {
-      return {
-        ...instance,
-        field_values: typeof instance.field_values === 'string'
-          ? JSON.parse(instance.field_values)
-          : instance.field_values
-      };
-    }
-    return null;
+  async get(id: string): Promise<ContextDocument | null> {
+    return await invoke('get_context_document', { id });
   },
 
-  async update(id: string, name: string, fieldValues: Record<string, any>, outputMarkdown?: string): Promise<TemplateInstance> {
-    return await invoke('update_template_instance', {
+  async update(id: string, name: string, isGlobal: boolean): Promise<ContextDocument> {
+    return await invoke('update_context_document', {
       id,
       name,
-      fieldValues: JSON.stringify(fieldValues),
-      outputMarkdown
+      isGlobal
     });
   },
 
   async delete(id: string): Promise<void> {
-    return await invoke('delete_template_instance', { id });
+    return await invoke('delete_context_document', { id });
+  }
+};
+
+export const frameworkOutputsAPI = {
+  async create(
+    projectId: string,
+    frameworkId: string,
+    category: string,
+    name: string,
+    userPrompt: string,
+    contextDocIds: string[],
+    generatedContent: string,
+    format: 'markdown' | 'html' = 'markdown'
+  ): Promise<FrameworkOutput> {
+    return await invoke('create_framework_output', {
+      projectId,
+      frameworkId,
+      category,
+      name,
+      userPrompt,
+      contextDocIds: JSON.stringify(contextDocIds),
+      generatedContent,
+      format
+    });
   },
 
-  async suggestField(
+  async list(projectId: string): Promise<FrameworkOutput[]> {
+    return await invoke('list_framework_outputs', { projectId });
+  },
+
+  async get(id: string): Promise<FrameworkOutput | null> {
+    return await invoke('get_framework_output', { id });
+  },
+
+  async update(id: string, name: string, generatedContent: string): Promise<FrameworkOutput> {
+    return await invoke('update_framework_output', {
+      id,
+      name,
+      generatedContent
+    });
+  },
+
+  async delete(id: string): Promise<void> {
+    return await invoke('delete_framework_output', { id });
+  },
+
+  async generate(
     projectId: string,
-    templateId: string,
-    fieldId: string,
-    aiPrompt: string,
-    currentValues: Record<string, any>
+    frameworkId: string,
+    contextDocIds: string[],
+    userPrompt: string
   ): Promise<string> {
     try {
       const apiKey = await settingsAPI.getDecryptedApiKey();
@@ -217,27 +252,26 @@ export const templatesAPI = {
         throw new Error('API key not configured');
       }
 
-      const response = await fetch(`${SIDECAR_URL}/suggest-field`, {
+      const response = await fetch(`${SIDECAR_URL}/generate-framework`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           project_id: projectId,
-          template_id: templateId,
-          field_id: fieldId,
-          field_prompt: aiPrompt,
-          current_values: currentValues,
+          framework_id: frameworkId,
+          context_doc_ids: contextDocIds,
+          user_prompt: userPrompt,
           api_key: apiKey
         })
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to get suggestion: ${response.statusText}`);
+        throw new Error(`Failed to generate framework: ${response.statusText}`);
       }
 
       const data = await response.json();
-      return data.suggestion;
+      return data.generated_content;
     } catch (error) {
-      console.error('Error getting field suggestion:', error);
+      console.error('Error generating framework:', error);
       throw error;
     }
   }

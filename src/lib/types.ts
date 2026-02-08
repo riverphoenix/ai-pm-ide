@@ -108,34 +108,48 @@ export interface TokenUsageAggregate {
   conversation_count: number;
 }
 
-export interface TemplateField {
+export interface ContextDocument {
   id: string;
-  label: string;
-  type: 'text' | 'textarea' | 'number' | 'select' | 'checkbox';
-  required: boolean;
-  placeholder?: string;
-  options?: Array<{ value: string; label: string }>;
-  ai_assist_prompt?: string;
+  project_id: string;
+  name: string;
+  type: 'pdf' | 'url' | 'google_doc' | 'text';
+  content: string;
+  url?: string;
+  is_global: boolean;
+  size_bytes: number;
+  created_at: number;
 }
 
-export interface TemplateDefinition {
+export interface FrameworkOutput {
+  id: string;
+  project_id: string;
+  framework_id: string;
+  category: string;
+  name: string;
+  user_prompt: string;
+  context_doc_ids: string;  // JSON array string
+  generated_content: string;
+  format: 'markdown' | 'html';
+  created_at: number;
+  updated_at: number;
+}
+
+export interface FrameworkDefinition {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  icon: string;
+  example_output: string;
+  system_prompt: string;
+  guiding_questions: string[];
+  supports_visuals: boolean;
+}
+
+export interface FrameworkCategory {
   id: string;
   name: string;
   description: string;
-  category: string;
   icon: string;
-  fields: TemplateField[];
-  computed_fields?: Array<{ id: string; formula: string }>;
-  output_template: string;
-}
-
-export interface TemplateInstance {
-  id: string;
-  project_id: string;
-  template_id: string;
-  name: string;
-  field_values: Record<string, any>;
-  output_markdown?: string;
-  created_at: number;
-  updated_at: number;
+  frameworks: FrameworkDefinition[];
 }

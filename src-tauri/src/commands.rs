@@ -884,147 +884,313 @@ pub async fn delete_api_key(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-// Template Instance commands
+// Context Document commands
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct TemplateInstance {
+pub struct ContextDocument {
     pub id: String,
     pub project_id: String,
-    pub template_id: String,
     pub name: String,
-    pub field_values: String,  // JSON string
-    pub output_markdown: Option<String>,
+    #[serde(rename = "type")]
+    pub doc_type: String,  // 'pdf', 'url', 'google_doc', 'text'
+    pub content: String,
+    pub url: Option<String>,
+    pub is_global: bool,
+    pub size_bytes: i64,
     pub created_at: i64,
-    pub updated_at: i64,
 }
 
 #[tauri::command]
-pub async fn create_template_instance(
+pub async fn create_context_document(
     project_id: String,
-    template_id: String,
     name: String,
-    field_values: String,
+    doc_type: String,
+    content: String,
+    url: Option<String>,
+    is_global: bool,
     app: tauri::AppHandle,
-) -> Result<TemplateInstance, String> {
+) -> Result<ContextDocument, String> {
     let conn = get_db_connection(&app)?;
     let id = Uuid::new_v4().to_string();
     let now = Utc::now().timestamp();
+    let size_bytes = content.len() as i64;
 
-    let instance = TemplateInstance {
+    let document = ContextDocument {
         id: id.clone(),
         project_id: project_id.clone(),
-        template_id: template_id.clone(),
         name: name.clone(),
-        field_values: field_values.clone(),
-        output_markdown: None,
+        doc_type: doc_type.clone(),
+        content: content.clone(),
+        url: url.clone(),
+        is_global,
+        size_bytes,
         created_at: now,
-        updated_at: now,
     };
 
     conn.execute(
-        "INSERT INTO template_instances (id, project_id, template_id, name, field_values, output_markdown, created_at, updated_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-        params![&id, &project_id, &template_id, &name, &field_values, &None::<String>, &now, &now],
-    ).map_err(|e| format!("Failed to create template instance: {}", e))?;
+        "INSERT INTO context_documents (id, project_id, name, type, content, url, is_global, size_bytes, created_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+        params![&id, &project_id, &name, &doc_type, &content, &url, &is_global, &size_bytes, &now],
+    ).map_err(|e| format!("Failed to create context document: {}", e))?;
 
-    Ok(instance)
+    Ok(document)
 }
 
 #[tauri::command]
-pub async fn list_template_instances(
+pub async fn list_context_documents(
     project_id: String,
     app: tauri::AppHandle,
-) -> Result<Vec<TemplateInstance>, String> {
+) -> Result<Vec<ContextDocument>, String> {
     let conn = get_db_connection(&app)?;
 
     let mut stmt = conn.prepare(
-        "SELECT id, project_id, template_id, name, field_values, output_markdown, created_at, updated_at
-         FROM template_instances
+        "SELECT id, project_id, name, type, content, url, is_global, size_bytes, created_at
+         FROM context_documents
          WHERE project_id = ?1
-         ORDER BY updated_at DESC"
+         ORDER BY created_at DESC"
     ).map_err(|e| format!("Failed to prepare statement: {}", e))?;
 
-    let instances = stmt.query_map(params![&project_id], |row| {
-        Ok(TemplateInstance {
+    let documents = stmt.query_map(params![&project_id], |row| {
+        Ok(ContextDocument {
             id: row.get(0)?,
             project_id: row.get(1)?,
-            template_id: row.get(2)?,
-            name: row.get(3)?,
-            field_values: row.get(4)?,
-            output_markdown: row.get(5)?,
-            created_at: row.get(6)?,
-            updated_at: row.get(7)?,
+            name: row.get(2)?,
+            doc_type: row.get(3)?,
+            content: row.get(4)?,
+            url: row.get(5)?,
+            is_global: row.get::<_, i32>(6)? != 0,
+            size_bytes: row.get(7)?,
+            created_at: row.get(8)?,
         })
-    }).map_err(|e| format!("Failed to query template instances: {}", e))?;
+    }).map_err(|e| format!("Failed to query context documents: {}", e))?;
 
-    let result: Result<Vec<TemplateInstance>, _> = instances.collect();
-    result.map_err(|e| format!("Failed to collect template instances: {}", e))
+    let result: Result<Vec<ContextDocument>, _> = documents.collect();
+    result.map_err(|e| format!("Failed to collect context documents: {}", e))
 }
 
 #[tauri::command]
-pub async fn get_template_instance(
+pub async fn get_context_document(
     id: String,
     app: tauri::AppHandle,
-) -> Result<Option<TemplateInstance>, String> {
+) -> Result<Option<ContextDocument>, String> {
     let conn = get_db_connection(&app)?;
 
     let mut stmt = conn.prepare(
-        "SELECT id, project_id, template_id, name, field_values, output_markdown, created_at, updated_at
-         FROM template_instances
+        "SELECT id, project_id, name, type, content, url, is_global, size_bytes, created_at
+         FROM context_documents
          WHERE id = ?1"
     ).map_err(|e| format!("Failed to prepare statement: {}", e))?;
 
-    let instance = stmt.query_row(params![&id], |row| {
-        Ok(TemplateInstance {
+    let document = stmt.query_row(params![&id], |row| {
+        Ok(ContextDocument {
             id: row.get(0)?,
             project_id: row.get(1)?,
-            template_id: row.get(2)?,
-            name: row.get(3)?,
-            field_values: row.get(4)?,
-            output_markdown: row.get(5)?,
-            created_at: row.get(6)?,
-            updated_at: row.get(7)?,
+            name: row.get(2)?,
+            doc_type: row.get(3)?,
+            content: row.get(4)?,
+            url: row.get(5)?,
+            is_global: row.get::<_, i32>(6)? != 0,
+            size_bytes: row.get(7)?,
+            created_at: row.get(8)?,
         })
     }).optional()
-        .map_err(|e| format!("Failed to get template instance: {}", e))?;
+        .map_err(|e| format!("Failed to get context document: {}", e))?;
 
-    Ok(instance)
+    Ok(document)
 }
 
 #[tauri::command]
-pub async fn update_template_instance(
+pub async fn update_context_document(
     id: String,
     name: String,
-    field_values: String,
-    output_markdown: Option<String>,
+    is_global: bool,
     app: tauri::AppHandle,
-) -> Result<TemplateInstance, String> {
+) -> Result<ContextDocument, String> {
     let conn = get_db_connection(&app)?;
-    let now = Utc::now().timestamp();
 
     conn.execute(
-        "UPDATE template_instances
-         SET name = ?1, field_values = ?2, output_markdown = ?3, updated_at = ?4
-         WHERE id = ?5",
-        params![&name, &field_values, &output_markdown, &now, &id],
-    ).map_err(|e| format!("Failed to update template instance: {}", e))?;
+        "UPDATE context_documents
+         SET name = ?1, is_global = ?2
+         WHERE id = ?3",
+        params![&name, &is_global, &id],
+    ).map_err(|e| format!("Failed to update context document: {}", e))?;
 
-    // Fetch the updated instance
-    get_template_instance(id, app).await?
-        .ok_or_else(|| "Template instance not found after update".to_string())
+    // Fetch the updated document
+    get_context_document(id, app).await?
+        .ok_or_else(|| "Context document not found after update".to_string())
 }
 
 #[tauri::command]
-pub async fn delete_template_instance(
+pub async fn delete_context_document(
     id: String,
     app: tauri::AppHandle,
 ) -> Result<(), String> {
     let conn = get_db_connection(&app)?;
 
     conn.execute(
-        "DELETE FROM template_instances WHERE id = ?1",
+        "DELETE FROM context_documents WHERE id = ?1",
         params![&id],
-    ).map_err(|e| format!("Failed to delete template instance: {}", e))?;
+    ).map_err(|e| format!("Failed to delete context document: {}", e))?;
+
+    Ok(())
+}
+
+// Framework Output commands
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct FrameworkOutput {
+    pub id: String,
+    pub project_id: String,
+    pub framework_id: String,
+    pub category: String,
+    pub name: String,
+    pub user_prompt: String,
+    pub context_doc_ids: String,  // JSON array string
+    pub generated_content: String,
+    pub format: String,  // 'markdown', 'html'
+    pub created_at: i64,
+    pub updated_at: i64,
+}
+
+#[tauri::command]
+pub async fn create_framework_output(
+    project_id: String,
+    framework_id: String,
+    category: String,
+    name: String,
+    user_prompt: String,
+    context_doc_ids: String,
+    generated_content: String,
+    format: String,
+    app: tauri::AppHandle,
+) -> Result<FrameworkOutput, String> {
+    let conn = get_db_connection(&app)?;
+    let id = Uuid::new_v4().to_string();
+    let now = Utc::now().timestamp();
+
+    let output = FrameworkOutput {
+        id: id.clone(),
+        project_id: project_id.clone(),
+        framework_id: framework_id.clone(),
+        category: category.clone(),
+        name: name.clone(),
+        user_prompt: user_prompt.clone(),
+        context_doc_ids: context_doc_ids.clone(),
+        generated_content: generated_content.clone(),
+        format: format.clone(),
+        created_at: now,
+        updated_at: now,
+    };
+
+    conn.execute(
+        "INSERT INTO framework_outputs (id, project_id, framework_id, category, name, user_prompt, context_doc_ids, generated_content, format, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+        params![&id, &project_id, &framework_id, &category, &name, &user_prompt, &context_doc_ids, &generated_content, &format, &now, &now],
+    ).map_err(|e| format!("Failed to create framework output: {}", e))?;
+
+    Ok(output)
+}
+
+#[tauri::command]
+pub async fn list_framework_outputs(
+    project_id: String,
+    app: tauri::AppHandle,
+) -> Result<Vec<FrameworkOutput>, String> {
+    let conn = get_db_connection(&app)?;
+
+    let mut stmt = conn.prepare(
+        "SELECT id, project_id, framework_id, category, name, user_prompt, context_doc_ids, generated_content, format, created_at, updated_at
+         FROM framework_outputs
+         WHERE project_id = ?1
+         ORDER BY updated_at DESC"
+    ).map_err(|e| format!("Failed to prepare statement: {}", e))?;
+
+    let outputs = stmt.query_map(params![&project_id], |row| {
+        Ok(FrameworkOutput {
+            id: row.get(0)?,
+            project_id: row.get(1)?,
+            framework_id: row.get(2)?,
+            category: row.get(3)?,
+            name: row.get(4)?,
+            user_prompt: row.get(5)?,
+            context_doc_ids: row.get(6)?,
+            generated_content: row.get(7)?,
+            format: row.get(8)?,
+            created_at: row.get(9)?,
+            updated_at: row.get(10)?,
+        })
+    }).map_err(|e| format!("Failed to query framework outputs: {}", e))?;
+
+    let result: Result<Vec<FrameworkOutput>, _> = outputs.collect();
+    result.map_err(|e| format!("Failed to collect framework outputs: {}", e))
+}
+
+#[tauri::command]
+pub async fn get_framework_output(
+    id: String,
+    app: tauri::AppHandle,
+) -> Result<Option<FrameworkOutput>, String> {
+    let conn = get_db_connection(&app)?;
+
+    let mut stmt = conn.prepare(
+        "SELECT id, project_id, framework_id, category, name, user_prompt, context_doc_ids, generated_content, format, created_at, updated_at
+         FROM framework_outputs
+         WHERE id = ?1"
+    ).map_err(|e| format!("Failed to prepare statement: {}", e))?;
+
+    let output = stmt.query_row(params![&id], |row| {
+        Ok(FrameworkOutput {
+            id: row.get(0)?,
+            project_id: row.get(1)?,
+            framework_id: row.get(2)?,
+            category: row.get(3)?,
+            name: row.get(4)?,
+            user_prompt: row.get(5)?,
+            context_doc_ids: row.get(6)?,
+            generated_content: row.get(7)?,
+            format: row.get(8)?,
+            created_at: row.get(9)?,
+            updated_at: row.get(10)?,
+        })
+    }).optional()
+        .map_err(|e| format!("Failed to get framework output: {}", e))?;
+
+    Ok(output)
+}
+
+#[tauri::command]
+pub async fn update_framework_output(
+    id: String,
+    name: String,
+    generated_content: String,
+    app: tauri::AppHandle,
+) -> Result<FrameworkOutput, String> {
+    let conn = get_db_connection(&app)?;
+    let now = Utc::now().timestamp();
+
+    conn.execute(
+        "UPDATE framework_outputs
+         SET name = ?1, generated_content = ?2, updated_at = ?3
+         WHERE id = ?4",
+        params![&name, &generated_content, &now, &id],
+    ).map_err(|e| format!("Failed to update framework output: {}", e))?;
+
+    // Fetch the updated output
+    get_framework_output(id, app).await?
+        .ok_or_else(|| "Framework output not found after update".to_string())
+}
+
+#[tauri::command]
+pub async fn delete_framework_output(
+    id: String,
+    app: tauri::AppHandle,
+) -> Result<(), String> {
+    let conn = get_db_connection(&app)?;
+
+    conn.execute(
+        "DELETE FROM framework_outputs WHERE id = ?1",
+        params![&id],
+    ).map_err(|e| format!("Failed to delete framework output: {}", e))?;
 
     Ok(())
 }
