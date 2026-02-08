@@ -27,7 +27,7 @@ class OpenAIClient:
     async def chat_stream(
         self,
         messages: List[Dict[str, str]],
-        model: str = "gpt-4-turbo-preview",
+        model: str = "gpt-5",
         max_tokens: int = 4096,
         system: Optional[str] = None,
     ) -> AsyncIterator[Dict]:
@@ -53,10 +53,11 @@ class OpenAIClient:
             logger.info(f"Calling OpenAI API with model: {model}, messages: {len(full_messages)}")
 
             # Stream the response
+            # GPT-5 models use max_completion_tokens instead of max_tokens
             stream = await self.async_client.chat.completions.create(
                 model=model,
                 messages=full_messages,
-                max_tokens=max_tokens,
+                max_completion_tokens=max_tokens,
                 stream=True,
             )
 
@@ -96,7 +97,7 @@ class OpenAIClient:
     async def chat(
         self,
         messages: List[Dict[str, str]],
-        model: str = "gpt-4-turbo-preview",
+        model: str = "gpt-5",
         max_tokens: int = 4096,
         system: Optional[str] = None,
     ) -> Dict:
@@ -119,10 +120,11 @@ class OpenAIClient:
                 full_messages.append({"role": "system", "content": system})
             full_messages.extend(messages)
 
+            # GPT-5 models use max_completion_tokens instead of max_tokens
             response = await self.async_client.chat.completions.create(
                 model=model,
                 messages=full_messages,
-                max_tokens=max_tokens,
+                max_completion_tokens=max_tokens,
             )
 
             return {
@@ -141,57 +143,53 @@ class OpenAIClient:
 
     async def list_models(self) -> List[str]:
         """
-        List available OpenAI models (key models only)
+        List available OpenAI Frontier models only
 
         Returns:
-            List of main model IDs, filtering out dated versions
+            List of Frontier model IDs (latest generation - GPT-5)
         """
         try:
-            logger.info("Fetching available OpenAI models")
+            logger.info("Fetching available OpenAI Frontier models")
             models_response = await self.async_client.models.list()
 
-            # Key models to look for (in priority order)
-            key_models = [
-                "gpt-4o",              # Latest GPT-4 Omni
-                "gpt-4o-mini",         # Affordable GPT-4
-                "gpt-4-turbo",         # GPT-4 Turbo
-                "gpt-4-turbo-preview", # GPT-4 Turbo Preview
-                "gpt-4",               # Standard GPT-4
-                "gpt-3.5-turbo",       # GPT-3.5 Turbo
+            # Frontier models only (GPT-5 generation - 2026)
+            frontier_models = [
+                "gpt-5",               # Main flagship model
+                "gpt-5-mini",          # Faster, cost-efficient version
+                "gpt-5-nano",          # Fastest, cheapest version
             ]
 
             # Get available models from API
             available_model_ids = {model.id for model in models_response.data}
 
-            # Filter to only key models that are actually available
+            # Filter to only Frontier models that are actually available
             filtered_models = []
-            for key_model in key_models:
-                if key_model in available_model_ids:
-                    filtered_models.append(key_model)
+            for frontier_model in frontier_models:
+                if frontier_model in available_model_ids:
+                    filtered_models.append(frontier_model)
                 else:
-                    # Check for similar models (e.g., gpt-4o-2024-05-13)
+                    # Check for dated versions (e.g., gpt-4o-2024-05-13)
                     for available_id in available_model_ids:
-                        if available_id.startswith(key_model) and available_id not in filtered_models:
+                        if available_id.startswith(frontier_model) and available_id not in filtered_models:
                             filtered_models.append(available_id)
                             break
 
-            # If we found key models, return them
+            # If we found Frontier models, return them
             if filtered_models:
-                logger.info(f"Found {len(filtered_models)} key models: {filtered_models}")
+                logger.info(f"Found {len(filtered_models)} Frontier models: {filtered_models}")
                 return filtered_models
 
             # Fallback to default if nothing found
-            logger.warning("No models found, using defaults")
-            return key_models
+            logger.warning("No Frontier models found, using defaults")
+            return frontier_models
 
         except Exception as e:
             logger.error(f"Error fetching models: {e}")
-            # Return default models as fallback
+            # Return Frontier models as fallback
             return [
-                "gpt-4o",
-                "gpt-4o-mini",
-                "gpt-4-turbo",
-                "gpt-3.5-turbo",
+                "gpt-5",
+                "gpt-5-mini",
+                "gpt-5-nano",
             ]
 
     def calculate_cost(self, input_tokens: int, output_tokens: int, model: str) -> float:
@@ -206,8 +204,22 @@ class OpenAIClient:
         Returns:
             Cost in USD
         """
-        # Pricing as of 2025 for GPT models
+        # Pricing as of 2026 for GPT models
         pricing = {
+            # GPT-5 Frontier Models (2026)
+            "gpt-5": {
+                "input": 1.25 / 1_000_000,   # $1.25 per million input tokens
+                "output": 10.0 / 1_000_000,  # $10 per million output tokens
+            },
+            "gpt-5-mini": {
+                "input": 0.25 / 1_000_000,   # $0.25 per million input tokens (estimate)
+                "output": 1.0 / 1_000_000,   # $1 per million output tokens (estimate)
+            },
+            "gpt-5-nano": {
+                "input": 0.05 / 1_000_000,   # $0.05 per million input tokens
+                "output": 0.40 / 1_000_000,  # $0.40 per million output tokens
+            },
+            # Legacy GPT-4 Models
             "gpt-4-turbo-preview": {
                 "input": 10.0 / 1_000_000,  # $10 per million input tokens
                 "output": 30.0 / 1_000_000,  # $30 per million output tokens
@@ -234,8 +246,8 @@ class OpenAIClient:
             },
         }
 
-        # Default to GPT-4-turbo pricing if model not found
-        model_pricing = pricing.get(model, pricing["gpt-4-turbo-preview"])
+        # Default to GPT-5 pricing if model not found
+        model_pricing = pricing.get(model, pricing["gpt-5"])
         input_cost = input_tokens * model_pricing["input"]
         output_cost = output_tokens * model_pricing["output"]
 

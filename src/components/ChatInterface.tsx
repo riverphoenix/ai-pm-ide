@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Message, ChatStreamEvent, Settings } from '../lib/types';
 import { conversationsAPI, messagesAPI, tokenUsageAPI, modelsAPI } from '../lib/ipc';
-import ReactMarkdown from 'react-markdown';
+import MarkdownRenderer from './MarkdownRenderer';
 
 interface ChatInterfaceProps {
   projectId: string;
@@ -21,7 +21,7 @@ export default function ChatInterface({
   conversationId: initialConversationId,
   apiKey,
   settings,
-  model = 'claude-sonnet-4',
+  model = 'gpt-5',
 }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<MessageWithContext[]>([]);
   const [input, setInput] = useState('');
@@ -32,13 +32,11 @@ export default function ChatInterface({
   const [streamingMessage, setStreamingMessage] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [expandedPrompts, setExpandedPrompts] = useState<Set<string>>(new Set());
-  const [selectedModel, setSelectedModel] = useState('gpt-3.5-turbo');
+  const [selectedModel, setSelectedModel] = useState('gpt-5');
   const [availableModels, setAvailableModels] = useState<string[]>([
-    'gpt-3.5-turbo',
-    'gpt-4o-mini',
-    'gpt-4o',
-    'gpt-4-turbo-preview',
-    'gpt-4',
+    'gpt-5',
+    'gpt-5-mini',
+    'gpt-5-nano',
   ]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -332,9 +330,9 @@ export default function ChatInterface({
           >
             {availableModels.map((model) => (
               <option key={model} value={model}>
-                {model.includes('sonnet') ? '🎯 Sonnet' :
-                 model.includes('opus') ? '🌟 Opus' :
-                 model.includes('haiku') ? '⚡ Haiku' : model}
+                {model === 'gpt-5' ? '🌟 GPT-5' :
+                 model === 'gpt-5-mini' ? '⚡ GPT-5 Mini' :
+                 model === 'gpt-5-nano' ? '💨 GPT-5 Nano' : model}
               </option>
             ))}
           </select>
@@ -350,7 +348,7 @@ export default function ChatInterface({
                 <span className="text-4xl">💬</span>
               </div>
               <h3 className="text-xl font-semibold text-white mb-2">
-                Chat with Claude
+                Chat with GPT
               </h3>
               <p className="text-sm text-slate-400 leading-relaxed">
                 Ask questions about your project, get help with PM frameworks, or brainstorm ideas. Your conversation is saved automatically.
@@ -374,19 +372,19 @@ export default function ChatInterface({
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
                       message.role === 'user'
                         ? 'bg-indigo-600 text-white'
-                        : 'bg-gradient-to-br from-purple-500 to-indigo-600 text-white'
+                        : 'bg-gradient-to-br from-green-500 to-emerald-600 text-white'
                     }`}>
-                      {message.role === 'user' ? 'Y' : 'C'}
+                      {message.role === 'user' ? 'Y' : 'AI'}
                     </div>
                   </div>
 
                   {/* Content */}
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-semibold text-white mb-2">
-                      {message.role === 'user' ? 'You' : 'Claude'}
+                      {message.role === 'user' ? 'You' : 'Assistant'}
                     </div>
-                    <div className="text-sm text-slate-200 leading-relaxed prose prose-invert prose-sm max-w-none prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-1">
-                      <ReactMarkdown>{message.content}</ReactMarkdown>
+                    <div className="text-sm text-slate-200 leading-relaxed">
+                      <MarkdownRenderer content={message.content} />
                     </div>
 
                     {/* Prompt context toggle */}
@@ -417,16 +415,16 @@ export default function ChatInterface({
               <div className="max-w-3xl mx-auto px-6 py-6">
                 <div className="flex gap-4">
                   <div className="flex-shrink-0">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold bg-gradient-to-br from-purple-500 to-indigo-600 text-white">
-                      C
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold bg-gradient-to-br from-green-500 to-emerald-600 text-white">
+                      AI
                     </div>
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-semibold text-white mb-2">
-                      Claude
+                      Assistant
                     </div>
-                    <div className="text-sm text-slate-200 leading-relaxed prose prose-invert prose-sm max-w-none prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-1">
-                      <ReactMarkdown>{streamingMessage}</ReactMarkdown>
+                    <div className="text-sm text-slate-200 leading-relaxed">
+                      <MarkdownRenderer content={streamingMessage} />
                     </div>
                   </div>
                 </div>
@@ -440,13 +438,13 @@ export default function ChatInterface({
               <div className="max-w-3xl mx-auto px-6 py-6">
                 <div className="flex gap-4">
                   <div className="flex-shrink-0">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold bg-gradient-to-br from-purple-500 to-indigo-600 text-white">
-                      C
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold bg-gradient-to-br from-green-500 to-emerald-600 text-white">
+                      AI
                     </div>
                   </div>
                   <div className="flex-1">
                     <div className="text-sm font-semibold text-white mb-2">
-                      Claude
+                      Assistant
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse"></div>
@@ -500,7 +498,7 @@ export default function ChatInterface({
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Message Claude..."
+              placeholder="Ask anything..."
               disabled={loading}
               className="w-full px-4 py-3 pr-12 bg-slate-800 border border-slate-700 rounded-xl text-slate-100 text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
               rows={1}

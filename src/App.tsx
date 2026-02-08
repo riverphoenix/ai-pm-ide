@@ -66,7 +66,7 @@ function App() {
 
             <p className="text-slate-400 mb-8 text-sm leading-relaxed max-w-lg mx-auto">
               Your AI-powered workspace for Product Management. Build better products with
-              Claude AI, manage context across projects, and apply PM frameworks seamlessly.
+              AI assistance, manage context across projects, and apply PM frameworks seamlessly.
             </p>
 
             <div className="grid grid-cols-3 gap-4 mb-8">
@@ -74,7 +74,7 @@ function App() {
                 <div className="text-xl mb-2">💬</div>
                 <div className="text-xs font-semibold text-white mb-1">AI Chat</div>
                 <div className="text-[10px] text-slate-500 leading-relaxed">
-                  Chat with Claude about your product strategy
+                  Chat with GPT about your product strategy
                 </div>
               </div>
               <div className="p-4 bg-slate-800/20 rounded-lg border border-slate-700/30 hover:bg-slate-800/30 transition-colors">

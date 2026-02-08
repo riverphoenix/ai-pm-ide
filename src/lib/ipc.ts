@@ -27,7 +27,7 @@ export const conversationsAPI = {
   async create(
     projectId: string,
     title?: string,
-    model: string = 'claude-sonnet-4'
+    model: string = 'gpt-5'
   ): Promise<Conversation> {
     return await invoke('create_conversation', {
       projectId,
@@ -147,12 +147,11 @@ export const modelsAPI = {
       return data.models || [];
     } catch (error) {
       console.error('Error fetching models:', error);
-      // Return key models as fallback
+      // Return Frontier models as fallback (GPT-5 generation)
       return [
-        'gpt-4o',
-        'gpt-4o-mini',
-        'gpt-4-turbo',
-        'gpt-3.5-turbo',
+        'gpt-5',
+        'gpt-5-mini',
+        'gpt-5-nano',
       ];
     }
   },

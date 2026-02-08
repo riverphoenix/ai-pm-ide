@@ -186,7 +186,7 @@ export default function ProjectView({ projectId }: ProjectViewProps) {
                   conversationId={currentConversationId}
                   apiKey={apiKey}
                   settings={settings}
-                  model="gpt-4-turbo-preview"
+                  model="gpt-5"
                 />
               </div>
             )}

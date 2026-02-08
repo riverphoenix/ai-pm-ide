@@ -44,7 +44,7 @@ class ChatRequest(BaseModel):
     messages: List[ChatMessage]
     conversation_id: Optional[str] = None
     api_key: str
-    model: str = "gpt-4-turbo-preview"
+    model: str = "gpt-5"
     max_tokens: int = 4096
     system: Optional[str] = None
 

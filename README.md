@@ -15,30 +15,38 @@ PM IDE enables product managers to:
 
 - **Frontend**: React 18 + Vite + TypeScript + Tailwind CSS
 - **Desktop**: Tauri 2.0 (Rust backend)
-- **Python Sidecar**: FastAPI + Anthropic SDK + PyMuPDF + Chroma
-- **LLM**: Claude (Anthropic)
+- **Python Sidecar**: FastAPI + OpenAI SDK + PyMuPDF + Chroma
+- **LLM**: GPT-5 (OpenAI Frontier Models)
 - **Database**: SQLite + Vector Search
 
-## 🚀 Current Status: P0 MVP (In Development)
+## 🚀 Current Status: Sprint 2 Complete
 
-### Completed
-- ✅ Development environment setup
-- ✅ Tauri project initialization
-- ✅ Python sidecar setup
-- ✅ Project structure
+### Sprint 1: Project & Chat Foundation ✅ Complete
+- ✅ SQLite database schema (projects, conversations, messages, token_usage)
+- ✅ Project CRUD operations
+- ✅ Collapsible sidebar with project management
+- ✅ Settings page with secure API key storage
 
-### In Progress
-- 🔨 Sprint 1: Project & Document Management (Week 3-4)
-  - [ ] SQLite database schema
-  - [ ] Project CRUD operations
-  - [ ] Document import (Markdown, PDF)
-  - [ ] Monaco editor integration
-  - [ ] Semantic search
+### Sprint 2: GPT-5 Integration ✅ Complete
+- ✅ OpenAI API client with GPT-5 Frontier models (gpt-5, gpt-5-mini, gpt-5-nano)
+- ✅ Streaming chat interface with real-time token display
+- ✅ Conversation history with delete functionality
+- ✅ Token usage tracking and cost calculation
+- ✅ Rich markdown rendering with code highlighting
+- ✅ User profile context integration
+- ✅ Model selector (GPT-5 / GPT-5 Mini / GPT-5 Nano)
 
-### Upcoming
-- Sprint 2: Claude Integration (Week 5-6)
-- Sprint 3: Framework Templates (Week 7-8)
-- Sprint 4: Polish & Testing (Week 9-10)
+### Sprint 3: Framework Templates 🔨 Next Up
+- [ ] Framework library UI (RICE, PRD, User Stories)
+- [ ] Template editor with AI-assisted field filling
+- [ ] Export to Markdown/PDF
+- [ ] Template sharing and customization
+
+### Sprint 4: Document Management & Polish 📋 Upcoming
+- [ ] Document import (Markdown, PDF)
+- [ ] Monaco editor integration
+- [ ] Semantic search across documents
+- [ ] Polish and user testing
 
 ## 💻 Development
 
@@ -83,7 +91,7 @@ pm-ide/
 │       └── db.rs          # Database operations
 ├── python-sidecar/        # Python FastAPI server
 │   ├── main.py           # FastAPI app
-│   ├── claude_client.py  # Claude API client
+│   ├── openai_client.py  # OpenAI API client
 │   └── pdf_parser.py     # PDF processing
 └── README.md
 ```
@@ -98,6 +106,15 @@ Contributions welcome! This is an open-source project aimed at empowering Produc
 
 ---
 
-**Note**: This is an early-stage project (Week 1 of 10-week MVP). Expect rapid changes and iterations.
+**Note**: This is an early-stage project (Sprint 2 of 4-sprint MVP). Expect rapid changes and iterations.
 
 Built with ❤️ for Product Managers by Product Managers.
+
+## 🎯 What's Working Now
+
+- ✨ Create unlimited projects to organize your PM work
+- 💬 Chat with GPT-5 about product strategy, frameworks, and ideas
+- 📝 Conversation history saved automatically per project
+- 💰 Token usage and cost tracking
+- 🎨 Beautiful rich text formatting with code highlighting
+- 🔐 Secure API key storage in system keychain
