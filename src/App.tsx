@@ -28,6 +28,11 @@ function App() {
     setCurrentProjectId(null);
   };
 
+  const handleHomeClick = () => {
+    setCurrentView('welcome');
+    setCurrentProjectId(null);
+  };
+
   const handleSidebarResize = (deltaX: number) => {
     setSidebarWidth((prev) => {
       const newWidth = Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, prev + deltaX));
@@ -44,6 +49,7 @@ function App() {
       <Sidebar
         onProjectSelect={handleProjectSelect}
         onSettingsClick={handleSettingsClick}
+        onHomeClick={handleHomeClick}
         currentProjectId={currentProjectId}
         currentView={currentView}
         width={sidebarWidth}
@@ -60,7 +66,17 @@ function App() {
               <div className="text-5xl">🚀</div>
             </div>
 
-            <h1 className="text-3xl font-bold mb-3 bg-gradient-to-r from-white via-indigo-200 to-purple-300 bg-clip-text text-transparent">
+            <button
+              onClick={handleHomeClick}
+              className="inline-block p-5 bg-slate-800/40 rounded-2xl shadow-xl mb-6 backdrop-blur-sm border border-slate-700/30 hover:bg-slate-800/60 transition-all cursor-pointer"
+            >
+              <div className="text-5xl">🚀</div>
+            </button>
+
+            <h1
+              onClick={handleHomeClick}
+              className="text-3xl font-bold mb-3 bg-gradient-to-r from-white via-indigo-200 to-purple-300 bg-clip-text text-transparent cursor-pointer hover:opacity-80 transition-opacity"
+            >
               Welcome to AI PM IDE
             </h1>
 
@@ -70,27 +86,65 @@ function App() {
             </p>
 
             <div className="grid grid-cols-3 gap-4 mb-8">
-              <div className="p-4 bg-slate-800/20 rounded-lg border border-slate-700/30 hover:bg-slate-800/30 transition-colors">
+              <button
+                onClick={() => {
+                  // Create a default project if none exists, or navigate to first project's chat
+                  const createAndNavigate = async () => {
+                    try {
+                      const projects = await (window as any).projectsAPI?.list();
+                      if (projects && projects.length > 0) {
+                        handleProjectSelect(projects[0].id);
+                      }
+                    } catch (e) {
+                      console.error('Failed to navigate:', e);
+                    }
+                  };
+                  createAndNavigate();
+                }}
+                className="p-4 bg-slate-800/20 rounded-lg border border-slate-700/30 hover:bg-slate-800/40 hover:border-indigo-500/30 transition-all cursor-pointer text-left"
+              >
                 <div className="text-xl mb-2">💬</div>
                 <div className="text-xs font-semibold text-white mb-1">AI Chat</div>
                 <div className="text-[10px] text-slate-500 leading-relaxed">
                   Chat with GPT about your product strategy
                 </div>
-              </div>
-              <div className="p-4 bg-slate-800/20 rounded-lg border border-slate-700/30 hover:bg-slate-800/30 transition-colors">
+              </button>
+              <button
+                onClick={() => {
+                  // Navigate to frameworks - we'll implement this properly
+                  const createAndNavigate = async () => {
+                    try {
+                      const projects = await (window as any).projectsAPI?.list();
+                      if (projects && projects.length > 0) {
+                        handleProjectSelect(projects[0].id);
+                      }
+                    } catch (e) {
+                      console.error('Failed to navigate:', e);
+                    }
+                  };
+                  createAndNavigate();
+                }}
+                className="p-4 bg-slate-800/20 rounded-lg border border-slate-700/30 hover:bg-slate-800/40 hover:border-indigo-500/30 transition-all cursor-pointer text-left"
+              >
                 <div className="text-xl mb-2">🎯</div>
                 <div className="text-xs font-semibold text-white mb-1">PM Frameworks</div>
                 <div className="text-[10px] text-slate-500 leading-relaxed">
-                  Apply RICE, DACI, and other frameworks
+                  Apply Strategy, RICE, JTBD and 40+ frameworks
                 </div>
-              </div>
-              <div className="p-4 bg-slate-800/20 rounded-lg border border-slate-700/30 hover:bg-slate-800/30 transition-colors">
+              </button>
+              <button
+                onClick={() => {
+                  // Workflows coming soon
+                  alert('Workflows feature coming in Sprint 4!');
+                }}
+                className="p-4 bg-slate-800/20 rounded-lg border border-slate-700/30 hover:bg-slate-800/40 hover:border-indigo-500/30 transition-all cursor-pointer text-left opacity-50"
+              >
                 <div className="text-xl mb-2">⚡</div>
                 <div className="text-xs font-semibold text-white mb-1">Workflows</div>
                 <div className="text-[10px] text-slate-500 leading-relaxed">
-                  Automate repetitive PM tasks
+                  Automate repetitive PM tasks (Coming Soon)
                 </div>
-              </div>
+              </button>
             </div>
 
             <div className="flex items-center justify-center gap-2 mb-8">

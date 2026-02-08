@@ -5,6 +5,7 @@ import { projectsAPI } from '../lib/ipc';
 interface SidebarProps {
   onProjectSelect: (projectId: string) => void;
   onSettingsClick: () => void;
+  onHomeClick: () => void;
   currentProjectId: string | null;
   currentView: 'welcome' | 'project' | 'settings';
   width?: number;
@@ -13,6 +14,7 @@ interface SidebarProps {
 export default function Sidebar({
   onProjectSelect,
   onSettingsClick,
+  onHomeClick,
   currentProjectId,
   currentView,
   width = 208
@@ -71,13 +73,20 @@ export default function Sidebar({
           </button>
         ) : (
           <div className="flex items-center gap-1.5">
-            <div className="w-5 h-5 bg-indigo-600 rounded flex items-center justify-center">
+            <button
+              onClick={onHomeClick}
+              className="w-5 h-5 bg-indigo-600 rounded flex items-center justify-center hover:bg-indigo-700 transition-colors cursor-pointer"
+              title="Go to home"
+            >
               <span className="text-xs">🚀</span>
-            </div>
-            <div className="flex-1 min-w-0">
+            </button>
+            <button
+              onClick={onHomeClick}
+              className="flex-1 min-w-0 text-left hover:opacity-80 transition-opacity"
+            >
               <h2 className="text-xs font-semibold text-white">AI PM IDE</h2>
               <p className="text-[10px] text-slate-500 uppercase tracking-wider">Projects</p>
-            </div>
+            </button>
             <button
               onClick={() => setIsCollapsed(true)}
               className="p-1 hover:bg-slate-700 rounded transition-colors"
