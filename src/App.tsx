@@ -1,18 +1,58 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import ProjectView from './pages/ProjectView';
+import Settings from './pages/Settings';
+import ResizableDivider from './components/ResizableDivider';
+
+type View = 'welcome' | 'project' | 'settings';
+
+const MIN_SIDEBAR_WIDTH = 180;
+const MAX_SIDEBAR_WIDTH = 400;
+const DEFAULT_SIDEBAR_WIDTH = 208;
 
 function App() {
+  const [currentView, setCurrentView] = useState<View>('welcome');
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
+  const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
+    const saved = localStorage.getItem('sidebarWidth');
+    return saved ? parseInt(saved, 10) : DEFAULT_SIDEBAR_WIDTH;
+  });
+
+  const handleProjectSelect = (projectId: string) => {
+    setCurrentProjectId(projectId);
+    setCurrentView('project');
+  };
+
+  const handleSettingsClick = () => {
+    setCurrentView('settings');
+    setCurrentProjectId(null);
+  };
+
+  const handleSidebarResize = (deltaX: number) => {
+    setSidebarWidth((prev) => {
+      const newWidth = Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, prev + deltaX));
+      return newWidth;
+    });
+  };
+
+  useEffect(() => {
+    localStorage.setItem('sidebarWidth', sidebarWidth.toString());
+  }, [sidebarWidth]);
 
   return (
     <div className="flex h-screen bg-slate-900 text-white overflow-hidden">
       <Sidebar
-        onProjectSelect={setCurrentProjectId}
+        onProjectSelect={handleProjectSelect}
+        onSettingsClick={handleSettingsClick}
         currentProjectId={currentProjectId}
+        currentView={currentView}
+        width={sidebarWidth}
       />
-      {currentProjectId ? (
+      <ResizableDivider onResize={handleSidebarResize} />
+      {currentView === 'project' && currentProjectId ? (
         <ProjectView projectId={currentProjectId} />
+      ) : currentView === 'settings' ? (
+        <Settings />
       ) : (
         <div className="flex-1 flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/10">
           <div className="text-center max-w-2xl px-8">

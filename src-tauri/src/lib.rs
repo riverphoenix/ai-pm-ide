@@ -18,6 +18,20 @@ pub fn run() {
             get_project,
             update_project,
             delete_project,
+            create_conversation,
+            list_conversations,
+            get_conversation,
+            add_message,
+            get_messages,
+            update_conversation_stats,
+            delete_conversation,
+            record_token_usage,
+            get_token_usage_by_date_range,
+            get_all_token_usage,
+            get_settings,
+            update_settings,
+            get_decrypted_api_key,
+            delete_api_key,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

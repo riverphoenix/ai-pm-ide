@@ -1,6 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Project } from '../lib/types';
-import { projectsAPI } from '../lib/ipc';
+import { Project, Settings } from '../lib/types';
+import { projectsAPI, settingsAPI } from '../lib/ipc';
+import ChatInterface from '../components/ChatInterface';
+import ConversationHistory from '../components/ConversationHistory';
+import ResizableDivider from '../components/ResizableDivider';
+
+const MIN_HISTORY_WIDTH = 180;
+const MAX_HISTORY_WIDTH = 400;
+const DEFAULT_HISTORY_WIDTH = 224;
 
 interface ProjectViewProps {
   projectId: string;
@@ -9,22 +16,61 @@ interface ProjectViewProps {
 export default function ProjectView({ projectId }: ProjectViewProps) {
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
+  const [settings, setSettings] = useState<Settings | null>(null);
+  const [apiKey, setApiKey] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'documents' | 'chat'>('chat');
+  const [currentConversationId, setCurrentConversationId] = useState<string | undefined>(undefined);
+  const [historyWidth, setHistoryWidth] = useState<number>(() => {
+    const saved = localStorage.getItem('conversationHistoryWidth');
+    return saved ? parseInt(saved, 10) : DEFAULT_HISTORY_WIDTH;
+  });
 
   useEffect(() => {
-    loadProject();
+    loadProjectAndSettings();
   }, [projectId]);
 
-  const loadProject = async () => {
+  const loadProjectAndSettings = async () => {
     setLoading(true);
     try {
-      const proj = await projectsAPI.get(projectId);
+      const [proj, sett, key] = await Promise.all([
+        projectsAPI.get(projectId),
+        settingsAPI.get(),
+        settingsAPI.getDecryptedApiKey(),
+      ]);
+      console.log('🔑 API Key Check:', {
+        exists: !!key,
+        length: key?.length || 0,
+        startsWithSkAnt: key?.startsWith('sk-ant-') || false,
+        preview: key ? `${key.substring(0, 7)}...${key.substring(key.length - 4)}` : 'null'
+      });
       setProject(proj);
+      setSettings(sett);
+      setApiKey(key);
     } catch (error) {
-      console.error('Failed to load project:', error);
+      console.error('Failed to load project or settings:', error);
     } finally {
       setLoading(false);
     }
   };
+
+  const handleConversationSelect = (conversationId: string) => {
+    setCurrentConversationId(conversationId);
+  };
+
+  const handleNewConversation = () => {
+    setCurrentConversationId(undefined);
+  };
+
+  const handleHistoryResize = (deltaX: number) => {
+    setHistoryWidth((prev) => {
+      const newWidth = Math.max(MIN_HISTORY_WIDTH, Math.min(MAX_HISTORY_WIDTH, prev + deltaX));
+      return newWidth;
+    });
+  };
+
+  useEffect(() => {
+    localStorage.setItem('conversationHistoryWidth', historyWidth.toString());
+  }, [historyWidth]);
 
   if (loading) {
     return (
@@ -60,54 +106,92 @@ export default function ProjectView({ projectId }: ProjectViewProps) {
           </div>
         </div>
         <div className="flex items-center gap-1">
-          <button className="px-2 py-1 text-[10px] font-medium text-slate-400 hover:text-white hover:bg-slate-700/50 rounded transition-colors">
-            Settings
-          </button>
+          {apiKey && (
+            <span className="px-2 py-1 text-[10px] font-medium text-green-400 bg-green-500/10 rounded">
+              ✓ API Key Set
+            </span>
+          )}
         </div>
       </div>
 
+      {/* Tabs */}
+      <div className="h-10 border-b border-slate-700 bg-slate-800/20 flex items-center px-4 gap-1">
+        <button
+          onClick={() => setActiveTab('documents')}
+          className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+            activeTab === 'documents'
+              ? 'bg-slate-700 text-white'
+              : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+          }`}
+        >
+          📄 Documents
+        </button>
+        <button
+          onClick={() => setActiveTab('chat')}
+          className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+            activeTab === 'chat'
+              ? 'bg-slate-700 text-white'
+              : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+          }`}
+        >
+          💬 Chat
+        </button>
+      </div>
+
       {/* Main Content */}
-      <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/10">
-        <div className="text-center max-w-2xl px-8">
-          <div className="inline-block p-4 bg-slate-800/40 rounded-xl shadow-xl mb-5 border border-slate-700/30">
-            <div className="text-4xl">📁</div>
-          </div>
-
-          <h2 className="text-2xl font-bold text-white mb-2 bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
-            {project.name}
-          </h2>
-
-          <p className="text-slate-400 mb-6 text-sm">
-            Your AI-powered product workspace
-          </p>
-
-          <div className="grid grid-cols-3 gap-3 mb-6">
-            <div className="p-3 bg-slate-800/20 rounded-lg border border-slate-700/30">
-              <div className="text-lg mb-1">📄</div>
-              <div className="text-xs font-semibold text-white mb-0.5">Documents</div>
-              <div className="text-[10px] text-slate-500">Sprint 1</div>
-            </div>
-            <div className="p-3 bg-slate-800/20 rounded-lg border border-slate-700/30">
-              <div className="text-lg mb-1">💬</div>
-              <div className="text-xs font-semibold text-white mb-0.5">Chat with Claude</div>
-              <div className="text-[10px] text-slate-500">Sprint 2</div>
-            </div>
-            <div className="p-3 bg-slate-800/20 rounded-lg border border-slate-700/30">
-              <div className="text-lg mb-1">🎯</div>
-              <div className="text-xs font-semibold text-white mb-0.5">PM Frameworks</div>
-              <div className="text-[10px] text-slate-500">Sprint 3</div>
+      <div className="flex-1 overflow-hidden">
+        {activeTab === 'documents' && (
+          <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/10 h-full">
+            <div className="text-center max-w-md px-8">
+              <div className="text-3xl mb-3">📄</div>
+              <h3 className="text-sm font-semibold text-white mb-1">
+                Documents Coming Soon
+              </h3>
+              <p className="text-xs text-slate-500">
+                Upload PDFs and Markdown files to build your project knowledge base.
+              </p>
             </div>
           </div>
+        )}
 
-          <div className="flex items-center justify-center gap-2">
-            <button className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-xs font-semibold shadow-md hover:shadow-lg transition-all">
-              Get Started
-            </button>
-            <button className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded text-xs font-semibold border border-slate-700 transition-colors">
-              Learn More
-            </button>
-          </div>
-        </div>
+        {activeTab === 'chat' && (
+          <>
+            {!apiKey ? (
+              <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/10 h-full">
+                <div className="text-center max-w-md px-8">
+                  <div className="text-3xl mb-3">🔑</div>
+                  <h3 className="text-sm font-semibold text-white mb-1">
+                    API Key Required
+                  </h3>
+                  <p className="text-xs text-slate-500 mb-4">
+                    Please set your OpenAI API key in Settings to start chatting with GPT.
+                  </p>
+                  <p className="text-[10px] text-slate-600">
+                    Click the ⚙️ Settings button in the sidebar
+                  </p>
+                </div>
+              </div>
+            ) : settings && (
+              <div className="flex h-full">
+                <ConversationHistory
+                  projectId={projectId}
+                  currentConversationId={currentConversationId}
+                  onConversationSelect={handleConversationSelect}
+                  onNewConversation={handleNewConversation}
+                  width={historyWidth}
+                />
+                <ResizableDivider onResize={handleHistoryResize} />
+                <ChatInterface
+                  projectId={projectId}
+                  conversationId={currentConversationId}
+                  apiKey={apiKey}
+                  settings={settings}
+                  model="gpt-4-turbo-preview"
+                />
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   );
