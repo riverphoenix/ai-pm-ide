@@ -39,6 +39,11 @@ export default function ProjectView({ projectId, initialTab = 'chat' }: ProjectV
     loadProjectAndSettings();
   }, [projectId]);
 
+  // Update active tab when initialTab prop changes
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
+
   const loadProjectAndSettings = async () => {
     setLoading(true);
     try {
