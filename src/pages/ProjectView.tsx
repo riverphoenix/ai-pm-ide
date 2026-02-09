@@ -4,6 +4,10 @@ import { projectsAPI, settingsAPI } from '../lib/ipc';
 import ChatInterface from '../components/ChatInterface';
 import ConversationHistory from '../components/ConversationHistory';
 import ResizableDivider from '../components/ResizableDivider';
+import FrameworksHome from './FrameworksHome';
+import FrameworkGenerator from '../components/FrameworkGenerator';
+import ContextManager from './ContextManager';
+import OutputsLibrary from './OutputsLibrary';
 
 const MIN_HISTORY_WIDTH = 180;
 const MAX_HISTORY_WIDTH = 400;
@@ -18,17 +22,17 @@ export default function ProjectView({ projectId }: ProjectViewProps) {
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [apiKey, setApiKey] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'documents' | 'chat' | 'templates'>('chat');
+  const [activeTab, setActiveTab] = useState<'documents' | 'chat' | 'frameworks' | 'context' | 'outputs'>('chat');
   const [currentConversationId, setCurrentConversationId] = useState<string | undefined>(undefined);
   const [historyWidth, setHistoryWidth] = useState<number>(() => {
     const saved = localStorage.getItem('conversationHistoryWidth');
     return saved ? parseInt(saved, 10) : DEFAULT_HISTORY_WIDTH;
   });
 
-  // Templates state
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
-  const [editingInstanceId, setEditingInstanceId] = useState<string | null>(null);
-  const [templatesRefreshTrigger, setTemplatesRefreshTrigger] = useState(0);
+  // Frameworks state
+  const [selectedFrameworkId, setSelectedFrameworkId] = useState<string | null>(null);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const [frameworksView, setFrameworksView] = useState<'home' | 'generator'>('home');
 
   useEffect(() => {
     loadProjectAndSettings();
@@ -77,26 +81,23 @@ export default function ProjectView({ projectId }: ProjectViewProps) {
     localStorage.setItem('conversationHistoryWidth', historyWidth.toString());
   }, [historyWidth]);
 
-  // Template handlers
-  const handleSelectTemplate = (templateId: string) => {
-    setSelectedTemplateId(templateId);
-    setEditingInstanceId(null);
+  // Framework handlers
+  const handleSelectFramework = (frameworkId: string, categoryId: string) => {
+    setSelectedFrameworkId(frameworkId);
+    setSelectedCategoryId(categoryId);
+    setFrameworksView('generator');
   };
 
-  const handleEditInstance = (instanceId: string, templateId: string) => {
-    setSelectedTemplateId(templateId);
-    setEditingInstanceId(instanceId);
+  const handleBackToFrameworksHome = () => {
+    setSelectedFrameworkId(null);
+    setSelectedCategoryId(null);
+    setFrameworksView('home');
   };
 
-  const handleSaveTemplate = () => {
-    setSelectedTemplateId(null);
-    setEditingInstanceId(null);
-    setTemplatesRefreshTrigger((prev) => prev + 1); // Trigger refresh of instance list
-  };
-
-  const handleCancelTemplate = () => {
-    setSelectedTemplateId(null);
-    setEditingInstanceId(null);
+  const handleFrameworkSave = () => {
+    // Switch to outputs tab to view saved output
+    setActiveTab('outputs');
+    handleBackToFrameworksHome();
   };
 
   if (loading) {
@@ -144,16 +145,6 @@ export default function ProjectView({ projectId }: ProjectViewProps) {
       {/* Tabs */}
       <div className="h-10 border-b border-slate-700 bg-slate-800/20 flex items-center px-4 gap-1">
         <button
-          onClick={() => setActiveTab('documents')}
-          className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
-            activeTab === 'documents'
-              ? 'bg-slate-700 text-white'
-              : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
-          }`}
-        >
-          📄 Documents
-        </button>
-        <button
           onClick={() => setActiveTab('chat')}
           className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
             activeTab === 'chat'
@@ -164,14 +155,47 @@ export default function ProjectView({ projectId }: ProjectViewProps) {
           💬 Chat
         </button>
         <button
-          onClick={() => setActiveTab('templates')}
+          onClick={() => {
+            setActiveTab('frameworks');
+            handleBackToFrameworksHome();
+          }}
           className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
-            activeTab === 'templates'
+            activeTab === 'frameworks'
               ? 'bg-slate-700 text-white'
               : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
           }`}
         >
-          🎯 Templates
+          🎯 Frameworks
+        </button>
+        <button
+          onClick={() => setActiveTab('context')}
+          className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+            activeTab === 'context'
+              ? 'bg-slate-700 text-white'
+              : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+          }`}
+        >
+          📚 Context
+        </button>
+        <button
+          onClick={() => setActiveTab('outputs')}
+          className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+            activeTab === 'outputs'
+              ? 'bg-slate-700 text-white'
+              : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+          }`}
+        >
+          📋 Outputs
+        </button>
+        <button
+          onClick={() => setActiveTab('documents')}
+          className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+            activeTab === 'documents'
+              ? 'bg-slate-700 text-white'
+              : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+          }`}
+        >
+          📄 Documents
         </button>
       </div>
 
@@ -230,45 +254,27 @@ export default function ProjectView({ projectId }: ProjectViewProps) {
           </>
         )}
 
-        {activeTab === 'templates' && (
-          <div className="flex h-full">
-            {/* Left: Template Library */}
-            <div className="w-64 flex-shrink-0 border-r border-slate-700">
-              <TemplateLibrary onSelectTemplate={handleSelectTemplate} />
-            </div>
-
-            {/* Center: Template Editor (when template selected) */}
-            {selectedTemplateId ? (
-              <TemplateEditor
-                templateId={selectedTemplateId}
+        {activeTab === 'frameworks' && (
+          <>
+            {frameworksView === 'home' ? (
+              <FrameworksHome onSelectFramework={handleSelectFramework} />
+            ) : selectedFrameworkId ? (
+              <FrameworkGenerator
                 projectId={projectId}
-                instanceId={editingInstanceId || undefined}
-                onSave={handleSaveTemplate}
-                onCancel={handleCancelTemplate}
+                frameworkId={selectedFrameworkId}
+                onSave={handleFrameworkSave}
+                onCancel={handleBackToFrameworksHome}
               />
-            ) : (
-              <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/10">
-                <div className="text-center max-w-md px-8">
-                  <div className="text-3xl mb-3">🎯</div>
-                  <h3 className="text-sm font-semibold text-white mb-1">
-                    Select a Template
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    Choose a template from the left to get started, or view your saved templates on the right.
-                  </p>
-                </div>
-              </div>
-            )}
+            ) : null}
+          </>
+        )}
 
-            {/* Right: Saved Templates List */}
-            <div className="w-80 flex-shrink-0 border-l border-slate-700">
-              <TemplateInstanceList
-                projectId={projectId}
-                onEdit={handleEditInstance}
-                refreshTrigger={templatesRefreshTrigger}
-              />
-            </div>
-          </div>
+        {activeTab === 'context' && (
+          <ContextManager projectId={projectId} />
+        )}
+
+        {activeTab === 'outputs' && (
+          <OutputsLibrary projectId={projectId} />
         )}
       </div>
     </div>
