@@ -283,7 +283,7 @@ export default function FrameworkGenerator({
             )}
             <button
               onClick={handleGenerate}
-              disabled={isGenerating || selectedDocIds.length === 0}
+              disabled={isGenerating}
               className="w-full px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-700 disabled:cursor-not-allowed text-white text-sm font-medium rounded transition-colors"
             >
               {isGenerating ? 'Generating...' : `Generate ${framework.name}`}
@@ -303,7 +303,7 @@ export default function FrameworkGenerator({
                 <p className="text-xs text-slate-400">
                   {isGenerating
                     ? 'AI is creating your framework output...'
-                    : 'Add context and click Generate to create your framework'}
+                    : 'Click Generate to create your framework (context documents optional)'}
                 </p>
               </div>
             </div>

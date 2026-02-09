@@ -110,8 +110,24 @@ export default function ContextManager({ projectId }: ContextManagerProps) {
   };
 
   const handleAddDocument = async () => {
-    if (!newDocName.trim() || !newDocContent.trim()) {
-      setError('Name and content are required');
+    if (!newDocName.trim()) {
+      setError('Name is required');
+      return;
+    }
+
+    // For text type, content is required. For URL/PDF/Google Doc, content should be auto-populated
+    if (newDocType === 'text' && !newDocContent.trim()) {
+      setError('Content is required for text documents');
+      return;
+    }
+
+    if ((newDocType === 'url' || newDocType === 'google_doc') && !newDocContent.trim()) {
+      setError('Please fetch the URL first to extract content');
+      return;
+    }
+
+    if (newDocType === 'pdf' && !newDocContent.trim()) {
+      setError('Please upload a PDF file first to extract content');
       return;
     }
 
