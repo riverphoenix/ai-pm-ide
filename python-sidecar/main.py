@@ -14,6 +14,7 @@ import json
 import logging
 
 from openai_client import OpenAIClient
+from framework_loader import get_framework
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -65,6 +66,23 @@ class FieldSuggestionRequest(BaseModel):
     current_values: Dict[str, any]
     api_key: str
     system: Optional[str] = None
+
+
+class ContextDocument(BaseModel):
+    id: str
+    name: str
+    type: str  # 'pdf', 'url', 'google_doc', 'text'
+    content: str
+    url: Optional[str] = None
+
+
+class GenerateFrameworkRequest(BaseModel):
+    project_id: str
+    framework_id: str
+    context_documents: List[ContextDocument]
+    user_prompt: str
+    api_key: str
+    model: str = "gpt-5"
 
 
 @app.get("/")
@@ -276,6 +294,200 @@ Provide a concise, professional suggestion:"""
     except Exception as e:
         logger.error(f"Error in suggest_field: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/generate-framework")
+async def generate_framework(request: GenerateFrameworkRequest):
+    """
+    Generate a complete PM framework output using AI
+
+    This endpoint:
+    1. Loads the framework definition (system prompt, example, questions)
+    2. Assembles context from provided documents
+    3. Calls OpenAI with framework-specific instructions
+    4. Returns the generated framework output in markdown format
+
+    Returns a JSON response (non-streaming for now)
+    """
+    try:
+        logger.info(f"Generate framework request: {request.framework_id} for project {request.project_id}")
+
+        # Load framework definition
+        framework = get_framework(request.framework_id)
+        if not framework:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Framework '{request.framework_id}' not found"
+            )
+
+        # Initialize OpenAI client
+        client = OpenAIClient(api_key=request.api_key)
+
+        # Assemble context from documents
+        context_sections = []
+        for doc in request.context_documents:
+            doc_header = f"## Document: {doc.name}"
+            if doc.type == 'url' and doc.url:
+                doc_header += f"\nSource: {doc.url}"
+            elif doc.type == 'pdf':
+                doc_header += f"\n(PDF document)"
+
+            context_sections.append(f"{doc_header}\n\n{doc.content}")
+
+        # Build full context
+        assembled_context = "\n\n---\n\n".join(context_sections) if context_sections else "No context documents provided."
+
+        # Build system prompt from framework definition
+        system_prompt = framework.get("system_prompt", "")
+
+        # Add example output to system prompt for reference
+        if framework.get("example_output"):
+            system_prompt += f"\n\n## Example Output Format:\n\n{framework['example_output']}"
+
+        # Build user prompt with context and user's specific request
+        user_prompt_parts = [
+            "# Context Documents",
+            assembled_context,
+            "",
+            "# Task",
+            request.user_prompt or f"Generate a {framework['name']} based on the context provided above.",
+        ]
+
+        # Add guiding questions if user prompt is minimal
+        if len(request.user_prompt) < 50 and framework.get("guiding_questions"):
+            user_prompt_parts.append("\n## Consider These Questions:")
+            for question in framework["guiding_questions"]:
+                user_prompt_parts.append(f"- {question}")
+
+        user_prompt = "\n".join(user_prompt_parts)
+
+        logger.info(f"Calling OpenAI with model {request.model}")
+        logger.info(f"Context size: {len(assembled_context)} chars, User prompt: {len(request.user_prompt)} chars")
+
+        # Call OpenAI API (non-streaming for now)
+        response = await client.chat(
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            model=request.model,
+            max_tokens=4096  # Generous limit for comprehensive frameworks
+        )
+
+        # Calculate cost
+        cost = client.calculate_cost(
+            input_tokens=response["usage"]["input_tokens"],
+            output_tokens=response["usage"]["output_tokens"],
+            model=response["model"]
+        )
+
+        logger.info(f"Framework generated successfully. Tokens: {response['usage']['total_tokens']}, Cost: ${cost:.4f}")
+
+        return {
+            "framework_id": request.framework_id,
+            "generated_content": response["content"],
+            "usage": response["usage"],
+            "cost": cost,
+            "model": response["model"]
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in generate_framework: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/generate-framework/stream")
+async def generate_framework_stream(request: GenerateFrameworkRequest):
+    """
+    Generate a complete PM framework output using AI (streaming version)
+
+    Same as /generate-framework but streams the response token-by-token
+    using Server-Sent Events (SSE)
+    """
+    async def generate():
+        try:
+            logger.info(f"Stream generate framework: {request.framework_id} for project {request.project_id}")
+
+            # Load framework definition
+            framework = get_framework(request.framework_id)
+            if not framework:
+                yield f"data: {json.dumps({'type': 'error', 'error': f'Framework {request.framework_id} not found'})}\n\n"
+                return
+
+            # Initialize OpenAI client
+            client = OpenAIClient(api_key=request.api_key)
+
+            # Assemble context from documents
+            context_sections = []
+            for doc in request.context_documents:
+                doc_header = f"## Document: {doc.name}"
+                if doc.type == 'url' and doc.url:
+                    doc_header += f"\nSource: {doc.url}"
+                elif doc.type == 'pdf':
+                    doc_header += f"\n(PDF document)"
+
+                context_sections.append(f"{doc_header}\n\n{doc.content}")
+
+            assembled_context = "\n\n---\n\n".join(context_sections) if context_sections else "No context documents provided."
+
+            # Build system prompt
+            system_prompt = framework.get("system_prompt", "")
+            if framework.get("example_output"):
+                system_prompt += f"\n\n## Example Output Format:\n\n{framework['example_output']}"
+
+            # Build user prompt
+            user_prompt_parts = [
+                "# Context Documents",
+                assembled_context,
+                "",
+                "# Task",
+                request.user_prompt or f"Generate a {framework['name']} based on the context provided above.",
+            ]
+
+            if len(request.user_prompt) < 50 and framework.get("guiding_questions"):
+                user_prompt_parts.append("\n## Consider These Questions:")
+                for question in framework["guiding_questions"]:
+                    user_prompt_parts.append(f"- {question}")
+
+            user_prompt = "\n".join(user_prompt_parts)
+
+            logger.info(f"Streaming from OpenAI with model {request.model}")
+
+            # Stream from OpenAI
+            async for chunk in client.chat_stream(
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                model=request.model,
+                max_tokens=4096
+            ):
+                # Add cost calculation to message_stop events
+                if chunk.get("type") == "message_stop" and "usage" in chunk:
+                    cost = client.calculate_cost(
+                        input_tokens=chunk["usage"]["input_tokens"],
+                        output_tokens=chunk["usage"]["output_tokens"],
+                        model=request.model
+                    )
+                    chunk["cost"] = cost
+
+                yield f"data: {json.dumps(chunk)}\n\n"
+
+        except Exception as e:
+            logger.error(f"Error in generate_framework_stream: {e}")
+            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        }
+    )
 
 
 if __name__ == "__main__":
