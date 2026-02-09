@@ -20,6 +20,7 @@ function App() {
   });
 
   const handleProjectSelect = (projectId: string, tab: 'documents' | 'chat' | 'frameworks' | 'context' | 'outputs' = 'chat') => {
+    console.log('🔵 handleProjectSelect called:', { projectId, tab });
     setCurrentProjectId(projectId);
     setInitialTab(tab);
     setCurrentView('project');
@@ -90,12 +91,17 @@ function App() {
             <div className="grid grid-cols-3 gap-4 mb-8">
               <button
                 onClick={() => {
+                  console.log('💬 AI Chat button clicked');
                   // Navigate to first project's chat tab
                   const createAndNavigate = async () => {
                     try {
                       const projects = await (window as any).projectsAPI?.list();
+                      console.log('📊 Projects loaded:', projects?.length || 0);
                       if (projects && projects.length > 0) {
+                        console.log('✅ Calling handleProjectSelect with chat tab');
                         handleProjectSelect(projects[0].id, 'chat');
+                      } else {
+                        console.log('❌ No projects found');
                       }
                     } catch (e) {
                       console.error('Failed to navigate:', e);
@@ -113,12 +119,17 @@ function App() {
               </button>
               <button
                 onClick={() => {
+                  console.log('🎯 PM Frameworks button clicked');
                   // Navigate to first project's frameworks tab
                   const createAndNavigate = async () => {
                     try {
                       const projects = await (window as any).projectsAPI?.list();
+                      console.log('📊 Projects loaded:', projects?.length || 0);
                       if (projects && projects.length > 0) {
+                        console.log('✅ Calling handleProjectSelect with frameworks tab');
                         handleProjectSelect(projects[0].id, 'frameworks');
+                      } else {
+                        console.log('❌ No projects found');
                       }
                     } catch (e) {
                       console.error('Failed to navigate:', e);

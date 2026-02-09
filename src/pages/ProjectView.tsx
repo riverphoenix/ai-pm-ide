@@ -19,11 +19,13 @@ interface ProjectViewProps {
 }
 
 export default function ProjectView({ projectId, initialTab = 'chat' }: ProjectViewProps) {
+  console.log('🟢 ProjectView rendered with:', { projectId, initialTab });
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'documents' | 'chat' | 'frameworks' | 'context' | 'outputs'>(initialTab);
+  console.log('🟡 activeTab state:', activeTab);
   const [currentConversationId, setCurrentConversationId] = useState<string | undefined>(undefined);
   const [historyWidth, setHistoryWidth] = useState<number>(() => {
     const saved = localStorage.getItem('conversationHistoryWidth');
@@ -41,6 +43,7 @@ export default function ProjectView({ projectId, initialTab = 'chat' }: ProjectV
 
   // Update active tab when initialTab prop changes
   useEffect(() => {
+    console.log('🔄 initialTab changed to:', initialTab);
     setActiveTab(initialTab);
   }, [initialTab]);
 
