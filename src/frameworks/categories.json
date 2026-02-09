@@ -1,0 +1,44 @@
+[
+  {
+    "id": "strategy",
+    "name": "Strategy",
+    "description": "Strategic frameworks for analyzing markets, competition, and business models",
+    "icon": "🎯"
+  },
+  {
+    "id": "prioritization",
+    "name": "Prioritization",
+    "description": "Frameworks for prioritizing features, initiatives, and roadmap items",
+    "icon": "📊"
+  },
+  {
+    "id": "discovery",
+    "name": "Discovery & Research",
+    "description": "Customer research and product discovery frameworks",
+    "icon": "🔍"
+  },
+  {
+    "id": "development",
+    "name": "Product Development",
+    "description": "Frameworks for building and launching products",
+    "icon": "🚀"
+  },
+  {
+    "id": "execution",
+    "name": "Execution & Measurement",
+    "description": "Goal-setting and measurement frameworks",
+    "icon": "📈"
+  },
+  {
+    "id": "decision",
+    "name": "Decision Making",
+    "description": "Frameworks for making and documenting decisions",
+    "icon": "✅"
+  },
+  {
+    "id": "communication",
+    "name": "Communication",
+    "description": "Templates for product specs, stories, and stakeholder communications",
+    "icon": "📝"
+  }
+]

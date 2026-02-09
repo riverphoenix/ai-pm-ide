@@ -1,0 +1,17 @@
+{
+  "id": "rice",
+  "name": "RICE Prioritization",
+  "category": "prioritization",
+  "description": "Prioritize features using Reach, Impact, Confidence, and Effort to calculate a score",
+  "icon": "🎲",
+  "example_output": "# RICE Prioritization Analysis\n\n## Features Analyzed\n\n### 1. Dark Mode Toggle\n- **Reach**: 8,500 users/month (85% of active users)\n- **Impact**: 2 (High - improves accessibility)\n- **Confidence**: 80%\n- **Effort**: 3 person-months\n- **RICE Score**: 45.3\n\n**Rationale**: Highly requested feature with clear user demand...\n\n## Recommendation\nPrioritize in order: [1, 3, 2] based on RICE scores...",
+  "system_prompt": "You are a product prioritization expert. Analyze the provided features using the RICE framework.\n\nFor each feature, calculate:\n- **Reach**: How many users will this impact per time period?\n- **Impact**: How much will this improve the user experience? (0.25=minimal, 0.5=low, 1=medium, 2=high, 3=massive)\n- **Confidence**: How confident are you in these estimates? (percentage)\n- **Effort**: How many person-months will this take?\n- **RICE Score** = (Reach × Impact × Confidence) / Effort\n\nOutput format:\n1. For each feature, provide RICE breakdown with clear numbers\n2. Include rationale explaining your estimates\n3. Sort features by RICE score (highest first)\n4. Provide a final recommendation on prioritization order\n5. Consider strategic alignment and dependencies\n\nUse markdown formatting with headers, bold for metrics, and clear sections.",
+  "guiding_questions": [
+    "What features are you trying to prioritize?",
+    "What is your target user base size?",
+    "What are your current product goals and constraints?",
+    "Do you have any data on user demand or impact?",
+    "What is your team's capacity?"
+  ],
+  "supports_visuals": false
+}

@@ -1,0 +1,18 @@
+{
+  "id": "prd",
+  "name": "Product Requirements Document (PRD)",
+  "category": "communication",
+  "description": "Comprehensive product spec documenting problem, solution, requirements, and success metrics",
+  "icon": "📄",
+  "example_output": "# [Feature Name] - Product Requirements Document\n\n## Overview\n**Problem**: Users struggle to...\n**Solution**: We will build...\n**Success Metrics**: 20% increase in...\n\n## Background & Context\n[Market context, customer feedback, strategic alignment]\n\n## Goals & Non-Goals\n**Goals**:\n- Enable users to...\n- Reduce friction in...\n\n**Non-Goals**:\n- We will not...\n\n## User Stories\nAs a [user type], I want to [action] so that [benefit]...\n\n## Requirements\n### Functional Requirements\n1. The system must...\n2. Users should be able to...\n\n### Non-Functional Requirements\n- Performance: Load time < 2s\n- Security: All data encrypted\n\n## Design & UX\n[Wireframes, mockups, user flows]\n\n## Technical Considerations\n[Architecture, APIs, dependencies]\n\n## Success Metrics\n- Primary: [KPI]\n- Secondary: [supporting metrics]\n\n## Timeline & Milestones\n- Week 1: Design review\n- Week 4: Alpha release\n- Week 8: GA launch\n\n## Open Questions\n1. How should we handle...?\n2. What is the priority of...?",
+  "system_prompt": "You are an expert product manager writing a comprehensive PRD (Product Requirements Document).\n\nBased on the provided context, create a detailed PRD that includes:\n\n1. **Overview**: Problem statement, proposed solution, success metrics\n2. **Background & Context**: Why are we building this? Market/customer insights\n3. **Goals & Non-Goals**: What we're solving and what we're explicitly NOT solving\n4. **User Stories**: Key user journeys and use cases\n5. **Requirements**: Functional and non-functional requirements\n6. **Design & UX**: Describe the user experience (reference mockups if provided)\n7. **Technical Considerations**: Architecture, APIs, dependencies, risks\n8. **Success Metrics**: How we'll measure success (leading and lagging indicators)\n9. **Timeline & Milestones**: Key dates and deliverables\n10. **Open Questions**: Unresolved issues that need decisions\n\nWrite in clear, concise language. Use markdown formatting. Be specific about requirements - avoid vague terms like 'should' or 'nice to have'. Make the PRD actionable for engineering and design teams.",
+  "guiding_questions": [
+    "What problem are you trying to solve?",
+    "Who is the target user?",
+    "What is the proposed solution?",
+    "What are your success metrics?",
+    "What is the timeline/deadline?",
+    "Are there any technical constraints or dependencies?"
+  ],
+  "supports_visuals": false
+}
