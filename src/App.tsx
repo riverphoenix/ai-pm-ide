@@ -13,13 +13,15 @@ const DEFAULT_SIDEBAR_WIDTH = 208;
 function App() {
   const [currentView, setCurrentView] = useState<View>('welcome');
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
+  const [initialTab, setInitialTab] = useState<'documents' | 'chat' | 'frameworks' | 'context' | 'outputs'>('chat');
   const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
     const saved = localStorage.getItem('sidebarWidth');
     return saved ? parseInt(saved, 10) : DEFAULT_SIDEBAR_WIDTH;
   });
 
-  const handleProjectSelect = (projectId: string) => {
+  const handleProjectSelect = (projectId: string, tab: 'documents' | 'chat' | 'frameworks' | 'context' | 'outputs' = 'chat') => {
     setCurrentProjectId(projectId);
+    setInitialTab(tab);
     setCurrentView('project');
   };
 
@@ -56,16 +58,12 @@ function App() {
       />
       <ResizableDivider onResize={handleSidebarResize} />
       {currentView === 'project' && currentProjectId ? (
-        <ProjectView projectId={currentProjectId} />
+        <ProjectView projectId={currentProjectId} initialTab={initialTab} />
       ) : currentView === 'settings' ? (
         <Settings />
       ) : (
         <div className="flex-1 flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/10">
           <div className="text-center max-w-2xl px-8">
-            <div className="inline-block p-5 bg-slate-800/40 rounded-2xl shadow-xl mb-6 backdrop-blur-sm border border-slate-700/30">
-              <div className="text-5xl">🚀</div>
-            </div>
-
             <button
               onClick={handleHomeClick}
               className="inline-block p-5 bg-slate-800/40 rounded-2xl shadow-xl mb-6 backdrop-blur-sm border border-slate-700/30 hover:bg-slate-800/60 transition-all cursor-pointer"
@@ -88,12 +86,12 @@ function App() {
             <div className="grid grid-cols-3 gap-4 mb-8">
               <button
                 onClick={() => {
-                  // Create a default project if none exists, or navigate to first project's chat
+                  // Navigate to first project's chat tab
                   const createAndNavigate = async () => {
                     try {
                       const projects = await (window as any).projectsAPI?.list();
                       if (projects && projects.length > 0) {
-                        handleProjectSelect(projects[0].id);
+                        handleProjectSelect(projects[0].id, 'chat');
                       }
                     } catch (e) {
                       console.error('Failed to navigate:', e);
@@ -111,12 +109,12 @@ function App() {
               </button>
               <button
                 onClick={() => {
-                  // Navigate to frameworks - we'll implement this properly
+                  // Navigate to first project's frameworks tab
                   const createAndNavigate = async () => {
                     try {
                       const projects = await (window as any).projectsAPI?.list();
                       if (projects && projects.length > 0) {
-                        handleProjectSelect(projects[0].id);
+                        handleProjectSelect(projects[0].id, 'frameworks');
                       }
                     } catch (e) {
                       console.error('Failed to navigate:', e);

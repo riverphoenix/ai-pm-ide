@@ -15,14 +15,15 @@ const DEFAULT_HISTORY_WIDTH = 224;
 
 interface ProjectViewProps {
   projectId: string;
+  initialTab?: 'documents' | 'chat' | 'frameworks' | 'context' | 'outputs';
 }
 
-export default function ProjectView({ projectId }: ProjectViewProps) {
+export default function ProjectView({ projectId, initialTab = 'chat' }: ProjectViewProps) {
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [apiKey, setApiKey] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'documents' | 'chat' | 'frameworks' | 'context' | 'outputs'>('chat');
+  const [activeTab, setActiveTab] = useState<'documents' | 'chat' | 'frameworks' | 'context' | 'outputs'>(initialTab);
   const [currentConversationId, setCurrentConversationId] = useState<string | undefined>(undefined);
   const [historyWidth, setHistoryWidth] = useState<number>(() => {
     const saved = localStorage.getItem('conversationHistoryWidth');

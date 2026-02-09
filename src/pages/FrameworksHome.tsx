@@ -8,6 +8,7 @@ interface FrameworksHomeProps {
 
 export default function FrameworksHome({ onSelectFramework }: FrameworksHomeProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const categories = getCategories();
   const stats = getFrameworkStats();
 
@@ -26,22 +27,41 @@ export default function FrameworksHome({ onSelectFramework }: FrameworksHomeProp
     return { categories: resultsGrouped, showingResults: true };
   }, [searchQuery, categories]);
 
+  const selectedCategory = selectedCategoryId
+    ? categories.find(cat => cat.id === selectedCategoryId)
+    : null;
+
   return (
     <div className="flex-1 flex flex-col bg-slate-900 overflow-hidden">
       {/* Header */}
       <div className="flex-shrink-0 border-b border-slate-700 bg-slate-800/30 px-6 py-4">
         <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-xl font-bold text-white mb-1">
-              PM Frameworks
-            </h1>
-            <p className="text-xs text-slate-400">
-              {stats.totalFrameworks} frameworks across {stats.totalCategories} categories
-            </p>
+          <div className="flex items-center gap-3">
+            {selectedCategory && (
+              <button
+                onClick={() => setSelectedCategoryId(null)}
+                className="text-slate-400 hover:text-white transition-colors"
+              >
+                ← Back
+              </button>
+            )}
+            <div>
+              <h1 className="text-xl font-bold text-white mb-1">
+                {selectedCategory ? selectedCategory.name : 'PM Frameworks'}
+              </h1>
+              <p className="text-xs text-slate-400">
+                {selectedCategory
+                  ? `${selectedCategory.frameworks.length} frameworks in this category`
+                  : `${stats.totalFrameworks} frameworks across ${stats.totalCategories} categories`
+                }
+              </p>
+            </div>
           </div>
-          <div className="text-xs text-slate-500">
-            {stats.visualFrameworks} with visual generation
-          </div>
+          {!selectedCategory && (
+            <div className="text-xs text-slate-500">
+              {stats.visualFrameworks} with visual generation
+            </div>
+          )}
         </div>
 
         {/* Search Bar */}
@@ -72,7 +92,37 @@ export default function FrameworksHome({ onSelectFramework }: FrameworksHomeProp
 
       {/* Categories Grid */}
       <div className="flex-1 overflow-y-auto p-6">
-        {!filteredContent.showingResults ? (
+        {selectedCategory ? (
+          // Show frameworks in selected category
+          <div className="max-w-4xl">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {selectedCategory.frameworks.map((framework) => (
+                <div
+                  key={framework.id}
+                  onClick={() => onSelectFramework(framework.id, selectedCategory.id)}
+                  className="bg-slate-800/40 border border-slate-700 rounded-lg p-5 hover:bg-slate-800/60 hover:border-indigo-500/50 transition-all cursor-pointer"
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl">{framework.icon}</span>
+                      <h3 className="text-sm font-semibold text-white">
+                        {framework.name}
+                      </h3>
+                    </div>
+                    {framework.supports_visuals && (
+                      <span className="text-[10px] px-2 py-1 bg-purple-500/20 text-purple-300 rounded">
+                        Visuals
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    {framework.description}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : !filteredContent.showingResults ? (
           // Show category cards when not searching
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-6xl">
             {categories.map((category) => (
@@ -80,10 +130,12 @@ export default function FrameworksHome({ onSelectFramework }: FrameworksHomeProp
                 key={category.id}
                 className="bg-slate-800/40 border border-slate-700 rounded-lg p-5 hover:bg-slate-800/60 hover:border-indigo-500/50 transition-all cursor-pointer group"
                 onClick={() => {
-                  // For now, just select the first framework in the category
-                  // Later we'll add a proper CategoryView
-                  if (category.frameworks.length > 0) {
+                  // If only 1 framework, open it directly
+                  if (category.frameworks.length === 1) {
                     onSelectFramework(category.frameworks[0].id, category.id);
+                  } else if (category.frameworks.length > 1) {
+                    // If multiple frameworks, show category drill-down
+                    setSelectedCategoryId(category.id);
                   }
                 }}
               >
