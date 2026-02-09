@@ -15,5 +15,6 @@
     "What emotions do they experience?",
     "What data or research informs this journey?"
   ],
-  "supports_visuals": true
+  "supports_visuals": true,
+  "visual_instructions": "Always include a Mermaid journey diagram at the end showing satisfaction levels at each stage. Use the format:\n\n```mermaid\njourney\n    title Customer Journey: [Title]\n    section Stage Name\n      Action 1: 5: Actor\n      Action 2: 3: Actor\n```\n\nSatisfaction scale: 1 (very dissatisfied) to 9 (very satisfied)"
 }

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { frameworkOutputsAPI } from '../lib/ipc';
 import { getFramework } from '../lib/frameworks';
 import { FrameworkOutput } from '../lib/types';
-import ReactMarkdown from 'react-markdown';
+import MarkdownWithMermaid from '../components/MarkdownWithMermaid';
 
 interface OutputsLibraryProps {
   projectId: string;
@@ -238,9 +238,7 @@ export default function OutputsLibrary({ projectId, onEdit }: OutputsLibraryProp
 
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto p-6">
-                  <div className="prose prose-invert prose-sm max-w-none">
-                    <ReactMarkdown>{selectedOutput.generated_content}</ReactMarkdown>
-                  </div>
+                  <MarkdownWithMermaid content={selectedOutput.generated_content} />
                 </div>
               </>
             ) : (

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { getFramework } from '../lib/frameworks';
 import { contextDocumentsAPI, frameworkOutputsAPI, settingsAPI } from '../lib/ipc';
 import { FrameworkDefinition, ContextDocument } from '../lib/types';
-import ReactMarkdown from 'react-markdown';
+import MarkdownWithMermaid from './MarkdownWithMermaid';
 
 interface FrameworkGeneratorProps {
   projectId: string;
@@ -335,9 +335,7 @@ export default function FrameworkGenerator({
                 </div>
               </div>
               <div className="flex-1 overflow-y-auto p-6">
-                <div className="prose prose-invert prose-sm max-w-none">
-                  <ReactMarkdown>{generatedContent}</ReactMarkdown>
-                </div>
+                <MarkdownWithMermaid content={generatedContent} />
               </div>
             </>
           )}
