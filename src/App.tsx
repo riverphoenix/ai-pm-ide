@@ -58,7 +58,11 @@ function App() {
       />
       <ResizableDivider onResize={handleSidebarResize} />
       {currentView === 'project' && currentProjectId ? (
-        <ProjectView projectId={currentProjectId} initialTab={initialTab} />
+        <ProjectView
+          key={`${currentProjectId}-${initialTab}`}
+          projectId={currentProjectId}
+          initialTab={initialTab}
+        />
       ) : currentView === 'settings' ? (
         <Settings />
       ) : (
