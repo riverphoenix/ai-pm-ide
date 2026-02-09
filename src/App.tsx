@@ -3,6 +3,7 @@ import Sidebar from './components/Sidebar';
 import ProjectView from './pages/ProjectView';
 import Settings from './pages/Settings';
 import ResizableDivider from './components/ResizableDivider';
+import { projectsAPI } from './lib/ipc';
 
 type View = 'welcome' | 'project' | 'settings';
 
@@ -95,13 +96,20 @@ function App() {
                   // Navigate to first project's chat tab (create if needed)
                   const createAndNavigate = async () => {
                     try {
-                      let projects = await (window as any).projectsAPI?.list();
+                      let projects = await projectsAPI.list();
                       console.log('📊 Projects loaded:', projects?.length || 0);
 
                       // If no projects exist, create a default one
                       if (!projects || projects.length === 0) {
                         console.log('🆕 No projects found, creating default project...');
-                        const newProject = await (window as any).projectsAPI?.create('My First Project');
+                        const newProject = await projectsAPI.create('My First Project');
+
+                        if (!newProject || !newProject.id) {
+                          console.error('❌ Failed to create project:', newProject);
+                          alert('Failed to create project. Please check that the app is running correctly.');
+                          return;
+                        }
+
                         console.log('✅ Created project:', newProject.id);
                         handleProjectSelect(newProject.id, 'chat');
                       } else {
@@ -128,13 +136,20 @@ function App() {
                   // Navigate to first project's frameworks tab (create if needed)
                   const createAndNavigate = async () => {
                     try {
-                      let projects = await (window as any).projectsAPI?.list();
+                      let projects = await projectsAPI.list();
                       console.log('📊 Projects loaded:', projects?.length || 0);
 
                       // If no projects exist, create a default one
                       if (!projects || projects.length === 0) {
                         console.log('🆕 No projects found, creating default project...');
-                        const newProject = await (window as any).projectsAPI?.create('My First Project');
+                        const newProject = await projectsAPI.create('My First Project');
+
+                        if (!newProject || !newProject.id) {
+                          console.error('❌ Failed to create project:', newProject);
+                          alert('Failed to create project. Please check that the app is running correctly.');
+                          return;
+                        }
+
                         console.log('✅ Created project:', newProject.id);
                         handleProjectSelect(newProject.id, 'frameworks');
                       } else {
