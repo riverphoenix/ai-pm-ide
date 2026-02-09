@@ -15,6 +15,7 @@ import logging
 
 from openai_client import OpenAIClient
 from framework_loader import get_framework
+from document_parser import parse_document, fetch_url_content, fetch_google_docs_content
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -488,6 +489,67 @@ async def generate_framework_stream(request: GenerateFrameworkRequest):
             "X-Accel-Buffering": "no",
         }
     )
+
+
+@app.post("/parse-url")
+async def parse_url(url: str):
+    """
+    Fetch and extract text content from a URL
+
+    Supports:
+    - HTML pages (extracts main content)
+    - PDF URLs (extracts text)
+    - Google Docs public links (exports as text)
+
+    Returns extracted content and title
+    """
+    try:
+        logger.info(f"Parsing URL: {url}")
+
+        # Check if it's a Google Docs URL
+        if 'docs.google.com' in url or 'drive.google.com' in url:
+            result = fetch_google_docs_content(url)
+        else:
+            result = fetch_url_content(url)
+
+        return {
+            "success": True,
+            "content": result['content'],
+            "title": result['title'],
+            "type": result.get('type', 'unknown'),
+            "url": url
+        }
+
+    except Exception as e:
+        logger.error(f"Error parsing URL: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/parse-pdf")
+async def parse_pdf(pdf_bytes: bytes):
+    """
+    Extract text from PDF bytes
+
+    Expects raw PDF bytes in request body
+
+    Returns extracted text
+    """
+    try:
+        logger.info(f"Parsing PDF ({len(pdf_bytes)} bytes)")
+
+        from document_parser import extract_pdf_text
+        text = extract_pdf_text(pdf_bytes)
+
+        return {
+            "success": True,
+            "content": text,
+            "size_bytes": len(pdf_bytes),
+            "extracted_chars": len(text)
+        }
+
+    except Exception as e:
+        logger.error(f"Error parsing PDF: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 if __name__ == "__main__":

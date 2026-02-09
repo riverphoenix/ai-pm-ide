@@ -16,6 +16,8 @@ export default function ContextManager({ projectId }: ContextManagerProps) {
   const [newDocUrl, setNewDocUrl] = useState('');
   const [newDocIsGlobal, setNewDocIsGlobal] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isFetching, setIsFetching] = useState(false);
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
 
   useEffect(() => {
     loadDocuments();
@@ -31,6 +33,79 @@ export default function ContextManager({ projectId }: ContextManagerProps) {
       setError('Failed to load documents');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleFetchUrl = async () => {
+    if (!newDocUrl.trim()) {
+      setError('Please enter a URL');
+      return;
+    }
+
+    setIsFetching(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`http://127.0.0.1:8000/parse-url?url=${encodeURIComponent(newDocUrl)}`, {
+        method: 'POST'
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to fetch URL');
+      }
+
+      const data = await response.json();
+
+      // Auto-fill name and content
+      if (!newDocName.trim()) {
+        setNewDocName(data.title);
+      }
+      setNewDocContent(data.content);
+      setNewDocType(data.type === 'google_doc' ? 'google_doc' : 'url');
+
+    } catch (err) {
+      console.error('Failed to fetch URL:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch URL content');
+    } finally {
+      setIsFetching(false);
+    }
+  };
+
+  const handlePdfUpload = async (file: File) => {
+    setPdfFile(file);
+    setNewDocType('pdf');
+
+    if (!newDocName.trim()) {
+      setNewDocName(file.name.replace(/\.pdf$/i, ''));
+    }
+
+    setIsFetching(true);
+    setError(null);
+
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuffer);
+
+      const response = await fetch('http://127.0.0.1:8000/parse-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/pdf' },
+        body: bytes
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to parse PDF');
+      }
+
+      const data = await response.json();
+      setNewDocContent(data.content);
+
+    } catch (err) {
+      console.error('Failed to parse PDF:', err);
+      setError(err instanceof Error ? err.message : 'Failed to extract PDF text');
+    } finally {
+      setIsFetching(false);
     }
   };
 
@@ -274,19 +349,74 @@ export default function ContextManager({ projectId }: ContextManagerProps) {
                 />
               </div>
 
-              {/* URL (if type is url) */}
-              {newDocType === 'url' && (
+              {/* URL (if type is url or google_doc) */}
+              {(newDocType === 'url' || newDocType === 'google_doc') && (
                 <div>
                   <label className="block text-sm font-medium text-slate-300 mb-2">
-                    URL
+                    URL {newDocType === 'google_doc' && '(Google Docs public link)'}
                   </label>
-                  <input
-                    type="url"
-                    value={newDocUrl}
-                    onChange={(e) => setNewDocUrl(e.target.value)}
-                    placeholder="https://..."
-                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="url"
+                      value={newDocUrl}
+                      onChange={(e) => setNewDocUrl(e.target.value)}
+                      placeholder={newDocType === 'google_doc' ? 'https://docs.google.com/document/d/...' : 'https://...'}
+                      className="flex-1 px-3 py-2 bg-slate-900 border border-slate-700 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      onKeyDown={(e) => e.key === 'Enter' && handleFetchUrl()}
+                    />
+                    <button
+                      onClick={handleFetchUrl}
+                      disabled={isFetching || !newDocUrl.trim()}
+                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-700 disabled:cursor-not-allowed text-white text-sm font-medium rounded transition-colors"
+                    >
+                      {isFetching ? 'Fetching...' : 'Fetch'}
+                    </button>
+                  </div>
+                  <div className="mt-1 text-xs text-slate-500">
+                    Automatically extracts content from the URL
+                  </div>
+                </div>
+              )}
+
+              {/* PDF Upload */}
+              {newDocType === 'pdf' && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Upload PDF
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <label className="flex-1 flex items-center justify-center px-4 py-3 bg-slate-900 border-2 border-dashed border-slate-700 rounded cursor-pointer hover:border-indigo-500 hover:bg-slate-800 transition-colors">
+                      <input
+                        type="file"
+                        accept=".pdf,application/pdf"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handlePdfUpload(file);
+                        }}
+                        className="hidden"
+                      />
+                      <div className="text-center">
+                        {pdfFile ? (
+                          <>
+                            <div className="text-sm text-white mb-1">📄 {pdfFile.name}</div>
+                            <div className="text-xs text-slate-400">
+                              {(pdfFile.size / 1024).toFixed(1)} KB • Click to change
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="text-sm text-slate-300 mb-1">Click to upload PDF</div>
+                            <div className="text-xs text-slate-500">Text will be extracted automatically</div>
+                          </>
+                        )}
+                      </div>
+                    </label>
+                  </div>
+                  {isFetching && (
+                    <div className="mt-2 text-xs text-indigo-400">
+                      Extracting text from PDF...
+                    </div>
+                  )}
                 </div>
               )}
 
