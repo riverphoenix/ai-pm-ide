@@ -3,11 +3,11 @@ AI PM IDE - Python Sidecar Server
 FastAPI server for OpenAI integration and document processing
 """
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Any
 import uvicorn
 import os
 import json
@@ -64,7 +64,7 @@ class FieldSuggestionRequest(BaseModel):
     template_id: str
     field_id: str
     field_prompt: str
-    current_values: Dict[str, any]
+    current_values: Dict[str, Any]
     api_key: str
     system: Optional[str] = None
 
@@ -209,7 +209,12 @@ async def chat_stream(request: ChatRequest):
 
         except Exception as e:
             logger.error(f"Error in stream: {e}")
-            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+            # Simplify error message using LLM
+            try:
+                simplified_error = await client.simplify_error_message(str(e))
+            except:
+                simplified_error = str(e)
+            yield f"data: {json.dumps({'type': 'error', 'error': simplified_error})}\n\n"
 
     return StreamingResponse(
         generate(),
@@ -372,7 +377,7 @@ async def generate_framework(request: GenerateFrameworkRequest):
                 {"role": "user", "content": user_prompt}
             ],
             model=request.model,
-            max_tokens=4096  # Generous limit for comprehensive frameworks
+            max_tokens=100000  # Generous limit for comprehensive frameworks
         )
 
         # Calculate cost
@@ -382,7 +387,8 @@ async def generate_framework(request: GenerateFrameworkRequest):
             model=response["model"]
         )
 
-        logger.info(f"Framework generated successfully. Tokens: {response['usage']['total_tokens']}, Cost: ${cost:.4f}")
+        total_tokens = response["usage"]["input_tokens"] + response["usage"]["output_tokens"]
+        logger.info(f"Framework generated successfully. Tokens: {total_tokens}, Cost: ${cost:.4f}")
 
         return {
             "framework_id": request.framework_id,
@@ -463,7 +469,7 @@ async def generate_framework_stream(request: GenerateFrameworkRequest):
                     {"role": "user", "content": user_prompt}
                 ],
                 model=request.model,
-                max_tokens=4096
+                max_tokens=100000
             ):
                 # Add cost calculation to message_stop events
                 if chunk.get("type") == "message_stop" and "usage" in chunk:
@@ -478,7 +484,12 @@ async def generate_framework_stream(request: GenerateFrameworkRequest):
 
         except Exception as e:
             logger.error(f"Error in generate_framework_stream: {e}")
-            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+            # Simplify error message using LLM
+            try:
+                simplified_error = await client.simplify_error_message(str(e))
+            except:
+                simplified_error = str(e)
+            yield f"data: {json.dumps({'type': 'error', 'error': simplified_error})}\n\n"
 
     return StreamingResponse(
         generate(),
@@ -525,8 +536,40 @@ async def parse_url(url: str):
         raise HTTPException(status_code=400, detail=str(e))
 
 
+class FetchUrlRequest(BaseModel):
+    url: str
+
+
+@app.post("/fetch-url")
+async def fetch_url(request: FetchUrlRequest):
+    """
+    Fetch content from a URL
+
+    Simple wrapper around parse_url that accepts JSON body
+    """
+    try:
+        logger.info(f"Fetching URL: {request.url}")
+
+        # Check if it's a Google Docs URL
+        if 'docs.google.com' in request.url or 'drive.google.com' in request.url:
+            result = fetch_google_docs_content(request.url)
+        else:
+            result = fetch_url_content(request.url)
+
+        return {
+            "success": True,
+            "content": result['content'],
+            "title": result.get('title', ''),
+            "type": result.get('type', 'unknown')
+        }
+
+    except Exception as e:
+        logger.error(f"Error fetching URL: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @app.post("/parse-pdf")
-async def parse_pdf(pdf_bytes: bytes):
+async def parse_pdf(request: Request):
     """
     Extract text from PDF bytes
 
@@ -535,6 +578,7 @@ async def parse_pdf(pdf_bytes: bytes):
     Returns extracted text
     """
     try:
+        pdf_bytes = await request.body()
         logger.info(f"Parsing PDF ({len(pdf_bytes)} bytes)")
 
         from document_parser import extract_pdf_text

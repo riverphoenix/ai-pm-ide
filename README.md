@@ -292,15 +292,223 @@ Python sidecar runs on `http://127.0.0.1:8000` and provides:
 ✅ **Chat Interface** - GPT-5 chat with streaming, history, cost tracking
 ✅ **Settings** - Secure API key storage, theme toggle
 
-## 🔮 Upcoming Features
+## 🔮 Roadmap: 7-Phase Transformation Plan
 
-### Optional Enhancements (Not Started)
-- [ ] **Google Docs API Export** - Direct export to Google Docs
-- [ ] **37 more frameworks** - Complete library of 45 PM frameworks
-- [ ] **Strategy Canvas visuals** - Visual generation beyond Mermaid
-- [ ] **Business Model Canvas visuals** - Interactive canvas generation
-- [ ] **Workflow automation** - Agentic workflows (P2 from original plan)
-- [ ] **Multi-LLM support** - Claude, Gemini, local models (P1 from original plan)
+**📋 Full Implementation Plan**: [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)
+**Timeline**: 22 weeks (~5.5 months)
+**Status**: Phase 0 (MVP) Complete ✅
+
+---
+
+### **Phase 1: UI Redesign (4-5 weeks)** - Codex-Inspired ⏳
+**Status**: Not Started
+
+Transform the interface into a modern, agent-native workspace inspired by OpenAI's Codex.
+
+**Key Features**:
+- 🎨 **Dark Design System**: Almost-black backgrounds (#0a0a0f), refined color palette
+- 🔧 **Redesigned Sidebar**: Projects, Automations, Skills, Threads sections
+- ⚡ **Top Action Bar**: Open, Commit, Terminal, IDE toggles
+- ✨ **Smooth Animations**: Micro-interactions, 200-250ms transitions
+- 📦 **Refined Components**: Modern cards, buttons, inputs with hover states
+
+**Success Metrics**:
+- <300ms interaction latency
+- 90+ Lighthouse accessibility score
+- Professional appearance matching modern dev tools
+
+---
+
+### **Phase 2: File System & Project Structure (3-4 weeks)** - VSCode-Like 📁
+**Status**: Not Started
+
+Add VSCode-style file management with folder tree and organization.
+
+**Key Features**:
+- 🌲 **Folder Tree**: Unlimited depth, expandable/collapsible
+- 🎯 **Drag & Drop**: Move files and folders with visual feedback
+- ⚙️ **File Operations**: Create, rename, delete, move, duplicate
+- 🔍 **Smart Search**: Fuzzy search across all files
+- 🏷️ **Metadata**: Tags, favorites, color labels
+
+**Database Changes**:
+```sql
+CREATE TABLE folders (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL,
+    parent_id TEXT,
+    name TEXT NOT NULL
+);
+```
+
+**Success Metrics**:
+- Support 1000+ files without lag
+- Tree navigation 3x faster than flat list
+- Drag & drop success rate >95%
+
+---
+
+### **Phase 3: Console Integration (2-3 weeks)** - Power User Features ⌨️
+**Status**: Not Started
+
+Add IDE-style terminal, command palette, and keyboard shortcuts.
+
+**Key Features**:
+- 💻 **Terminal Panel**: Execute shell commands at bottom of workspace
+- 🎯 **Command Palette (Cmd+K)**: Universal quick actions, fuzzy search
+- ⚡ **Keyboard Shortcuts**: Full system (Cmd+P file open, Cmd+B sidebar, etc.)
+- 📊 **Output Management**: Tabs for Terminal, Output, Console, Problems
+
+**Keyboard Shortcuts**:
+| Shortcut | Action |
+|----------|--------|
+| `Cmd+K` | Command palette |
+| `Cmd+P` | Quick file open |
+| `Cmd+B` | Toggle sidebar |
+| `Cmd+J` | Toggle terminal |
+| `Cmd+Shift+F` | Global search |
+
+**Success Metrics**:
+- Command palette opens <100ms
+- 50% of power users adopt keyboard shortcuts
+- Terminal executes correctly 99%+ of time
+
+---
+
+### **Phase 4: Framework Expansion (4-6 weeks)** - Complete PM Toolkit 🎯
+**Status**: Not Started (8/45 frameworks complete)
+
+Expand from 8 to 45 modern PM frameworks with full customization.
+
+**Key Features**:
+- 📚 **37 New Frameworks**: MoSCoW, Kano, JTBD, Empathy Maps, OKRs, RACI, etc.
+- ✏️ **Editable Prompts**: Edit system prompts with Monaco editor
+- 🏷️ **Custom Categories**: Add/edit/delete framework categories
+- 🎨 **Visual Frameworks**: Opportunity Solution Trees, User Story Mapping with Mermaid
+- 📋 **Agent Skills Pattern**: Following product-on-purpose/pm-skills specification
+
+**New Frameworks by Category**:
+- **Strategy** (6): Porter's Five Forces, Value Proposition Canvas, North Star Metric, Ansoff Matrix
+- **Prioritization** (8): MoSCoW, Kano Model, WSJF, Value vs Effort, Cost of Delay, Opportunity Scoring
+- **Discovery** (8): JTBD, Empathy Mapping, User Story Mapping, Personas, Opportunity Solution Tree, Lean Canvas
+- **Development** (4): User Stories, Acceptance Criteria, Technical Specification
+- **Execution** (10): 4Ls Retrospective, Start/Stop/Continue, Pirate Metrics, NPS, HEART, Metrics Dashboard
+- **Decision** (4): RACI, RAPID, Decision Matrix
+- **Communication** (5): Feature Brief, Go-to-Market Plan, Product Roadmap, Executive Summary
+
+**Success Metrics**:
+- All 45 frameworks implemented and tested
+- Users can edit any framework without errors
+- Average 10+ frameworks used per project
+
+---
+
+### **Phase 5: Prompts Library (2-3 weeks)** - Reusable Templates 📝
+**Status**: Not Started
+
+Add saved prompts with variables for common PM workflows.
+
+**Key Features**:
+- 💾 **30+ Pre-loaded Prompts**: PRD generation, competitive analysis, user stories, stakeholder communication
+- 🔤 **Variable System**: Dynamic prompts with placeholders (e.g., `{feature_name}`, `{user_persona}`)
+- 🔧 **Prompt Editor**: Monaco editor with variable panel, preview, and testing
+- 📂 **Categories**: Organized by PRD, Analysis, Stories, Communication, Data, Prioritization
+- 🔗 **Framework Integration**: Use saved prompts in Framework Generator
+
+**Example Prompts**:
+- "Generate a PRD for `{feature_name}` targeting `{user_persona}`"
+- "Analyze competitors `{competitor_names}` for `{product_category}`"
+- "Convert JTBD statement '`{jtbd}`' into user stories with acceptance criteria"
+
+**Success Metrics**:
+- Users create avg 5 custom prompts per project
+- Saved prompts used in 60%+ of generations
+- 30+ pre-loaded prompts available
+
+---
+
+### **Phase 6: Framework Marketplace (3-4 weeks)** - Community Sharing 🌐
+**Status**: Not Started
+
+Enable import/export and sharing of frameworks as .md files.
+
+**Key Features**:
+- 📥 **Import/Export**: Standardized .md format with YAML front matter
+- 🔄 **Versioning**: Track framework versions, show diffs on update
+- ✅ **Validation**: Parse and validate imported frameworks
+- 🏪 **Marketplace**: Browse and discover community frameworks (Phase 7)
+- 🔧 **Custom Frameworks**: Create and share team-specific workflows
+
+**Import Format**:
+```markdown
+---
+id: kano-model
+name: Kano Model
+category: prioritization
+icon: 📊
+tags: [prioritization, satisfaction]
+---
+
+# System Prompt
+[AI instructions]
+
+# Guiding Questions
+- What features are you analyzing?
+
+# Example Output
+[Markdown example]
+```
+
+**Success Metrics**:
+- Import/export works for 100% of valid .md files
+- Users successfully share frameworks
+- 10+ community frameworks in first month
+
+---
+
+### **Phase 7: Advanced Features (6-8 weeks)** - AI Orchestration 🤖
+**Status**: Not Started (Future Vision)
+
+Add multi-agent workflows, context memory, and integrations.
+
+**Key Features**:
+- 🔗 **Multi-Agent Orchestration**: Chain frameworks for complex workflows
+- 🧠 **Context Memory**: AI remembers project context across sessions
+- 💡 **AI-Powered Insights**: Proactive suggestions based on project data
+- 🤝 **Collaboration**: Team sharing, real-time editing, comments
+- 🔌 **Integrations**: Jira, Notion, Slack, Google Docs, GitHub, Figma
+- 📦 **Git Integration**: Version control, auto-commit, push to remote
+
+**Example Multi-Agent Workflow**:
+1. Generate user research (JTBD)
+2. Create competitive analysis
+3. Generate PRD with contexts
+4. Create go-to-market plan
+
+**Success Metrics**:
+- Multi-agent workflows complete successfully 95%+ of time
+- AI insights adopted by 40%+ of users
+- Integrations work reliably (>99% uptime)
+
+---
+
+## 📊 Overall Success Metrics
+
+**Current State** (MVP):
+- ✅ 8 frameworks implemented
+- ✅ Core features complete (projects, context, generation, outputs, chat)
+- ✅ Mac desktop app with Tauri
+
+**Target State** (All Phases):
+- 🎯 45 frameworks covering all PM workflows
+- 🎯 Codex-inspired modern UI with agent-native patterns
+- 🎯 File system with VSCode-like folder tree
+- 🎯 Console, command palette, full keyboard shortcuts
+- 🎯 Prompts library with 30+ reusable templates
+- 🎯 Framework marketplace for community sharing
+- 🎯 Multi-agent orchestration and advanced AI features
+
+**Timeline**: 22 weeks (~5.5 months) from MVP to complete vision
 
 ## 📝 License
 

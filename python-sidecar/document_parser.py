@@ -6,6 +6,10 @@ import requests
 from typing import Optional, Dict
 import logging
 import re
+import urllib3
+
+# Disable SSL warnings when verification is disabled
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 logger = logging.getLogger(__name__)
 
@@ -38,8 +42,9 @@ def extract_pdf_text(pdf_bytes: bytes) -> str:
     try:
         doc = fitz.open(stream=pdf_bytes, filetype="pdf")
         text_parts = []
+        page_count = len(doc)
 
-        for page_num in range(len(doc)):
+        for page_num in range(page_count):
             page = doc[page_num]
             text = page.get_text()
             if text.strip():
@@ -48,7 +53,7 @@ def extract_pdf_text(pdf_bytes: bytes) -> str:
         doc.close()
 
         full_text = "\n\n".join(text_parts)
-        logger.info(f"Extracted {len(full_text)} characters from {len(doc)} page PDF")
+        logger.info(f"Extracted {len(full_text)} characters from {page_count} page PDF")
         return full_text
 
     except Exception as e:
@@ -68,7 +73,7 @@ def fetch_url_content(url: str, timeout: int = 10) -> Dict[str, str]:
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
         }
 
-        response = requests.get(url, headers=headers, timeout=timeout, allow_redirects=True)
+        response = requests.get(url, headers=headers, timeout=timeout, allow_redirects=True, verify=False)
         response.raise_for_status()
 
         content_type = response.headers.get('content-type', '').lower()
@@ -174,11 +179,15 @@ def fetch_google_docs_content(url: str) -> Dict[str, str]:
     export_url = f"https://docs.google.com/document/d/{doc_id}/export?format=txt"
 
     try:
-        response = requests.get(export_url, timeout=10, allow_redirects=True)
+        response = requests.get(export_url, timeout=10, allow_redirects=True, verify=False)
 
         # Check if we got redirected to login (document is private)
         if 'accounts.google.com' in response.url:
-            raise Exception("Document is private. Please copy/paste the content or make it public.")
+            raise Exception(
+                "This Google Doc is private. To use it:\n"
+                "1. Make the doc public (Share → Anyone with link)\n"
+                "2. Or copy/paste the content as text instead"
+            )
 
         response.raise_for_status()
 
@@ -193,7 +202,12 @@ def fetch_google_docs_content(url: str) -> Dict[str, str]:
 
     except requests.exceptions.RequestException as e:
         logger.error(f"Failed to fetch Google Docs: {e}")
-        raise Exception("Unable to fetch Google Docs content. Document may be private or link invalid.")
+        raise Exception(
+            "Unable to fetch Google Doc. The document may be:\n"
+            "• Private (make it public or copy/paste content)\n"
+            "• Invalid link\n"
+            "• Deleted or moved"
+        )
 
 
 def parse_document(doc_type: str, source: str, content: Optional[str] = None) -> Dict[str, str]:

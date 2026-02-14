@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { Message, ChatStreamEvent, Settings } from '../lib/types';
-import { conversationsAPI, messagesAPI, tokenUsageAPI, modelsAPI } from '../lib/ipc';
+import { Message, ChatStreamEvent, Settings, ContextDocument } from '../lib/types';
+import { conversationsAPI, messagesAPI, tokenUsageAPI, modelsAPI, contextDocumentsAPI } from '../lib/ipc';
 import MarkdownRenderer from './MarkdownRenderer';
 
 interface ChatInterfaceProps {
@@ -39,6 +39,13 @@ export default function ChatInterface({
     'gpt-5-nano',
   ]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Context attachment state
+  const [selectedContextDocs, setSelectedContextDocs] = useState<string[]>([]);
+  const [availableDocs, setAvailableDocs] = useState<ContextDocument[]>([]);
+  const [fileInput, setFileInput] = useState<File | null>(null);
+  const [urlInput, setUrlInput] = useState('');
+  const [showAttachments, setShowAttachments] = useState(false);
 
   // Update local conversationId when prop changes
   useEffect(() => {
@@ -83,6 +90,20 @@ export default function ChatInterface({
 
     fetchModels();
   }, [apiKey]); // Only run when apiKey changes
+
+  // Load available context documents
+  useEffect(() => {
+    const loadContextDocs = async () => {
+      try {
+        const docs = await contextDocumentsAPI.list(projectId);
+        setAvailableDocs(docs);
+      } catch (err) {
+        console.error('Failed to load context documents:', err);
+      }
+    };
+
+    loadContextDocs();
+  }, [projectId]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -144,6 +165,69 @@ export default function ChatInterface({
     setError(null);
 
     try {
+      // Build context from attachments
+      const contextParts: string[] = [];
+      console.log('📎 Building context from attachments:', {
+        selectedDocs: selectedContextDocs.length,
+        hasFile: !!fileInput,
+        hasUrl: !!urlInput.trim()
+      });
+
+      // 1. Get content from selected context documents
+      for (const docId of selectedContextDocs) {
+        try {
+          console.log('📄 Loading context document:', docId);
+          const doc = await contextDocumentsAPI.get(docId);
+          console.log('✅ Loaded document:', doc.name, 'length:', doc.content.length);
+          contextParts.push(`=== Context: ${doc.name} ===\n${doc.content}\n`);
+        } catch (err) {
+          console.error('❌ Failed to load context document:', docId, err);
+        }
+      }
+
+      // 2. Read file content if provided
+      if (fileInput) {
+        try {
+          console.log('📎 Reading file:', fileInput.name);
+          const fileContent = await fileInput.text();
+          console.log('✅ File read, length:', fileContent.length);
+          contextParts.push(`=== File: ${fileInput.name} ===\n${fileContent}\n`);
+        } catch (err) {
+          console.error('❌ Failed to read file:', err);
+          setError(`Failed to read file: ${fileInput.name}`);
+        }
+      }
+
+      // 3. Fetch URL content if provided
+      if (urlInput.trim()) {
+        try {
+          console.log('🔗 Fetching URL:', urlInput.trim());
+          const response = await fetch('http://127.0.0.1:8000/fetch-url', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: urlInput.trim() }),
+          });
+          if (response.ok) {
+            const data = await response.json();
+            console.log('✅ URL fetched, content length:', data.content.length);
+            contextParts.push(`=== URL: ${urlInput.trim()} ===\n${data.content}\n`);
+          } else {
+            console.error('❌ Failed to fetch URL, status:', response.status);
+            setError('Failed to fetch URL content');
+          }
+        } catch (err) {
+          console.error('❌ Failed to fetch URL:', err);
+          setError('Failed to fetch URL content');
+        }
+      }
+
+      // Combine user message with context
+      const fullUserMessage = contextParts.length > 0
+        ? `${contextParts.join('\n')}\n=== User Message ===\n${userMessage}`
+        : userMessage;
+
+      console.log('💬 Full message prepared, total length:', fullUserMessage.length, 'contexts:', contextParts.length);
+
       // Create conversation if needed
       let convId = conversationId;
       if (!convId) {
@@ -165,9 +249,14 @@ export default function ChatInterface({
         model: selectedModel,
         max_tokens: 4096,
         conversation_history: messages.length,
+        attachments: {
+          context_docs: selectedContextDocs.length,
+          file: fileInput?.name || null,
+          url: urlInput.trim() || null,
+        },
       }, null, 2);
 
-      // Add user message to database with context
+      // Add user message to database with context (store original message)
       const userMsg = await messagesAPI.add(convId, 'user', userMessage, 0);
       const userMsgWithContext: MessageWithContext = {
         ...userMsg,
@@ -176,11 +265,17 @@ export default function ChatInterface({
       };
       setMessages((prev) => [...prev, userMsgWithContext]);
 
-      // Prepare messages for Claude API
+      // Prepare messages for API (include full context in the last message)
       const chatMessages = [
         ...messages.map((m) => ({ role: m.role, content: m.content })),
-        { role: 'user', content: userMessage },
+        { role: 'user', content: fullUserMessage },
       ];
+
+      // Clear attachments after sending
+      setSelectedContextDocs([]);
+      setFileInput(null);
+      setUrlInput('');
+      setShowAttachments(false);
 
       // Call Python sidecar streaming endpoint
       console.log('Sending request to Python sidecar:', {
@@ -290,7 +385,13 @@ export default function ChatInterface({
       console.log('Conversation stats updated successfully');
     } catch (error) {
       console.error('Failed to send message:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      let errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+
+      // Handle token limit errors specifically
+      if (errorMessage.includes('tokens exceed') || errorMessage.includes('token limit')) {
+        errorMessage = 'Context is too large! Try removing some documents or using a shorter message. Consider using GPT-5 instead of GPT-5-nano for larger contexts.';
+      }
+
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -493,6 +594,137 @@ export default function ChatInterface({
       {/* Input Area - ChatGPT Style */}
       <div className="border-t border-slate-800 bg-slate-900/50 backdrop-blur-sm">
         <div className="max-w-3xl mx-auto px-6 py-4">
+          {/* Attachments Toggle Button */}
+          <div className="mb-3">
+            <button
+              onClick={() => setShowAttachments(!showAttachments)}
+              className="text-xs text-slate-400 hover:text-slate-300 transition-colors flex items-center gap-1"
+              disabled={loading}
+            >
+              <span>📎</span>
+              <span>
+                {showAttachments ? 'Hide' : 'Add'} Context
+                {(selectedContextDocs.length > 0 || fileInput || urlInput.trim()) &&
+                  ` (${selectedContextDocs.length + (fileInput ? 1 : 0) + (urlInput.trim() ? 1 : 0)})`
+                }
+              </span>
+            </button>
+          </div>
+
+          {/* Attachments Panel */}
+          {showAttachments && (
+            <div className="mb-3 p-3 bg-slate-800/50 border border-slate-700 rounded-lg space-y-3">
+              {/* Context Documents Selection */}
+              {availableDocs.length > 0 && (
+                <div>
+                  <div className="text-[10px] text-slate-400 mb-2 uppercase font-medium">
+                    Saved Context Documents
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {availableDocs.map(doc => (
+                      <button
+                        key={doc.id}
+                        onClick={() => {
+                          if (selectedContextDocs.includes(doc.id)) {
+                            setSelectedContextDocs(prev => prev.filter(id => id !== doc.id));
+                          } else {
+                            setSelectedContextDocs(prev => [...prev, doc.id]);
+                          }
+                        }}
+                        className={`px-2 py-1 text-xs rounded transition-colors ${
+                          selectedContextDocs.includes(doc.id)
+                            ? 'bg-indigo-600 text-white'
+                            : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                        }`}
+                      >
+                        📄 {doc.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* File Upload */}
+              <div>
+                <div className="text-[10px] text-slate-400 mb-2 uppercase font-medium">
+                  Upload File
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="file"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setFileInput(file);
+                      }
+                    }}
+                    className="text-xs text-slate-400 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:bg-slate-700 file:text-slate-300 hover:file:bg-slate-600 file:cursor-pointer"
+                  />
+                  {fileInput && (
+                    <button
+                      onClick={() => setFileInput(null)}
+                      className="text-xs text-red-400 hover:text-red-300"
+                    >
+                      ✕ Remove
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* URL Input */}
+              <div>
+                <div className="text-[10px] text-slate-400 mb-2 uppercase font-medium">
+                  Fetch URL
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={urlInput}
+                    onChange={(e) => setUrlInput(e.target.value)}
+                    placeholder="https://example.com/document"
+                    className="flex-1 px-3 py-1.5 bg-slate-700 border border-slate-600 rounded text-slate-200 text-xs placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                  {urlInput.trim() && (
+                    <button
+                      onClick={() => setUrlInput('')}
+                      className="text-xs text-red-400 hover:text-red-300"
+                    >
+                      ✕ Clear
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Selected Attachments Display (compact, always visible) */}
+          {(selectedContextDocs.length > 0 || fileInput || urlInput.trim()) && (
+            <div className="mb-2 flex flex-wrap gap-1.5">
+              {selectedContextDocs.map(docId => {
+                const doc = availableDocs.find(d => d.id === docId);
+                return doc ? (
+                  <span
+                    key={docId}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 bg-indigo-600/20 border border-indigo-500/30 rounded text-[10px] text-indigo-300"
+                  >
+                    📄 {doc.name}
+                  </span>
+                ) : null;
+              })}
+              {fileInput && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-indigo-600/20 border border-indigo-500/30 rounded text-[10px] text-indigo-300">
+                  📎 {fileInput.name}
+                </span>
+              )}
+              {urlInput.trim() && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-indigo-600/20 border border-indigo-500/30 rounded text-[10px] text-indigo-300">
+                  🔗 {urlInput.substring(0, 30)}...
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Message Input */}
           <div className="relative">
             <textarea
               value={input}

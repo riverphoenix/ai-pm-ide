@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { ask } from '@tauri-apps/plugin-dialog';
 import { contextDocumentsAPI } from '../lib/ipc';
 import { ContextDocument } from '../lib/types';
 
@@ -42,37 +43,62 @@ export default function ContextManager({ projectId }: ContextManagerProps) {
       return;
     }
 
+    console.log('🌐 Fetching URL:', newDocUrl);
     setIsFetching(true);
     setError(null);
 
     try {
-      const response = await fetch(`http://127.0.0.1:8000/parse-url?url=${encodeURIComponent(newDocUrl)}`, {
+      const url = `http://127.0.0.1:8000/parse-url?url=${encodeURIComponent(newDocUrl)}`;
+      console.log('Calling:', url);
+
+      const response = await fetch(url, {
         method: 'POST'
       });
 
+      console.log('Response status:', response.status, response.statusText);
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to fetch URL');
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+        let errorMessage = 'Failed to fetch URL';
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.detail || errorMessage;
+        } catch {
+          errorMessage = errorText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
+      console.log('✅ Fetched data:', { title: data.title, contentLength: data.content?.length, type: data.type });
 
       // Auto-fill name and content
-      if (!newDocName.trim()) {
+      if (!newDocName.trim() && data.title) {
         setNewDocName(data.title);
       }
-      setNewDocContent(data.content);
+
+      if (data.content) {
+        setNewDocContent(data.content);
+        console.log('✅ Content set, length:', data.content.length);
+      } else {
+        throw new Error('No content received from URL');
+      }
+
       setNewDocType(data.type === 'google_doc' ? 'google_doc' : 'url');
 
     } catch (err) {
-      console.error('Failed to fetch URL:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch URL content');
+      console.error('❌ Failed to fetch URL:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch URL content';
+      setError(`Fetch failed: ${errorMessage}`);
     } finally {
       setIsFetching(false);
     }
   };
 
   const handlePdfUpload = async (file: File) => {
+    console.log('📄 PDF upload started:', { name: file.name, size: file.size, type: file.type });
+
     setPdfFile(file);
     setNewDocType('pdf');
 
@@ -86,6 +112,7 @@ export default function ContextManager({ projectId }: ContextManagerProps) {
     try {
       const arrayBuffer = await file.arrayBuffer();
       const bytes = new Uint8Array(arrayBuffer);
+      console.log('📤 Sending PDF to parser, size:', bytes.length);
 
       const response = await fetch('http://127.0.0.1:8000/parse-pdf', {
         method: 'POST',
@@ -93,17 +120,35 @@ export default function ContextManager({ projectId }: ContextManagerProps) {
         body: bytes
       });
 
+      console.log('Response status:', response.status, response.statusText);
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to parse PDF');
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+        let errorMessage = 'Failed to parse PDF';
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.detail || errorMessage;
+        } catch {
+          errorMessage = errorText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
-      setNewDocContent(data.content);
+      console.log('✅ PDF parsed, content length:', data.content?.length);
+
+      if (data.content) {
+        setNewDocContent(data.content);
+        console.log('✅ PDF content set');
+      } else {
+        throw new Error('No content extracted from PDF');
+      }
 
     } catch (err) {
-      console.error('Failed to parse PDF:', err);
-      setError(err instanceof Error ? err.message : 'Failed to extract PDF text');
+      console.error('❌ Failed to parse PDF:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to extract PDF text';
+      setError(`PDF parsing failed: ${errorMessage}`);
     } finally {
       setIsFetching(false);
     }
@@ -167,15 +212,27 @@ export default function ContextManager({ projectId }: ContextManagerProps) {
     }
   };
 
-  const handleDeleteDocument = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this document?')) return;
+  const handleDeleteDocument = async (id: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+
+    console.log('🗑️ Delete button clicked for document:', id);
+
+    const confirmed = await ask('Are you sure you want to delete this document?', {
+      title: 'Confirm Delete',
+      kind: 'warning',
+    });
+    console.log('User confirmation:', confirmed);
+
+    if (!confirmed) return;
 
     try {
+      console.log('Deleting document:', id);
       await contextDocumentsAPI.delete(id);
+      console.log('✅ Document deleted successfully');
       await loadDocuments();
     } catch (err) {
-      console.error('Failed to delete document:', err);
-      setError('Failed to delete document');
+      console.error('❌ Failed to delete document:', err);
+      setError(`Failed to delete document: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
   };
 
@@ -298,7 +355,7 @@ export default function ContextManager({ projectId }: ContextManagerProps) {
                       {doc.is_global ? '★ Global' : '☆ Make Global'}
                     </button>
                     <button
-                      onClick={() => handleDeleteDocument(doc.id)}
+                      onClick={(e) => handleDeleteDocument(doc.id, e)}
                       className="px-3 py-1 text-xs text-red-400 hover:text-red-300 transition-colors"
                     >
                       Delete

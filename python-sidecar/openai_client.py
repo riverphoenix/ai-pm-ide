@@ -28,7 +28,7 @@ class OpenAIClient:
         self,
         messages: List[Dict[str, str]],
         model: str = "gpt-5",
-        max_tokens: int = 4096,
+        max_tokens: int = 100000,
         system: Optional[str] = None,
     ) -> AsyncIterator[Dict]:
         """
@@ -98,7 +98,7 @@ class OpenAIClient:
         self,
         messages: List[Dict[str, str]],
         model: str = "gpt-5",
-        max_tokens: int = 4096,
+        max_tokens: int = 100000,
         system: Optional[str] = None,
     ) -> Dict:
         """
@@ -127,8 +127,14 @@ class OpenAIClient:
                 max_completion_tokens=max_tokens,
             )
 
+            content = response.choices[0].message.content
+            logger.info(f"OpenAI response - content length: {len(content) if content else 0}, finish_reason: {response.choices[0].finish_reason}")
+
+            if not content:
+                logger.warning(f"Empty content received! Full response: {response}")
+
             return {
-                "content": response.choices[0].message.content,
+                "content": content or "",
                 "usage": {
                     "input_tokens": response.usage.prompt_tokens,
                     "output_tokens": response.usage.completion_tokens,
@@ -252,3 +258,47 @@ class OpenAIClient:
         output_cost = output_tokens * model_pricing["output"]
 
         return input_cost + output_cost
+
+    async def simplify_error_message(self, error_message: str) -> str:
+        """
+        Use LLM to simplify technical error messages into user-friendly text
+
+        Args:
+            error_message: Technical error message
+
+        Returns:
+            Simplified user-friendly error message (max 10 words)
+        """
+        try:
+            response = await self.async_client.chat.completions.create(
+                model="gpt-5-nano",  # Use fast, cheap model for error simplification
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are an error message simplifier. Convert technical errors into simple, user-friendly messages. Maximum 10 words. Be clear and actionable."
+                    },
+                    {
+                        "role": "user",
+                        "content": f"Simplify this error for a non-technical user:\n\n{error_message}"
+                    }
+                ],
+                max_completion_tokens=50,
+            )
+
+            simplified = response.choices[0].message.content or error_message
+            logger.info(f"Simplified error: {error_message[:100]} -> {simplified}")
+            return simplified.strip()
+
+        except Exception as e:
+            logger.error(f"Failed to simplify error message: {e}")
+            # Fallback to extracting key parts of the original message
+            if "tokens exceed" in error_message.lower():
+                return "Input too large. Try removing documents or using GPT-5."
+            elif "rate limit" in error_message.lower():
+                return "Too many requests. Please wait a moment."
+            elif "invalid api key" in error_message.lower() or "authentication" in error_message.lower():
+                return "Invalid API key. Check your settings."
+            elif "timeout" in error_message.lower():
+                return "Request timed out. Try again."
+            else:
+                return "An error occurred. Please try again."

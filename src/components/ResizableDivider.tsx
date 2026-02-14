@@ -49,19 +49,25 @@ export default function ResizableDivider({
   return (
     <div
       onMouseDown={handleMouseDown}
-      className={`group relative bg-slate-700/0 hover:bg-indigo-500/20 transition-colors ${
-        orientation === 'vertical'
-          ? 'w-1 cursor-col-resize'
-          : 'h-1 cursor-row-resize'
-      }`}
+      className="group"
+      style={{
+        // Flexbox sizing
+        flex: '0 0 auto',
+        alignSelf: 'stretch',
+
+        // Dimensions
+        width: orientation === 'vertical' ? '8px' : 'auto',
+        height: orientation === 'horizontal' ? '8px' : 'auto',
+
+        // Visual
+        backgroundColor: 'transparent',
+        cursor: orientation === 'vertical' ? 'col-resize' : 'row-resize',
+        position: 'relative'
+      }}
     >
-      {/* Visual indicator on hover */}
+      {/* Subtle visual indicator - shows on hover */}
       <div
-        className={`absolute bg-indigo-500/0 group-hover:bg-indigo-500 transition-colors ${
-          orientation === 'vertical'
-            ? 'left-0 top-0 bottom-0 w-0.5 group-hover:w-1'
-            : 'top-0 left-0 right-0 h-0.5 group-hover:h-1'
-        }`}
+        className="absolute inset-0 bg-slate-700/0 group-hover:bg-indigo-500/30 transition-colors"
       />
     </div>
   );

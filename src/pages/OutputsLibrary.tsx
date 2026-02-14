@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
+import { ask, save } from '@tauri-apps/plugin-dialog';
+import { writeTextFile } from '@tauri-apps/plugin-fs';
 import { frameworkOutputsAPI } from '../lib/ipc';
 import { getFramework } from '../lib/frameworks';
 import { FrameworkOutput } from '../lib/types';
 import MarkdownWithMermaid from '../components/MarkdownWithMermaid';
+import ResizableDivider from '../components/ResizableDivider';
 
 interface OutputsLibraryProps {
   projectId: string;
@@ -15,6 +18,14 @@ export default function OutputsLibrary({ projectId, onEdit }: OutputsLibraryProp
   const [selectedOutput, setSelectedOutput] = useState<FrameworkOutput | null>(null);
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  // Panel resize state
+  const [listWidth, setListWidth] = useState(384); // 384px = 96 * 4 (w-96)
+
+  const handlePanelResize = (deltaX: number) => {
+    setListWidth(prev => Math.max(280, Math.min(600, prev + deltaX)));
+  };
 
   useEffect(() => {
     loadOutputs();
@@ -33,7 +44,12 @@ export default function OutputsLibrary({ projectId, onEdit }: OutputsLibraryProp
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this output?')) return;
+    const confirmed = await ask('Are you sure you want to delete this output?', {
+      title: 'Confirm Delete',
+      kind: 'warning',
+    });
+
+    if (!confirmed) return;
 
     try {
       await frameworkOutputsAPI.delete(id);
@@ -46,18 +62,39 @@ export default function OutputsLibrary({ projectId, onEdit }: OutputsLibraryProp
     }
   };
 
-  const handleCopyToClipboard = (content: string) => {
-    navigator.clipboard.writeText(content);
+  const handleCopyToClipboard = async (content: string) => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000); // Reset after 2 seconds
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
   };
 
-  const handleDownloadMarkdown = (output: FrameworkOutput) => {
-    const blob = new Blob([output.generated_content], { type: 'text/markdown' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${output.name}.md`;
-    a.click();
-    URL.revokeObjectURL(url);
+  const handleDownloadMarkdown = async (output: FrameworkOutput) => {
+    try {
+      const filename = `${output.name}.md`;
+      console.log('📥 Opening save dialog for:', filename);
+
+      const filePath = await save({
+        defaultPath: filename,
+        filters: [{
+          name: 'Markdown',
+          extensions: ['md']
+        }]
+      });
+
+      if (!filePath) {
+        console.log('⚠️ Save cancelled by user');
+        return;
+      }
+
+      await writeTextFile(filePath, output.generated_content);
+      console.log('✅ File saved successfully to:', filePath);
+    } catch (err) {
+      console.error('❌ Failed to save file:', err);
+    }
   };
 
   // Filter outputs
@@ -118,6 +155,7 @@ export default function OutputsLibrary({ projectId, onEdit }: OutputsLibraryProp
       </div>
 
       {/* Content */}
+      <div className="flex-1 flex flex-col min-h-0">
       {loading ? (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-slate-400">Loading outputs...</div>
@@ -133,9 +171,12 @@ export default function OutputsLibrary({ projectId, onEdit }: OutputsLibraryProp
           </div>
         </div>
       ) : (
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex flex-1 min-h-0 items-stretch">
           {/* Outputs List */}
-          <div className="w-96 flex-shrink-0 border-r border-slate-700 overflow-y-auto">
+          <div
+            className="flex-shrink-0 border-r border-slate-700 overflow-y-auto"
+            style={{ width: `${listWidth}px` }}
+          >
             {filteredOutputs.length === 0 ? (
               <div className="p-6 text-center">
                 <div className="text-slate-400 text-sm">No matching outputs</div>
@@ -183,8 +224,11 @@ export default function OutputsLibrary({ projectId, onEdit }: OutputsLibraryProp
             )}
           </div>
 
+          {/* Resizable Divider */}
+          <ResizableDivider onResize={handlePanelResize} />
+
           {/* Output Preview */}
-          <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
             {selectedOutput ? (
               <>
                 <div className="flex-shrink-0 border-b border-slate-700 bg-slate-800/30 px-6 py-3 flex items-center justify-between">
@@ -203,10 +247,14 @@ export default function OutputsLibrary({ projectId, onEdit }: OutputsLibraryProp
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleCopyToClipboard(selectedOutput.generated_content)}
-                      className="px-3 py-1 text-xs text-slate-400 hover:text-white transition-colors"
+                      className={`px-3 py-1 text-xs transition-colors ${
+                        copied
+                          ? 'text-green-400'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
                       title="Copy to clipboard"
                     >
-                      📋 Copy
+                      {copied ? '✓ Copied!' : '📋 Copy'}
                     </button>
                     <button
                       onClick={() => handleDownloadMarkdown(selectedOutput)}
@@ -237,7 +285,13 @@ export default function OutputsLibrary({ projectId, onEdit }: OutputsLibraryProp
                 )}
 
                 {/* Content */}
-                <div className="flex-1 overflow-y-auto p-6">
+                <div
+                  className="flex-1 p-6"
+                  style={{
+                    minHeight: 0,
+                    overflow: 'hidden auto'
+                  }}
+                >
                   <MarkdownWithMermaid content={selectedOutput.generated_content} />
                 </div>
               </>
@@ -257,6 +311,7 @@ export default function OutputsLibrary({ projectId, onEdit }: OutputsLibraryProp
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

@@ -142,13 +142,6 @@ export default function ProjectView({ projectId, initialTab = 'chat' }: ProjectV
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-1">
-          {apiKey && (
-            <span className="px-2 py-1 text-[10px] font-medium text-green-400 bg-green-500/10 rounded">
-              ✓ API Key Set
-            </span>
-          )}
-        </div>
       </div>
 
       {/* Tabs */}
@@ -196,34 +189,10 @@ export default function ProjectView({ projectId, initialTab = 'chat' }: ProjectV
         >
           📋 Outputs
         </button>
-        <button
-          onClick={() => setActiveTab('documents')}
-          className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
-            activeTab === 'documents'
-              ? 'bg-slate-700 text-white'
-              : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
-          }`}
-        >
-          📄 Documents
-        </button>
       </div>
 
       {/* Main Content */}
       <div className="flex-1 overflow-hidden">
-        {activeTab === 'documents' && (
-          <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/10 h-full">
-            <div className="text-center max-w-md px-8">
-              <div className="text-3xl mb-3">📄</div>
-              <h3 className="text-sm font-semibold text-white mb-1">
-                Documents Coming Soon
-              </h3>
-              <p className="text-xs text-slate-500">
-                Upload PDFs and Markdown files to build your project knowledge base.
-              </p>
-            </div>
-          </div>
-        )}
-
         {activeTab === 'chat' && (
           <>
             {!apiKey ? (
@@ -242,7 +211,7 @@ export default function ProjectView({ projectId, initialTab = 'chat' }: ProjectV
                 </div>
               </div>
             ) : settings && (
-              <div className="flex h-full">
+              <div className="flex h-full items-stretch">
                 <ConversationHistory
                   projectId={projectId}
                   currentConversationId={currentConversationId}
