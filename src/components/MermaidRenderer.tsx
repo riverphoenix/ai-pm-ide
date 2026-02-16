@@ -49,7 +49,7 @@ export default function MermaidRenderer({ chart }: MermaidRendererProps) {
   return (
     <div
       ref={containerRef}
-      className="mermaid-container my-6 p-4 bg-slate-800/40 rounded-lg border border-slate-700 overflow-x-auto"
+      className="mermaid-container my-6 p-4 bg-codex-surface/60 rounded-lg border border-codex-border overflow-x-auto"
     />
   );
 }

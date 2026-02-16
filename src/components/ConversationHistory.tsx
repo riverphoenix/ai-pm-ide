@@ -118,14 +118,14 @@ export default function ConversationHistory({
 
   return (
     <div
-      className="border-r border-slate-700 bg-slate-800/30 flex flex-col flex-shrink-0"
+      className="border-r border-codex-border bg-codex-surface/50 flex flex-col flex-shrink-0"
       style={{ width: `${width}px` }}
     >
       {/* Header */}
-      <div className="p-3 border-b border-slate-700">
+      <div className="p-3 border-b border-codex-border">
         <button
           onClick={onNewConversation}
-          className="w-full px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-xs font-medium transition-colors flex items-center justify-center gap-1.5"
+          className="w-full px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-codex-text-primary rounded text-xs font-medium transition-colors flex items-center justify-center gap-1.5"
         >
           <span className="text-sm">+</span>
           <span>New Chat</span>
@@ -136,12 +136,12 @@ export default function ConversationHistory({
       <div className="flex-1 overflow-y-auto py-2">
         {loading ? (
           <div className="p-4 text-center">
-            <div className="text-xs text-slate-500">Loading chats...</div>
+            <div className="text-xs text-codex-text-muted">Loading chats...</div>
           </div>
         ) : conversations.length === 0 ? (
           <div className="p-4 text-center">
             <div className="text-2xl mb-2">💬</div>
-            <p className="text-slate-500 text-[10px] leading-relaxed">
+            <p className="text-codex-text-muted text-[10px] leading-relaxed">
               No conversations yet.<br />Start a new chat!
             </p>
           </div>
@@ -153,8 +153,8 @@ export default function ConversationHistory({
                   onClick={() => onConversationSelect(conv.id)}
                   className={`w-full text-left px-2 py-2 rounded text-xs transition-colors ${
                     currentConversationId === conv.id
-                      ? 'bg-indigo-600 text-white'
-                      : 'text-slate-300 hover:bg-slate-700/70 hover:text-white'
+                      ? 'bg-indigo-600 text-codex-text-primary'
+                      : 'text-codex-text-secondary hover:bg-codex-surface/70 hover:text-codex-text-primary'
                   }`}
                 >
                   <div className="flex items-start gap-2">
@@ -173,7 +173,7 @@ export default function ConversationHistory({
                         className={`text-[9px] mt-0.5 flex items-center justify-between ${
                           currentConversationId === conv.id
                             ? 'text-indigo-200'
-                            : 'text-slate-500 group-hover/item:text-slate-400'
+                            : 'text-codex-text-muted group-hover/item:text-codex-text-secondary'
                         }`}
                       >
                         <span>{formatDate(conv.updated_at)}</span>
@@ -189,8 +189,8 @@ export default function ConversationHistory({
                   onClick={(e) => handleDeleteClick(conv.id, e)}
                   className={`absolute right-1 top-1/2 -translate-y-1/2 p-1 rounded transition-all z-20 cursor-pointer ${
                     currentConversationId === conv.id
-                      ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
-                      : 'bg-slate-700 hover:bg-red-600/30 text-slate-400 hover:text-red-400'
+                      ? 'bg-indigo-600 hover:bg-indigo-700 text-codex-text-primary'
+                      : 'bg-codex-surface hover:bg-red-600/30 text-codex-text-secondary hover:text-red-400'
                   }`}
                   title="Delete conversation"
                   type="button"
@@ -216,8 +216,8 @@ export default function ConversationHistory({
       </div>
 
       {/* Footer Stats */}
-      <div className="p-2 border-t border-slate-700 bg-slate-900/30">
-        <div className="text-[9px] text-slate-500 text-center">
+      <div className="p-2 border-t border-codex-border bg-codex-bg/30">
+        <div className="text-[9px] text-codex-text-muted text-center">
           {conversations.length} {conversations.length === 1 ? 'conversation' : 'conversations'}
         </div>
       </div>
@@ -225,21 +225,21 @@ export default function ConversationHistory({
       {/* Custom Delete Confirmation Dialog */}
       {deleteConfirm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={handleDeleteCancel}>
-          <div className="bg-slate-800 rounded-lg p-6 max-w-md mx-4 shadow-2xl border border-slate-700" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold text-white mb-2">Delete Conversation?</h3>
-            <p className="text-sm text-slate-300 mb-6">
+          <div className="bg-codex-surface rounded-lg p-6 max-w-md mx-4 shadow-2xl border border-codex-border" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-codex-text-primary mb-2">Delete Conversation?</h3>
+            <p className="text-sm text-codex-text-secondary mb-6">
               Are you sure you want to delete this conversation? This action cannot be undone.
             </p>
             <div className="flex gap-3 justify-end">
               <button
                 onClick={handleDeleteCancel}
-                className="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white bg-slate-700 hover:bg-slate-600 rounded transition-colors"
+                className="px-4 py-2 text-sm font-medium text-codex-text-secondary hover:text-codex-text-primary bg-codex-surface hover:bg-slate-600 rounded transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDeleteConfirm}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded transition-colors"
+                className="px-4 py-2 text-sm font-medium text-codex-text-primary bg-red-600 hover:bg-red-700 rounded transition-colors"
               >
                 Delete
               </button>

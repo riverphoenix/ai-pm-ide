@@ -240,39 +240,39 @@ export default function ContextManager({ projectId }: ContextManagerProps) {
   const globalDocs = documents.filter(d => d.is_global);
 
   return (
-    <div className="flex-1 flex flex-col bg-slate-900 overflow-hidden">
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }} className="bg-codex-bg">
       {/* Header */}
-      <div className="flex-shrink-0 border-b border-slate-700 bg-slate-800/30 px-6 py-4">
-        <div className="flex items-center justify-between mb-4">
+      <div style={{ flexShrink: 0 }} className="px-8 pt-8 pb-4">
+        <div className="flex items-start justify-between mb-4">
           <div>
-            <h1 className="text-xl font-bold text-white mb-1">
-              Context Documents
+            <h1 className="text-2xl font-semibold text-codex-text-primary">
+              Context
             </h1>
-            <p className="text-xs text-slate-400">
-              Manage documents that provide context for AI framework generation
+            <p className="text-sm text-codex-text-secondary mt-1">
+              Manage documents that provide context for AI framework generation.
             </p>
           </div>
           <button
             onClick={() => setShowAddDialog(true)}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded transition-colors"
+            className="px-4 py-2 bg-codex-accent hover:bg-codex-accent-hover text-white text-sm rounded-md transition-colors"
           >
             + Add Document
           </button>
         </div>
 
         {/* Stats */}
-        <div className="flex items-center gap-6 text-xs">
+        <div className="flex items-center gap-4 text-xs">
           <div className="flex items-center gap-2">
-            <span className="text-slate-500">Total:</span>
-            <span className="font-medium text-white">{documents.length} documents</span>
+            <span className="text-codex-text-muted">Total:</span>
+            <span className="text-codex-text-primary">{documents.length} documents</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-slate-500">Global:</span>
-            <span className="font-medium text-indigo-400">{globalDocs.length} documents</span>
+            <span className="text-codex-text-muted">Global:</span>
+            <span className="text-codex-accent">{globalDocs.length} documents</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-slate-500">Size:</span>
-            <span className="font-medium text-white">{(totalSize / 1024).toFixed(1)} KB</span>
+            <span className="text-codex-text-muted">Size:</span>
+            <span className="text-codex-text-primary">{(totalSize / 1024).toFixed(1)} KB</span>
           </div>
           {totalSize > 50000 && (
             <div className="px-2 py-1 bg-yellow-500/20 text-yellow-300 rounded">
@@ -283,7 +283,7 @@ export default function ContextManager({ projectId }: ContextManagerProps) {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-4">
         {error && (
           <div className="mb-4 px-4 py-3 bg-red-500/10 border border-red-500/30 rounded text-sm text-red-400">
             {error}
@@ -292,19 +292,19 @@ export default function ContextManager({ projectId }: ContextManagerProps) {
 
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="text-slate-400">Loading documents...</div>
+            <div className="text-codex-text-secondary">Loading documents...</div>
           </div>
         ) : documents.length === 0 ? (
           <div className="flex items-center justify-center py-12">
             <div className="text-center max-w-md">
               <div className="text-4xl mb-3">📄</div>
-              <h3 className="text-sm font-semibold text-white mb-1">No documents yet</h3>
-              <p className="text-xs text-slate-400 mb-4">
+              <h3 className="text-sm font-semibold text-codex-text-primary mb-1">No documents yet</h3>
+              <p className="text-[10px] text-codex-text-muted mb-4">
                 Add context documents to provide background information for AI framework generation
               </p>
               <button
                 onClick={() => setShowAddDialog(true)}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded transition-colors"
+                className="px-3 py-1.5 bg-codex-accent hover:bg-codex-accent-hover text-white text-xs rounded transition-colors"
               >
                 Add Your First Document
               </button>
@@ -315,12 +315,12 @@ export default function ContextManager({ projectId }: ContextManagerProps) {
             {documents.map((doc) => (
               <div
                 key={doc.id}
-                className="bg-slate-800/40 border border-slate-700 rounded-lg p-4 hover:bg-slate-800/60 transition-colors"
+                className="bg-codex-surface/60 border border-codex-border rounded-lg p-4 hover:bg-codex-surface-hover transition-colors"
               >
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="text-sm font-semibold text-white truncate">
+                      <h3 className="text-sm font-semibold text-codex-text-primary truncate">
                         {doc.name}
                       </h3>
                       {doc.is_global && (
@@ -329,7 +329,7 @@ export default function ContextManager({ projectId }: ContextManagerProps) {
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-3 text-xs text-slate-500">
+                    <div className="flex items-center gap-3 text-xs text-codex-text-muted">
                       <span className="capitalize">{doc.type}</span>
                       <span>•</span>
                       <span>{(doc.size_bytes / 1024).toFixed(1)} KB</span>
@@ -337,7 +337,7 @@ export default function ContextManager({ projectId }: ContextManagerProps) {
                       <span>Added {new Date(doc.created_at * 1000).toLocaleDateString()}</span>
                     </div>
                     {doc.url && (
-                      <div className="mt-1 text-xs text-slate-400 truncate">
+                      <div className="mt-1 text-[10px] text-codex-text-muted truncate">
                         🔗 {doc.url}
                       </div>
                     )}
@@ -348,7 +348,7 @@ export default function ContextManager({ projectId }: ContextManagerProps) {
                       className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
                         doc.is_global
                           ? 'bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30'
-                          : 'bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-white'
+                          : 'bg-codex-surface text-codex-text-secondary hover:bg-slate-600 hover:text-codex-text-primary'
                       }`}
                       title={doc.is_global ? 'Remove from global context' : 'Add to global context'}
                     >
@@ -364,8 +364,8 @@ export default function ContextManager({ projectId }: ContextManagerProps) {
                 </div>
 
                 {/* Content Preview */}
-                <div className="mt-3 pt-3 border-t border-slate-700/50">
-                  <div className="text-xs text-slate-400 line-clamp-2">
+                <div className="mt-3 pt-3 border-t border-codex-border/50">
+                  <div className="text-[10px] text-codex-text-muted line-clamp-2">
                     {doc.content.substring(0, 200)}
                     {doc.content.length > 200 && '...'}
                   </div>
@@ -379,13 +379,13 @@ export default function ContextManager({ projectId }: ContextManagerProps) {
       {/* Add Document Dialog */}
       {showAddDialog && (
         <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50 p-6">
-          <div className="bg-slate-800 border border-slate-700 rounded-lg p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto">
-            <h3 className="text-lg font-semibold text-white mb-4">Add Context Document</h3>
+          <div className="bg-codex-surface border border-codex-border rounded-lg p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+            <h3 className="text-lg font-semibold text-codex-text-primary mb-4">Add Context Document</h3>
 
             <div className="space-y-4">
               {/* Document Type */}
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
+                <label className="block text-sm font-medium text-codex-text-secondary mb-2">
                   Document Type
                 </label>
                 <div className="grid grid-cols-4 gap-2">
@@ -395,8 +395,8 @@ export default function ContextManager({ projectId }: ContextManagerProps) {
                       onClick={() => setNewDocType(type)}
                       className={`px-3 py-2 text-sm rounded transition-colors ${
                         newDocType === type
-                          ? 'bg-indigo-600 text-white'
-                          : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                          ? 'bg-indigo-600 text-codex-text-primary'
+                          : 'bg-codex-surface text-codex-text-secondary hover:bg-slate-600'
                       }`}
                     >
                       {type === 'text' && '📝 Text'}
@@ -410,7 +410,7 @@ export default function ContextManager({ projectId }: ContextManagerProps) {
 
               {/* Name */}
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
+                <label className="block text-sm font-medium text-codex-text-secondary mb-2">
                   Document Name
                 </label>
                 <input
@@ -418,14 +418,14 @@ export default function ContextManager({ projectId }: ContextManagerProps) {
                   value={newDocName}
                   onChange={(e) => setNewDocName(e.target.value)}
                   placeholder="e.g., Product Strategy 2026"
-                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 bg-codex-bg border border-codex-border rounded text-codex-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-codex-accent"
                 />
               </div>
 
               {/* URL (if type is url or google_doc) */}
               {(newDocType === 'url' || newDocType === 'google_doc') && (
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                  <label className="block text-sm font-medium text-codex-text-secondary mb-2">
                     URL {newDocType === 'google_doc' && '(Google Docs public link)'}
                   </label>
                   <div className="flex gap-2">
@@ -434,18 +434,18 @@ export default function ContextManager({ projectId }: ContextManagerProps) {
                       value={newDocUrl}
                       onChange={(e) => setNewDocUrl(e.target.value)}
                       placeholder={newDocType === 'google_doc' ? 'https://docs.google.com/document/d/...' : 'https://...'}
-                      className="flex-1 px-3 py-2 bg-slate-900 border border-slate-700 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="flex-1 px-3 py-2 bg-codex-bg border border-codex-border rounded text-codex-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-codex-accent"
                       onKeyDown={(e) => e.key === 'Enter' && handleFetchUrl()}
                     />
                     <button
                       onClick={handleFetchUrl}
                       disabled={isFetching || !newDocUrl.trim()}
-                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-700 disabled:cursor-not-allowed text-white text-sm font-medium rounded transition-colors"
+                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-codex-surface disabled:cursor-not-allowed text-codex-text-primary text-sm font-medium rounded transition-colors"
                     >
                       {isFetching ? 'Fetching...' : 'Fetch'}
                     </button>
                   </div>
-                  <div className="mt-1 text-xs text-slate-500">
+                  <div className="mt-1 text-xs text-codex-text-muted">
                     Automatically extracts content from the URL
                   </div>
                 </div>
@@ -454,11 +454,11 @@ export default function ContextManager({ projectId }: ContextManagerProps) {
               {/* PDF Upload */}
               {newDocType === 'pdf' && (
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                  <label className="block text-sm font-medium text-codex-text-secondary mb-2">
                     Upload PDF
                   </label>
                   <div className="flex items-center gap-3">
-                    <label className="flex-1 flex items-center justify-center px-4 py-3 bg-slate-900 border-2 border-dashed border-slate-700 rounded cursor-pointer hover:border-indigo-500 hover:bg-slate-800 transition-colors">
+                    <label className="flex-1 flex items-center justify-center px-4 py-3 bg-codex-bg border-2 border-dashed border-codex-border rounded cursor-pointer hover:border-indigo-500 hover:bg-codex-surface transition-colors">
                       <input
                         type="file"
                         accept=".pdf,application/pdf"
@@ -471,15 +471,15 @@ export default function ContextManager({ projectId }: ContextManagerProps) {
                       <div className="text-center">
                         {pdfFile ? (
                           <>
-                            <div className="text-sm text-white mb-1">📄 {pdfFile.name}</div>
-                            <div className="text-xs text-slate-400">
+                            <div className="text-sm text-codex-text-primary mb-1">📄 {pdfFile.name}</div>
+                            <div className="text-[10px] text-codex-text-muted">
                               {(pdfFile.size / 1024).toFixed(1)} KB • Click to change
                             </div>
                           </>
                         ) : (
                           <>
-                            <div className="text-sm text-slate-300 mb-1">Click to upload PDF</div>
-                            <div className="text-xs text-slate-500">Text will be extracted automatically</div>
+                            <div className="text-sm text-codex-text-secondary mb-1">Click to upload PDF</div>
+                            <div className="text-xs text-codex-text-muted">Text will be extracted automatically</div>
                           </>
                         )}
                       </div>
@@ -495,7 +495,7 @@ export default function ContextManager({ projectId }: ContextManagerProps) {
 
               {/* Content */}
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
+                <label className="block text-sm font-medium text-codex-text-secondary mb-2">
                   Content
                   {newDocType === 'pdf' && ' (Paste extracted text)'}
                 </label>
@@ -504,9 +504,9 @@ export default function ContextManager({ projectId }: ContextManagerProps) {
                   onChange={(e) => setNewDocContent(e.target.value)}
                   placeholder="Paste your document content here..."
                   rows={10}
-                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none font-mono"
+                  className="w-full px-3 py-2 bg-codex-bg border border-codex-border rounded text-codex-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-codex-accent resize-none font-mono"
                 />
-                <div className="mt-1 text-xs text-slate-500">
+                <div className="mt-1 text-xs text-codex-text-muted">
                   {newDocContent.length} characters • {(newDocContent.length / 1024).toFixed(1)} KB
                 </div>
               </div>
@@ -520,10 +520,10 @@ export default function ContextManager({ projectId }: ContextManagerProps) {
                   className="mt-0.5"
                 />
                 <div>
-                  <div className="text-sm font-medium text-white">
+                  <div className="text-sm text-codex-text-primary">
                     Add to global context
                   </div>
-                  <div className="text-xs text-slate-400 mt-0.5">
+                  <div className="text-[10px] text-codex-text-muted mt-0.5">
                     This document will be automatically included in all framework generations
                   </div>
                 </div>
@@ -542,13 +542,13 @@ export default function ContextManager({ projectId }: ContextManagerProps) {
                   setShowAddDialog(false);
                   setError(null);
                 }}
-                className="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded transition-colors"
+                className="flex-1 px-4 py-2 bg-codex-surface hover:bg-slate-600 text-codex-text-primary text-sm rounded transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleAddDocument}
-                className="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded transition-colors"
+                className="flex-1 px-3 py-1.5 bg-codex-accent hover:bg-codex-accent-hover text-white text-xs rounded transition-colors"
               >
                 Add Document
               </button>

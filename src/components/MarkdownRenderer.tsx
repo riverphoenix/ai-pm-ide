@@ -8,10 +8,11 @@ export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
   return (
     <ReactMarkdown
       components={{
-        code({ node, inline, className, children, ...props }) {
+        code({ node, className, children, ...props }) {
           // For block code, use a styled pre/code block
-          return !inline ? (
-            <pre className="my-4 p-4 rounded-lg bg-slate-800/80 border border-slate-700/50 overflow-x-auto">
+          const isInline = node?.position?.start.line === node?.position?.end.line;
+          return !isInline ? (
+            <pre className="my-4 p-4 rounded-lg bg-codex-surface/80 border border-codex-border/50 overflow-x-auto">
               <code
                 className={`${className} text-sm font-mono text-slate-200`}
                 {...props}
@@ -21,7 +22,7 @@ export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
             </pre>
           ) : (
             <code
-              className={`${className} px-1.5 py-0.5 rounded bg-slate-800/60 text-indigo-300 text-sm font-mono border border-slate-700/50`}
+              className={`${className} px-1.5 py-0.5 rounded bg-codex-surface-hover text-indigo-300 text-sm font-mono border border-codex-border/50`}
               {...props}
             >
               {children}
@@ -32,13 +33,13 @@ export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
           return <p className="mb-4 last:mb-0 leading-relaxed">{children}</p>;
         },
         h1({ children }) {
-          return <h1 className="text-2xl font-bold mb-4 mt-6 first:mt-0 text-white border-b border-slate-700 pb-2">{children}</h1>;
+          return <h1 className="text-2xl font-bold mb-4 mt-6 first:mt-0 text-codex-text-primary border-b border-codex-border pb-2">{children}</h1>;
         },
         h2({ children }) {
-          return <h2 className="text-xl font-bold mb-3 mt-5 first:mt-0 text-white">{children}</h2>;
+          return <h2 className="text-xl font-bold mb-3 mt-5 first:mt-0 text-codex-text-primary">{children}</h2>;
         },
         h3({ children }) {
-          return <h3 className="text-lg font-semibold mb-2 mt-4 first:mt-0 text-white">{children}</h3>;
+          return <h3 className="text-lg font-semibold mb-2 mt-4 first:mt-0 text-codex-text-primary">{children}</h3>;
         },
         h4({ children }) {
           return <h4 className="text-base font-semibold mb-2 mt-3 first:mt-0 text-slate-200">{children}</h4>;
@@ -54,7 +55,7 @@ export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
         },
         blockquote({ children }) {
           return (
-            <blockquote className="border-l-4 border-indigo-500 pl-4 py-2 my-4 italic text-slate-300 bg-slate-800/30 rounded-r">
+            <blockquote className="border-l-4 border-indigo-500 pl-4 py-2 my-4 italic text-codex-text-secondary bg-codex-surface/50 rounded-r">
               {children}
             </blockquote>
           );
@@ -62,24 +63,24 @@ export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
         table({ children }) {
           return (
             <div className="overflow-x-auto my-4">
-              <table className="min-w-full border border-slate-700 rounded-lg overflow-hidden">
+              <table className="min-w-full border border-codex-border rounded-lg overflow-hidden">
                 {children}
               </table>
             </div>
           );
         },
         thead({ children }) {
-          return <thead className="bg-slate-800">{children}</thead>;
+          return <thead className="bg-codex-surface">{children}</thead>;
         },
         tbody({ children }) {
           return <tbody className="divide-y divide-slate-700">{children}</tbody>;
         },
         tr({ children }) {
-          return <tr className="hover:bg-slate-800/30 transition-colors">{children}</tr>;
+          return <tr className="hover:bg-codex-surface/50 transition-colors">{children}</tr>;
         },
         th({ children }) {
           return (
-            <th className="px-4 py-2 text-left text-sm font-semibold text-white border-b border-slate-700">
+            <th className="px-4 py-2 text-left text-sm font-semibold text-codex-text-primary border-b border-codex-border">
               {children}
             </th>
           );
@@ -100,13 +101,13 @@ export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
           );
         },
         strong({ children }) {
-          return <strong className="font-semibold text-white">{children}</strong>;
+          return <strong className="font-semibold text-codex-text-primary">{children}</strong>;
         },
         em({ children }) {
-          return <em className="italic text-slate-300">{children}</em>;
+          return <em className="italic text-codex-text-secondary">{children}</em>;
         },
         hr() {
-          return <hr className="my-6 border-slate-700" />;
+          return <hr className="my-6 border-codex-border" />;
         },
       }}
     >

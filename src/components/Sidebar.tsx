@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Project } from '../lib/types';
 import { projectsAPI } from '../lib/ipc';
+import { ask } from '@tauri-apps/plugin-dialog';
 
 interface SidebarProps {
   onProjectSelect: (projectId: string) => void;
@@ -22,7 +23,6 @@ export default function Sidebar({
   const [projects, setProjects] = useState<Project[]>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
-  const [isCollapsed, setIsCollapsed] = useState(true);
 
   useEffect(() => {
     loadProjects();
@@ -40,8 +40,17 @@ export default function Sidebar({
   const handleCreateProject = async () => {
     if (!newProjectName.trim()) return;
 
+    const duplicateName = projects.some(
+      p => p.name.toLowerCase() === newProjectName.trim().toLowerCase()
+    );
+
+    if (duplicateName) {
+      alert(`A project named "${newProjectName.trim()}" already exists. Please choose a different name.`);
+      return;
+    }
+
     try {
-      const project = await projectsAPI.create(newProjectName);
+      const project = await projectsAPI.create(newProjectName.trim());
       setProjects([project, ...projects]);
       setNewProjectName('');
       setIsCreating(false);
@@ -51,208 +60,143 @@ export default function Sidebar({
     }
   };
 
-  const collapsedWidth = 56;
-  const expandedWidth = width;
+  const handleDeleteProject = async (projectId: string, projectName: string) => {
+    const confirmed = await ask(
+      `Are you sure you want to delete "${projectName}"? This will permanently delete all chats, outputs, and context documents in this project.`,
+      {
+        title: 'Delete Project',
+        kind: 'warning',
+      }
+    );
+
+    if (!confirmed) return;
+
+    try {
+      await projectsAPI.delete(projectId);
+      if (currentProjectId === projectId) {
+        onHomeClick();
+      }
+      await loadProjects();
+    } catch (error) {
+      console.error('Failed to delete project:', error);
+      alert('Failed to delete project. Please try again.');
+    }
+  };
 
   return (
     <div
-      className="bg-slate-800 border-r border-slate-700 flex flex-col flex-shrink-0 transition-all duration-300"
-      style={{ width: isCollapsed ? `${collapsedWidth}px` : `${expandedWidth}px` }}
+      className="bg-codex-sidebar flex flex-col flex-shrink-0"
+      style={{ width: `${width}px` }}
     >
-      {/* Header */}
-      <div className="px-3 py-2 border-b border-slate-700">
-        {isCollapsed ? (
-          <button
-            onClick={() => setIsCollapsed(false)}
-            className="w-full flex items-center justify-center"
-            title="Expand sidebar"
-          >
-            <div className="w-5 h-5 bg-indigo-600 rounded flex items-center justify-center hover:bg-indigo-700 transition-colors">
-              <span className="text-xs">🚀</span>
-            </div>
-          </button>
-        ) : (
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={onHomeClick}
-              className="w-5 h-5 bg-indigo-600 rounded flex items-center justify-center hover:bg-indigo-700 transition-colors cursor-pointer"
-              title="Go to home"
-            >
-              <span className="text-xs">🚀</span>
-            </button>
-            <button
-              onClick={onHomeClick}
-              className="flex-1 min-w-0 text-left hover:opacity-80 transition-opacity"
-            >
-              <h2 className="text-xs font-semibold text-white">AI PM IDE</h2>
-              <p className="text-[10px] text-slate-500 uppercase tracking-wider">Projects</p>
-            </button>
-            <button
-              onClick={() => setIsCollapsed(true)}
-              className="p-1 hover:bg-slate-700 rounded transition-colors"
-              title="Collapse sidebar"
-            >
-              <svg className="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* New Project Button */}
-      <div className="p-2">
-        {isCollapsed ? (
-          <button
-            onClick={() => {
-              setIsCollapsed(false);
-              setIsCreating(true);
-            }}
-            className="w-full p-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded transition-colors flex items-center justify-center"
-            title="New Project"
-          >
-            <span className="text-sm">+</span>
-          </button>
-        ) : !isCreating ? (
-          <button
-            onClick={() => setIsCreating(true)}
-            className="w-full px-2 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-xs font-medium transition-colors flex items-center justify-center gap-1"
-          >
-            <span className="text-sm">+</span>
-            <span>New Project</span>
-          </button>
-        ) : (
-          <div className="space-y-1.5">
+      {/* Nav Items */}
+      <div className="p-3 space-y-0.5">
+        {/* New Project */}
+        {isCreating ? (
+          <div className="mb-2">
             <input
               type="text"
               value={newProjectName}
               onChange={(e) => setNewProjectName(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleCreateProject()}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleCreateProject();
+                if (e.key === 'Escape') {
+                  setIsCreating(false);
+                  setNewProjectName('');
+                }
+              }}
               placeholder="Project name..."
-              className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-xs placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full px-3 py-1.5 bg-codex-bg border border-codex-border rounded-md text-sm text-codex-text-primary placeholder-codex-text-dimmed focus:outline-none focus:ring-1 focus:ring-codex-accent"
               autoFocus
             />
-            <div className="flex gap-1.5">
+            <div className="flex gap-1 mt-1.5">
               <button
                 onClick={handleCreateProject}
                 disabled={!newProjectName.trim()}
-                className="flex-1 px-2 py-1 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed text-white rounded text-[10px] font-medium transition-colors"
+                className="flex-1 px-2 py-1.5 bg-codex-accent hover:bg-codex-accent-hover disabled:opacity-40 text-white rounded-md text-xs transition-colors"
               >
                 Create
               </button>
               <button
-                onClick={() => {
-                  setIsCreating(false);
-                  setNewProjectName('');
-                }}
-                className="flex-1 px-2 py-1 bg-slate-700 hover:bg-slate-600 text-slate-400 hover:text-white rounded text-[10px] font-medium transition-colors"
+                onClick={() => { setIsCreating(false); setNewProjectName(''); }}
+                className="flex-1 px-2 py-1.5 bg-codex-surface hover:bg-codex-surface-hover text-codex-text-secondary rounded-md text-xs transition-colors"
               >
                 Cancel
               </button>
             </div>
           </div>
-        )}
-      </div>
-
-      {/* Projects List */}
-      <div className="flex-1 overflow-y-auto py-1">
-        {projects.length === 0 ? (
-          <div className={`${isCollapsed ? 'p-2' : 'p-4'} text-center`}>
-            <div className={`${isCollapsed ? 'text-lg' : 'text-2xl'} mb-2`}>📁</div>
-            {!isCollapsed && (
-              <p className="text-slate-500 text-[11px] leading-relaxed">
-                No projects yet.<br/>Create one to get started!
-              </p>
-            )}
-          </div>
-        ) : isCollapsed ? (
-          <div className="space-y-1 px-1.5">
-            {projects.map((project) => (
-              <button
-                key={project.id}
-                onClick={() => onProjectSelect(project.id)}
-                className={`group w-full p-2 rounded transition-colors flex items-center justify-center ${
-                  currentProjectId === project.id
-                    ? 'bg-indigo-600'
-                    : 'hover:bg-slate-700/70'
-                }`}
-                title={project.name}
-              >
-                <div className={`w-2 h-2 rounded-full ${
-                  currentProjectId === project.id
-                    ? 'bg-white'
-                    : 'bg-slate-600 group-hover:bg-indigo-400'
-                }`} />
-              </button>
-            ))}
-          </div>
         ) : (
-          <div className="space-y-0.5 px-1.5">
-            {projects.map((project) => (
-              <button
-                key={project.id}
-                onClick={() => onProjectSelect(project.id)}
-                className={`group w-full text-left px-2 py-1.5 rounded text-xs transition-colors ${
-                  currentProjectId === project.id
-                    ? 'bg-indigo-600 text-white'
-                    : 'text-slate-300 hover:bg-slate-700/70 hover:text-white'
-                }`}
-              >
-                <div className="flex items-center gap-1.5">
-                  <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-                    currentProjectId === project.id
-                      ? 'bg-white'
-                      : 'bg-slate-600 group-hover:bg-indigo-400'
-                  }`} />
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium truncate text-[11px]">{project.name}</div>
-                    {project.description && (
-                      <div className={`text-[10px] truncate mt-0.5 ${
-                        currentProjectId === project.id
-                          ? 'text-indigo-200'
-                          : 'text-slate-500 group-hover:text-slate-400'
-                      }`}>
-                        {project.description}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
+          <button
+            onClick={() => setIsCreating(true)}
+            className="w-full px-3 py-2 flex items-center gap-2.5 text-codex-text-primary hover:bg-codex-surface/50 rounded-md transition-colors text-sm"
+          >
+            <svg className="w-4 h-4 text-codex-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            <span>New project</span>
+          </button>
         )}
       </div>
 
-      {/* Settings Button */}
-      <div className="border-t border-slate-700">
+      {/* Threads Section */}
+      <div className="flex-1 overflow-y-auto px-3">
+        <div className="flex items-center justify-between mb-1.5 px-1">
+          <span className="text-xs text-codex-text-muted font-medium uppercase tracking-wide">Threads</span>
+        </div>
+
+        <div className="space-y-0.5">
+          {projects.map((project) => (
+            <div key={project.id} className="group/project relative">
+              <button
+                onClick={() => onProjectSelect(project.id)}
+                className={`w-full px-3 py-1.5 flex items-center gap-2.5 rounded-md transition-colors text-sm ${
+                  currentProjectId === project.id
+                    ? 'bg-codex-surface text-codex-text-primary'
+                    : 'text-codex-text-secondary hover:bg-codex-surface/50 hover:text-codex-text-primary'
+                }`}
+              >
+                <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <span className="truncate">{project.name}</span>
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteProject(project.id, project.name);
+                }}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 opacity-0 group-hover/project:opacity-100 p-1 hover:bg-red-500/20 rounded transition-all"
+                title="Delete project"
+              >
+                <svg className="w-3 h-3 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            </div>
+          ))}
+
+          {projects.length === 0 && (
+            <div className="px-3 py-2 text-xs text-codex-text-muted">No threads</div>
+          )}
+        </div>
+      </div>
+
+      {/* Bottom - Settings */}
+      <div className="border-t border-codex-border p-3">
         <button
           onClick={onSettingsClick}
-          className={`w-full py-2 text-xs transition-colors ${
+          className={`w-full px-3 py-2 flex items-center gap-2.5 rounded-md transition-colors text-sm ${
             currentView === 'settings'
-              ? 'bg-indigo-600 text-white'
-              : 'text-slate-400 hover:bg-slate-700/70 hover:text-white'
-          } ${isCollapsed ? 'flex items-center justify-center' : 'px-3 text-left flex items-center gap-2'}`}
-          title={isCollapsed ? 'Settings' : undefined}
+              ? 'bg-codex-surface text-codex-text-primary'
+              : 'text-codex-text-secondary hover:bg-codex-surface/50 hover:text-codex-text-primary'
+          }`}
         >
-          <span>⚙️</span>
-          {!isCollapsed && <span className="font-medium">Settings</span>}
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          <span>Settings</span>
         </button>
       </div>
-
-      {/* Footer */}
-      {!isCollapsed && (
-        <div className="px-2 py-1.5 border-t border-slate-700 bg-slate-900/30">
-          <div className="flex items-center justify-between text-[10px]">
-            <div className="text-slate-500">
-              <div className="font-medium text-slate-400">AI PM IDE</div>
-              <div className="mt-0.5 text-slate-600">v0.1.0-alpha</div>
-            </div>
-            <div className="px-1.5 py-0.5 bg-indigo-500/20 text-indigo-400 rounded text-[9px] font-medium">
-              Sprint 2
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

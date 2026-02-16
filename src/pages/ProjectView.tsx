@@ -16,9 +16,10 @@ const DEFAULT_HISTORY_WIDTH = 224;
 interface ProjectViewProps {
   projectId: string;
   initialTab?: 'documents' | 'chat' | 'frameworks' | 'context' | 'outputs';
+  onModelChange?: (model: string) => void;
 }
 
-export default function ProjectView({ projectId, initialTab = 'chat' }: ProjectViewProps) {
+export default function ProjectView({ projectId, initialTab = 'chat', onModelChange }: ProjectViewProps) {
   console.log('🟢 ProjectView rendered with:', { projectId, initialTab });
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
@@ -111,107 +112,119 @@ export default function ProjectView({ projectId, initialTab = 'chat' }: ProjectV
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-slate-900">
-        <div className="text-slate-400">Loading project...</div>
+      <div className="flex-1 flex items-center justify-center bg-codex-bg">
+        <div className="text-codex-text-secondary">Loading project...</div>
       </div>
     );
   }
 
   if (!project) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-slate-900">
-        <div className="text-slate-400">Project not found</div>
+      <div className="flex-1 flex items-center justify-center bg-codex-bg">
+        <div className="text-codex-text-secondary">Project not found</div>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-slate-900">
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }} className="bg-codex-bg">
       {/* Top Bar */}
-      <div className="h-12 border-b border-slate-700 bg-slate-800/30 flex items-center px-4">
+      <div style={{ flexShrink: 0 }} className="h-10 border-b border-codex-border bg-codex-sidebar flex items-center px-4">
         <div className="flex-1">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-gradient-to-br from-indigo-500 to-purple-600 rounded flex items-center justify-center">
+            <div className="w-5 h-5 bg-codex-accent rounded flex items-center justify-center">
               <span className="text-sm">📁</span>
             </div>
             <div>
-              <h1 className="text-sm font-semibold text-white">{project.name}</h1>
+              <h1 className="text-sm text-codex-text-primary">{project.name}</h1>
               {project.description && (
-                <p className="text-[10px] text-slate-500">{project.description}</p>
+                <p className="text-[10px] text-codex-text-muted">{project.description}</p>
               )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="h-10 border-b border-slate-700 bg-slate-800/20 flex items-center px-4 gap-1">
+      {/* Tabs with indicator bars */}
+      <div style={{ flexShrink: 0 }} className="h-8 border-b border-codex-border bg-codex-surface/30 flex items-center px-4 gap-1">
         <button
           onClick={() => setActiveTab('chat')}
-          className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+          className={`relative px-2 py-1.5 text-xs transition-all duration-200 ${
             activeTab === 'chat'
-              ? 'bg-slate-700 text-white'
-              : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+              ? 'text-codex-text-primary'
+              : 'text-codex-text-secondary hover:text-codex-text-primary'
           }`}
         >
-          💬 Chat
+          Chat
+          {activeTab === 'chat' && (
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-codex-accent" />
+          )}
         </button>
         <button
           onClick={() => {
             setActiveTab('frameworks');
             handleBackToFrameworksHome();
           }}
-          className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+          className={`relative px-2 py-1.5 text-xs transition-all duration-200 ${
             activeTab === 'frameworks'
-              ? 'bg-slate-700 text-white'
-              : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+              ? 'text-codex-text-primary'
+              : 'text-codex-text-secondary hover:text-codex-text-primary'
           }`}
         >
-          🎯 Frameworks
+          Frameworks
+          {activeTab === 'frameworks' && (
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-codex-accent" />
+          )}
         </button>
         <button
           onClick={() => setActiveTab('context')}
-          className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+          className={`relative px-2 py-1.5 text-xs transition-all duration-200 ${
             activeTab === 'context'
-              ? 'bg-slate-700 text-white'
-              : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+              ? 'text-codex-text-primary'
+              : 'text-codex-text-secondary hover:text-codex-text-primary'
           }`}
         >
-          📚 Context
+          Context
+          {activeTab === 'context' && (
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-codex-accent" />
+          )}
         </button>
         <button
           onClick={() => setActiveTab('outputs')}
-          className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+          className={`relative px-2 py-1.5 text-xs transition-all duration-200 ${
             activeTab === 'outputs'
-              ? 'bg-slate-700 text-white'
-              : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+              ? 'text-codex-text-primary'
+              : 'text-codex-text-secondary hover:text-codex-text-primary'
           }`}
         >
-          📋 Outputs
+          Outputs
+          {activeTab === 'outputs' && (
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-codex-accent" />
+          )}
         </button>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 overflow-hidden">
+      {/* Main Content - calc: 100vh minus TopActionBar(40px) + TopBar(40px) + Tabs(32px) */}
+      <div style={{ height: 'calc(100vh - 112px)', overflow: 'hidden' }}>
         {activeTab === 'chat' && (
           <>
             {!apiKey ? (
-              <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/10 h-full">
+              <div className="h-full flex items-center justify-center bg-gradient-to-br from-codex-bg via-codex-surface to-codex-accent/5">
                 <div className="text-center max-w-md px-8">
                   <div className="text-3xl mb-3">🔑</div>
-                  <h3 className="text-sm font-semibold text-white mb-1">
+                  <h3 className="text-sm text-codex-text-primary mb-1">
                     API Key Required
                   </h3>
-                  <p className="text-xs text-slate-500 mb-4">
+                  <p className="text-xs text-codex-text-muted mb-4">
                     Please set your OpenAI API key in Settings to start chatting with GPT.
                   </p>
-                  <p className="text-[10px] text-slate-600">
+                  <p className="text-[10px] text-codex-text-muted">
                     Click the ⚙️ Settings button in the sidebar
                   </p>
                 </div>
               </div>
             ) : settings && (
-              <div className="flex h-full items-stretch">
+              <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
                 <ConversationHistory
                   projectId={projectId}
                   currentConversationId={currentConversationId}
@@ -226,6 +239,7 @@ export default function ProjectView({ projectId, initialTab = 'chat' }: ProjectV
                   apiKey={apiKey}
                   settings={settings}
                   model="gpt-5"
+                  onModelChange={onModelChange}
                 />
               </div>
             )}

@@ -21,7 +21,7 @@ PM IDE enables product managers to:
 - **Database**: SQLite with CASCADE delete patterns
 - **Diagrams**: Mermaid for Customer Journey Maps and visual frameworks
 
-## ✅ Current Status: MVP Complete
+## ✅ Current Status: Phase 1 Complete (Codex UI Redesign)
 
 ### Core Features Implemented
 
@@ -296,26 +296,23 @@ Python sidecar runs on `http://127.0.0.1:8000` and provides:
 
 **📋 Full Implementation Plan**: [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)
 **Timeline**: 22 weeks (~5.5 months)
-**Status**: Phase 0 (MVP) Complete ✅
+**Status**: Phase 0 (MVP) ✅ | Phase 1 (UI Redesign) ✅
 
 ---
 
-### **Phase 1: UI Redesign (4-5 weeks)** - Codex-Inspired ⏳
-**Status**: Not Started
+### **Phase 1: UI Redesign (4-5 weeks)** - Codex-Inspired ✅
+**Status**: Complete
 
-Transform the interface into a modern, agent-native workspace inspired by OpenAI's Codex.
+Transformed the interface into a modern, agent-native workspace inspired by OpenAI's Codex.
 
-**Key Features**:
-- 🎨 **Dark Design System**: Almost-black backgrounds (#0a0a0f), refined color palette
-- 🔧 **Redesigned Sidebar**: Projects, Automations, Skills, Threads sections
-- ⚡ **Top Action Bar**: Open, Commit, Terminal, IDE toggles
-- ✨ **Smooth Animations**: Micro-interactions, 200-250ms transitions
-- 📦 **Refined Components**: Modern cards, buttons, inputs with hover states
-
-**Success Metrics**:
-- <300ms interaction latency
-- 90+ Lighthouse accessibility score
-- Professional appearance matching modern dev tools
+**Completed**:
+- 🎨 **Codex Design System**: Dark theme with custom color tokens (codex-bg, codex-surface, codex-sidebar, codex-accent), refined typography
+- 🔧 **Redesigned Sidebar**: Flat nav items with SVG icons, "Threads" section, Settings at bottom
+- ⚡ **Top Action Bar**: Project name display, Open, Commit, Terminal, IDE toggles
+- 📦 **Codex-Style Pages**: Settings (sidebar nav + form layout), Frameworks (card grid), Context, Outputs (split panel), Chat (centered "Let's build" empty state, model selector below input)
+- 🔲 **ResizableDivider**: Drag-to-resize panels for sidebar and split views
+- 🛠 **Scrolling Fix**: Inline styles on full parent chain with calc(100vh) for reliable overflow containment in Tailwind v4
+- ✨ **Clean Components**: Modern inputs, buttons, cards with consistent hover states
 
 ---
 
@@ -494,10 +491,11 @@ Add multi-agent workflows, context memory, and integrations.
 
 ## 📊 Overall Success Metrics
 
-**Current State** (MVP):
+**Current State** (Phase 1 Complete):
 - ✅ 8 frameworks implemented
 - ✅ Core features complete (projects, context, generation, outputs, chat)
 - ✅ Mac desktop app with Tauri
+- ✅ Codex-inspired UI redesign complete
 
 **Target State** (All Phases):
 - 🎯 45 frameworks covering all PM workflows
@@ -539,6 +537,6 @@ Built with ❤️ for Product Managers by Product Managers.
 
 ---
 
-**Status**: MVP Complete | 8/45 Frameworks | Mac Desktop App
-**Version**: 0.1.0-mvp
+**Status**: Phase 1 Complete | 8/45 Frameworks | Codex UI | Mac Desktop App
+**Version**: 0.2.0-phase1
 **Last Updated**: February 2026

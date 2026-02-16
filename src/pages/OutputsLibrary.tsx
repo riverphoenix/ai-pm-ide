@@ -114,35 +114,35 @@ export default function OutputsLibrary({ projectId, onEdit }: OutputsLibraryProp
   }));
 
   return (
-    <div className="flex-1 flex flex-col bg-slate-900 overflow-hidden">
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }} className="bg-codex-bg">
       {/* Header */}
-      <div className="flex-shrink-0 border-b border-slate-700 bg-slate-800/30 px-6 py-4">
-        <div className="flex items-center justify-between mb-4">
+      <div style={{ flexShrink: 0 }} className="px-8 pt-8 pb-4">
+        <div className="flex items-start justify-between mb-4">
           <div>
-            <h1 className="text-xl font-bold text-white mb-1">
-              Framework Outputs
+            <h1 className="text-2xl font-semibold text-codex-text-primary">
+              Outputs
             </h1>
-            <p className="text-xs text-slate-400">
+            <p className="text-sm text-codex-text-secondary mt-1">
               {outputs.length} saved framework outputs
             </p>
           </div>
         </div>
 
         {/* Filters */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 max-w-2xl">
           <div className="flex-1">
             <input
               type="text"
               placeholder="Search outputs..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-3 py-2 bg-codex-surface border border-codex-border rounded-md text-codex-text-primary text-sm placeholder-codex-text-muted focus:outline-none focus:ring-1 focus:ring-codex-accent"
             />
           </div>
           <select
             value={filterCategory}
             onChange={(e) => setFilterCategory(e.target.value)}
-            className="px-3 py-2 bg-slate-800 border border-slate-700 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="px-3 py-2 bg-codex-surface border border-codex-border rounded-md text-codex-text-primary text-sm focus:outline-none focus:ring-1 focus:ring-codex-accent"
           >
             <option value="all">All Categories ({outputs.length})</option>
             {categoryCounts.map(({ category, count }) => (
@@ -155,31 +155,31 @@ export default function OutputsLibrary({ projectId, onEdit }: OutputsLibraryProp
       </div>
 
       {/* Content */}
-      <div className="flex-1 flex flex-col min-h-0">
+      <div style={{ flex: 1, overflow: 'hidden', minHeight: 0 }}>
       {loading ? (
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-slate-400">Loading outputs...</div>
+        <div className="h-full flex items-center justify-center">
+          <div className="text-codex-text-secondary">Loading outputs...</div>
         </div>
       ) : outputs.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center">
+        <div className="h-full flex items-center justify-center">
           <div className="text-center max-w-md px-8">
             <div className="text-4xl mb-3">📚</div>
-            <h3 className="text-sm font-semibold text-white mb-1">No outputs yet</h3>
-            <p className="text-xs text-slate-400">
+            <h3 className="text-sm font-semibold text-codex-text-primary mb-1">No outputs yet</h3>
+            <p className="text-xs text-codex-text-secondary">
               Generate your first PM framework to see it here
             </p>
           </div>
         </div>
       ) : (
-        <div className="flex flex-1 min-h-0 items-stretch">
+        <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
           {/* Outputs List */}
           <div
-            className="flex-shrink-0 border-r border-slate-700 overflow-y-auto"
+            className="flex-shrink-0 border-r border-codex-border overflow-y-auto"
             style={{ width: `${listWidth}px` }}
           >
             {filteredOutputs.length === 0 ? (
               <div className="p-6 text-center">
-                <div className="text-slate-400 text-sm">No matching outputs</div>
+                <div className="text-codex-text-secondary text-sm">No matching outputs</div>
               </div>
             ) : (
               <div className="p-4 space-y-2">
@@ -194,7 +194,7 @@ export default function OutputsLibrary({ projectId, onEdit }: OutputsLibraryProp
                       className={`p-3 rounded-lg cursor-pointer transition-colors ${
                         isSelected
                           ? 'bg-indigo-600/20 border border-indigo-500/50'
-                          : 'bg-slate-800/40 border border-slate-700 hover:bg-slate-800/60 hover:border-slate-600'
+                          : 'bg-codex-surface/60 border border-codex-border hover:bg-codex-surface-hover hover:border-codex-surface-hover'
                       }`}
                     >
                       <div className="flex items-start gap-2 mb-2">
@@ -202,10 +202,10 @@ export default function OutputsLibrary({ projectId, onEdit }: OutputsLibraryProp
                           <span className="text-lg flex-shrink-0">{framework.icon}</span>
                         )}
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-sm font-semibold text-white truncate">
+                          <h3 className="text-sm font-semibold text-codex-text-primary truncate">
                             {output.name}
                           </h3>
-                          <div className="flex items-center gap-2 mt-1 text-xs text-slate-500">
+                          <div className="flex items-center gap-2 mt-1 text-xs text-codex-text-muted">
                             {framework && <span>{framework.name}</span>}
                             <span>•</span>
                             <span>{new Date(output.created_at * 1000).toLocaleDateString()}</span>
@@ -213,7 +213,7 @@ export default function OutputsLibrary({ projectId, onEdit }: OutputsLibraryProp
                         </div>
                       </div>
                       {output.user_prompt && (
-                        <p className="text-xs text-slate-400 line-clamp-2">
+                        <p className="text-xs text-codex-text-secondary line-clamp-2">
                           {output.user_prompt}
                         </p>
                       )}
@@ -228,13 +228,13 @@ export default function OutputsLibrary({ projectId, onEdit }: OutputsLibraryProp
           <ResizableDivider onResize={handlePanelResize} />
 
           {/* Output Preview */}
-          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
             {selectedOutput ? (
               <>
-                <div className="flex-shrink-0 border-b border-slate-700 bg-slate-800/30 px-6 py-3 flex items-center justify-between">
+                <div className="flex-shrink-0 border-b border-codex-border bg-codex-surface/50 px-6 py-3 flex items-center justify-between">
                   <div>
-                    <h3 className="text-sm font-semibold text-white">{selectedOutput.name}</h3>
-                    <div className="flex items-center gap-2 mt-1 text-xs text-slate-500">
+                    <h3 className="text-sm font-semibold text-codex-text-primary">{selectedOutput.name}</h3>
+                    <div className="flex items-center gap-2 mt-1 text-xs text-codex-text-muted">
                       <span>Created {new Date(selectedOutput.created_at * 1000).toLocaleDateString()}</span>
                       {selectedOutput.updated_at !== selectedOutput.created_at && (
                         <>
@@ -250,7 +250,7 @@ export default function OutputsLibrary({ projectId, onEdit }: OutputsLibraryProp
                       className={`px-3 py-1 text-xs transition-colors ${
                         copied
                           ? 'text-green-400'
-                          : 'text-slate-400 hover:text-white'
+                          : 'text-codex-text-secondary hover:text-codex-text-primary'
                       }`}
                       title="Copy to clipboard"
                     >
@@ -258,7 +258,7 @@ export default function OutputsLibrary({ projectId, onEdit }: OutputsLibraryProp
                     </button>
                     <button
                       onClick={() => handleDownloadMarkdown(selectedOutput)}
-                      className="px-3 py-1 text-xs text-slate-400 hover:text-white transition-colors"
+                      className="px-3 py-1 text-xs text-codex-text-secondary hover:text-codex-text-primary transition-colors"
                       title="Download as markdown"
                     >
                       ⬇️ Download
@@ -274,35 +274,29 @@ export default function OutputsLibrary({ projectId, onEdit }: OutputsLibraryProp
 
                 {/* User Prompt */}
                 {selectedOutput.user_prompt && (
-                  <div className="flex-shrink-0 border-b border-slate-700 bg-slate-800/20 px-6 py-3">
-                    <div className="text-[10px] font-medium text-slate-500 uppercase mb-1">
+                  <div className="flex-shrink-0 border-b border-codex-border bg-codex-surface/40 px-6 py-3">
+                    <div className="text-[10px] font-medium text-codex-text-muted uppercase mb-1">
                       Prompt
                     </div>
-                    <div className="text-xs text-slate-300">
+                    <div className="text-xs text-codex-text-secondary">
                       {selectedOutput.user_prompt}
                     </div>
                   </div>
                 )}
 
-                {/* Content */}
-                <div
-                  className="flex-1 p-6"
-                  style={{
-                    minHeight: 0,
-                    overflow: 'hidden auto'
-                  }}
-                >
+                {/* Content - Scrollable area */}
+                <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }} className="p-6">
                   <MarkdownWithMermaid content={selectedOutput.generated_content} />
                 </div>
               </>
             ) : (
-              <div className="flex-1 flex items-center justify-center">
+              <div className="h-full flex items-center justify-center">
                 <div className="text-center max-w-md px-8">
                   <div className="text-3xl mb-3">👈</div>
-                  <h3 className="text-sm font-semibold text-white mb-1">
+                  <h3 className="text-sm font-semibold text-codex-text-primary mb-1">
                     Select an output
                   </h3>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-codex-text-secondary">
                     Choose an output from the list to view its content
                   </p>
                 </div>

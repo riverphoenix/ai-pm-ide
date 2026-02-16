@@ -9,6 +9,7 @@ interface ChatInterfaceProps {
   apiKey: string;
   settings: Settings;
   model?: string;
+  onModelChange?: (model: string) => void;
 }
 
 interface MessageWithContext extends Message {
@@ -22,6 +23,7 @@ export default function ChatInterface({
   apiKey,
   settings,
   model = 'gpt-5',
+  onModelChange,
 }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<MessageWithContext[]>([]);
   const [input, setInput] = useState('');
@@ -66,6 +68,13 @@ export default function ChatInterface({
     scrollToBottom();
   }, [messages, streamingMessage]);
 
+  // Notify parent component when model changes
+  useEffect(() => {
+    if (onModelChange) {
+      onModelChange(selectedModel);
+    }
+  }, [selectedModel, onModelChange]);
+
   // Fetch available models when API key is available
   useEffect(() => {
     const fetchModels = async () => {
@@ -106,7 +115,11 @@ export default function ChatInterface({
   }, [projectId]);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'nearest',
+      inline: 'nearest'
+    });
   };
 
   const loadMessages = async () => {
@@ -178,8 +191,10 @@ export default function ChatInterface({
         try {
           console.log('📄 Loading context document:', docId);
           const doc = await contextDocumentsAPI.get(docId);
-          console.log('✅ Loaded document:', doc.name, 'length:', doc.content.length);
-          contextParts.push(`=== Context: ${doc.name} ===\n${doc.content}\n`);
+          if (doc) {
+            console.log('✅ Loaded document:', doc.name, 'length:', doc.content.length);
+            contextParts.push(`=== Context: ${doc.name} ===\n${doc.content}\n`);
+          }
         } catch (err) {
           console.error('❌ Failed to load context document:', docId, err);
         }
@@ -418,41 +433,22 @@ export default function ChatInterface({
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-950 flex-1">
-      {/* Top Bar with Model Selector */}
-      <div className="border-b border-slate-800 bg-slate-900/50 px-4 py-2.5 flex items-center justify-between backdrop-blur-sm">
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-400 font-medium">Model:</span>
-          <select
-            value={selectedModel}
-            onChange={(e) => setSelectedModel(e.target.value)}
-            className="px-2 py-1 bg-slate-800 border border-slate-700 rounded text-slate-200 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
-            disabled={loading}
-          >
-            {availableModels.map((model) => (
-              <option key={model} value={model}>
-                {model === 'gpt-5' ? '🌟 GPT-5' :
-                 model === 'gpt-5-mini' ? '⚡ GPT-5 Mini' :
-                 model === 'gpt-5-nano' ? '💨 GPT-5 Nano' : model}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Messages Area - ChatGPT Style */}
-      <div className="flex-1 overflow-y-auto">
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }} className="bg-codex-bg">
+      {/* Messages Area */}
+      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }} className="bg-codex-bg">
         {messages.length === 0 && !streamingMessage && (
           <div className="flex items-center justify-center h-full">
             <div className="text-center max-w-2xl px-8">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-2xl mb-6 border border-indigo-500/20">
-                <span className="text-4xl">💬</span>
+              <div className="flex justify-center mb-5">
+                <svg className="w-12 h-12 text-codex-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.26 10.147a60.438 60.438 0 0 0-.491 6.347A48.62 48.62 0 0 1 12 20.904a48.62 48.62 0 0 1 8.232-4.41 60.46 60.46 0 0 0-.491-6.347m-15.482 0a50.636 50.636 0 0 0-2.658-.813A59.906 59.906 0 0 1 12 3.493a59.903 59.903 0 0 1 10.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0 1 12 13.489a50.702 50.702 0 0 1 7.74-3.342" />
+                </svg>
               </div>
-              <h3 className="text-xl font-semibold text-white mb-2">
-                Chat with GPT
-              </h3>
-              <p className="text-sm text-slate-400 leading-relaxed">
-                Ask questions about your project, get help with PM frameworks, or brainstorm ideas. Your conversation is saved automatically.
+              <h2 className="text-2xl font-semibold text-codex-text-primary mb-1">
+                Let's build
+              </h2>
+              <p className="text-sm text-codex-text-secondary">
+                Ask questions about your project, apply PM frameworks, or brainstorm ideas.
               </p>
             </div>
           </div>
@@ -460,45 +456,35 @@ export default function ChatInterface({
 
         <div className="py-4">
           {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`w-full ${
-                message.role === 'assistant' ? 'bg-slate-900/30' : ''
-              }`}
-            >
-              <div className="max-w-3xl mx-auto px-6 py-6">
-                <div className="flex gap-4">
-                  {/* Avatar */}
-                  <div className="flex-shrink-0">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
+            <div key={message.id} className="w-full">
+              <div className="max-w-3xl mx-auto px-6 py-4">
+                <div className="flex gap-3">
+                  <div className="flex-shrink-0 mt-0.5">
+                    <div className={`w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold ${
                       message.role === 'user'
-                        ? 'bg-indigo-600 text-white'
-                        : 'bg-gradient-to-br from-green-500 to-emerald-600 text-white'
+                        ? 'bg-codex-surface text-codex-text-secondary'
+                        : 'bg-codex-text-primary text-codex-bg'
                     }`}>
-                      {message.role === 'user' ? 'Y' : 'AI'}
+                      {message.role === 'user' ? 'U' : 'AI'}
                     </div>
                   </div>
-
-                  {/* Content */}
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-semibold text-white mb-2">
+                    <div className="text-xs font-medium text-codex-text-muted mb-1.5">
                       {message.role === 'user' ? 'You' : 'Assistant'}
                     </div>
-                    <div className="text-sm text-slate-200 leading-relaxed">
+                    <div className="text-sm text-codex-text-primary leading-relaxed">
                       <MarkdownRenderer content={message.content} />
                     </div>
-
-                    {/* Prompt context toggle */}
                     {message.role === 'user' && message.fullContext && (
-                      <div className="mt-3">
+                      <div className="mt-2">
                         <button
                           onClick={() => togglePromptExpansion(message.id)}
-                          className="text-[10px] text-slate-500 hover:text-slate-400 transition-colors"
+                          className="text-[10px] text-codex-text-muted hover:text-codex-text-secondary transition-colors"
                         >
                           {expandedPrompts.has(message.id) ? '▼ Hide' : '▶ View'} prompt details
                         </button>
                         {expandedPrompts.has(message.id) && (
-                          <pre className="text-[10px] text-slate-500 mt-2 p-3 bg-slate-900/50 rounded border border-slate-800 overflow-x-auto">
+                          <pre className="text-[10px] text-codex-text-muted mt-2 p-3 bg-codex-surface rounded border border-codex-border overflow-x-auto">
                             {message.fullContext}
                           </pre>
                         )}
@@ -512,19 +498,19 @@ export default function ChatInterface({
 
           {/* Streaming Message */}
           {streamingMessage && (
-            <div className="w-full bg-slate-900/30">
-              <div className="max-w-3xl mx-auto px-6 py-6">
-                <div className="flex gap-4">
-                  <div className="flex-shrink-0">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold bg-gradient-to-br from-green-500 to-emerald-600 text-white">
+            <div className="w-full">
+              <div className="max-w-3xl mx-auto px-6 py-4">
+                <div className="flex gap-3">
+                  <div className="flex-shrink-0 mt-0.5">
+                    <div className="w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold bg-codex-text-primary text-codex-bg">
                       AI
                     </div>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-semibold text-white mb-2">
+                    <div className="text-xs font-medium text-codex-text-muted mb-1.5">
                       Assistant
                     </div>
-                    <div className="text-sm text-slate-200 leading-relaxed">
+                    <div className="text-sm text-codex-text-primary leading-relaxed">
                       <MarkdownRenderer content={streamingMessage} />
                     </div>
                   </div>
@@ -535,22 +521,22 @@ export default function ChatInterface({
 
           {/* Loading State */}
           {loading && !streamingMessage && (
-            <div className="w-full bg-slate-900/30">
-              <div className="max-w-3xl mx-auto px-6 py-6">
-                <div className="flex gap-4">
-                  <div className="flex-shrink-0">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold bg-gradient-to-br from-green-500 to-emerald-600 text-white">
+            <div className="w-full">
+              <div className="max-w-3xl mx-auto px-6 py-4">
+                <div className="flex gap-3">
+                  <div className="flex-shrink-0 mt-0.5">
+                    <div className="w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold bg-codex-text-primary text-codex-bg">
                       AI
                     </div>
                   </div>
                   <div className="flex-1">
-                    <div className="text-sm font-semibold text-white mb-2">
+                    <div className="text-xs font-medium text-codex-text-muted mb-1.5">
                       Assistant
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse"></div>
-                      <div className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-                      <div className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-1.5 h-1.5 bg-codex-text-muted rounded-full animate-pulse"></div>
+                      <div className="w-1.5 h-1.5 bg-codex-text-muted rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                      <div className="w-1.5 h-1.5 bg-codex-text-muted rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
                     </div>
                   </div>
                 </div>
@@ -562,26 +548,15 @@ export default function ChatInterface({
           {error && (
             <div className="w-full">
               <div className="max-w-3xl mx-auto px-6 py-4">
-                <div className="flex gap-4 p-4 bg-red-900/20 border border-red-700/30 rounded-lg">
-                  <div className="flex-shrink-0">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center bg-red-500/20 text-red-400">
-                      ⚠
-                    </div>
-                  </div>
-                  <div className="flex-1">
-                    <div className="text-sm font-semibold text-red-400 mb-1">
-                      Error
-                    </div>
-                    <div className="text-sm text-red-300">
-                      {error}
-                    </div>
-                    <button
-                      onClick={() => setError(null)}
-                      className="mt-2 text-xs text-red-400 hover:text-red-300 underline"
-                    >
-                      Dismiss
-                    </button>
-                  </div>
+                <div className="p-3 bg-red-900/20 border border-red-700/30 rounded-lg">
+                  <div className="text-xs font-medium text-red-400 mb-1">Error</div>
+                  <div className="text-sm text-red-300">{error}</div>
+                  <button
+                    onClick={() => setError(null)}
+                    className="mt-2 text-xs text-red-400 hover:text-red-300 underline"
+                  >
+                    Dismiss
+                  </button>
                 </div>
               </div>
             </div>
@@ -591,35 +566,15 @@ export default function ChatInterface({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area - ChatGPT Style */}
-      <div className="border-t border-slate-800 bg-slate-900/50 backdrop-blur-sm">
-        <div className="max-w-3xl mx-auto px-6 py-4">
-          {/* Attachments Toggle Button */}
-          <div className="mb-3">
-            <button
-              onClick={() => setShowAttachments(!showAttachments)}
-              className="text-xs text-slate-400 hover:text-slate-300 transition-colors flex items-center gap-1"
-              disabled={loading}
-            >
-              <span>📎</span>
-              <span>
-                {showAttachments ? 'Hide' : 'Add'} Context
-                {(selectedContextDocs.length > 0 || fileInput || urlInput.trim()) &&
-                  ` (${selectedContextDocs.length + (fileInput ? 1 : 0) + (urlInput.trim() ? 1 : 0)})`
-                }
-              </span>
-            </button>
-          </div>
-
+      {/* Input Area */}
+      <div style={{ flexShrink: 0 }} className="bg-codex-bg px-6 pb-4 pt-2">
+        <div className="max-w-3xl mx-auto">
           {/* Attachments Panel */}
           {showAttachments && (
-            <div className="mb-3 p-3 bg-slate-800/50 border border-slate-700 rounded-lg space-y-3">
-              {/* Context Documents Selection */}
+            <div className="mb-3 p-3 bg-codex-surface border border-codex-border rounded-lg space-y-3">
               {availableDocs.length > 0 && (
                 <div>
-                  <div className="text-[10px] text-slate-400 mb-2 uppercase font-medium">
-                    Saved Context Documents
-                  </div>
+                  <div className="text-[10px] text-codex-text-muted mb-2 uppercase font-medium">Context Documents</div>
                   <div className="flex flex-wrap gap-2">
                     {availableDocs.map(doc => (
                       <button
@@ -633,126 +588,134 @@ export default function ChatInterface({
                         }}
                         className={`px-2 py-1 text-xs rounded transition-colors ${
                           selectedContextDocs.includes(doc.id)
-                            ? 'bg-indigo-600 text-white'
-                            : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                            ? 'bg-codex-accent text-white'
+                            : 'bg-codex-bg text-codex-text-secondary hover:bg-codex-surface-hover'
                         }`}
                       >
-                        📄 {doc.name}
+                        {doc.name}
                       </button>
                     ))}
                   </div>
                 </div>
               )}
-
-              {/* File Upload */}
               <div>
-                <div className="text-[10px] text-slate-400 mb-2 uppercase font-medium">
-                  Upload File
-                </div>
+                <div className="text-[10px] text-codex-text-muted mb-2 uppercase font-medium">Upload File</div>
                 <div className="flex items-center gap-2">
                   <input
                     type="file"
                     onChange={(e) => {
                       const file = e.target.files?.[0];
-                      if (file) {
-                        setFileInput(file);
-                      }
+                      if (file) setFileInput(file);
                     }}
-                    className="text-xs text-slate-400 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:bg-slate-700 file:text-slate-300 hover:file:bg-slate-600 file:cursor-pointer"
+                    className="text-xs text-codex-text-secondary file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:bg-codex-bg file:text-codex-text-secondary hover:file:bg-codex-surface-hover file:cursor-pointer"
                   />
                   {fileInput && (
-                    <button
-                      onClick={() => setFileInput(null)}
-                      className="text-xs text-red-400 hover:text-red-300"
-                    >
-                      ✕ Remove
-                    </button>
+                    <button onClick={() => setFileInput(null)} className="text-xs text-red-400 hover:text-red-300">Remove</button>
                   )}
                 </div>
               </div>
-
-              {/* URL Input */}
               <div>
-                <div className="text-[10px] text-slate-400 mb-2 uppercase font-medium">
-                  Fetch URL
-                </div>
+                <div className="text-[10px] text-codex-text-muted mb-2 uppercase font-medium">Fetch URL</div>
                 <div className="flex gap-2">
                   <input
                     type="url"
                     value={urlInput}
                     onChange={(e) => setUrlInput(e.target.value)}
                     placeholder="https://example.com/document"
-                    className="flex-1 px-3 py-1.5 bg-slate-700 border border-slate-600 rounded text-slate-200 text-xs placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    className="flex-1 px-3 py-1.5 bg-codex-bg border border-codex-border rounded text-codex-text-primary text-xs placeholder-codex-text-muted focus:outline-none focus:ring-1 focus:ring-codex-accent"
                   />
                   {urlInput.trim() && (
-                    <button
-                      onClick={() => setUrlInput('')}
-                      className="text-xs text-red-400 hover:text-red-300"
-                    >
-                      ✕ Clear
-                    </button>
+                    <button onClick={() => setUrlInput('')} className="text-xs text-red-400 hover:text-red-300">Clear</button>
                   )}
                 </div>
               </div>
             </div>
           )}
 
-          {/* Selected Attachments Display (compact, always visible) */}
+          {/* Selected Attachments Chips */}
           {(selectedContextDocs.length > 0 || fileInput || urlInput.trim()) && (
             <div className="mb-2 flex flex-wrap gap-1.5">
               {selectedContextDocs.map(docId => {
                 const doc = availableDocs.find(d => d.id === docId);
                 return doc ? (
-                  <span
-                    key={docId}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 bg-indigo-600/20 border border-indigo-500/30 rounded text-[10px] text-indigo-300"
-                  >
-                    📄 {doc.name}
+                  <span key={docId} className="inline-flex items-center gap-1 px-2 py-0.5 bg-codex-surface border border-codex-border rounded text-[10px] text-codex-text-secondary">
+                    {doc.name}
                   </span>
                 ) : null;
               })}
               {fileInput && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-indigo-600/20 border border-indigo-500/30 rounded text-[10px] text-indigo-300">
-                  📎 {fileInput.name}
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-codex-surface border border-codex-border rounded text-[10px] text-codex-text-secondary">
+                  {fileInput.name}
                 </span>
               )}
               {urlInput.trim() && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-indigo-600/20 border border-indigo-500/30 rounded text-[10px] text-indigo-300">
-                  🔗 {urlInput.substring(0, 30)}...
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-codex-surface border border-codex-border rounded text-[10px] text-codex-text-secondary">
+                  {urlInput.substring(0, 30)}...
                 </span>
               )}
             </div>
           )}
 
-          {/* Message Input */}
-          <div className="relative">
+          {/* Input Box */}
+          <div className="relative bg-codex-surface border border-codex-border rounded-lg">
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask anything..."
+              placeholder="Ask anything, @ to add context, / for commands"
               disabled={loading}
-              className="w-full px-4 py-3 pr-12 bg-slate-800 border border-slate-700 rounded-xl text-slate-100 text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+              className="w-full px-4 py-3 pr-12 bg-transparent text-codex-text-primary text-sm placeholder-codex-text-muted focus:outline-none resize-none disabled:opacity-50 disabled:cursor-not-allowed"
               rows={1}
-              style={{ minHeight: '52px', maxHeight: '200px' }}
+              style={{ minHeight: '44px', maxHeight: '200px' }}
             />
-            <button
-              onClick={handleSend}
-              disabled={loading || !input.trim()}
-              className="absolute right-2 bottom-2 w-8 h-8 flex items-center justify-center bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
-              title="Send message"
-            >
-              {loading ? (
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-              ) : (
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+              <button
+                onClick={() => setShowAttachments(!showAttachments)}
+                className="w-7 h-7 flex items-center justify-center text-codex-text-muted hover:text-codex-text-secondary rounded transition-colors"
+                title="Add context"
+                disabled={loading}
+              >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13" />
                 </svg>
-              )}
-            </button>
+              </button>
+              <button
+                onClick={handleSend}
+                disabled={loading || !input.trim()}
+                className="w-7 h-7 flex items-center justify-center bg-codex-text-primary text-codex-bg disabled:bg-codex-surface disabled:text-codex-text-muted disabled:cursor-not-allowed rounded-md transition-colors"
+                title="Send message"
+              >
+                {loading ? (
+                  <div className="w-3.5 h-3.5 border-2 border-codex-bg border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" />
+                  </svg>
+                )}
+              </button>
+            </div>
           </div>
-          <div className="mt-2 text-[10px] text-slate-500 text-center">
-            Press Enter to send • Shift+Enter for new line
+
+          {/* Model selector + info row below input */}
+          <div className="flex items-center justify-between mt-2 px-1">
+            <div className="flex items-center gap-3">
+              <select
+                value={selectedModel}
+                onChange={(e) => setSelectedModel(e.target.value)}
+                className="bg-transparent text-xs text-codex-text-muted hover:text-codex-text-secondary cursor-pointer focus:outline-none"
+                disabled={loading}
+              >
+                {availableModels.map((m) => (
+                  <option key={m} value={m} className="bg-codex-surface text-codex-text-primary">
+                    {m}
+                  </option>
+                ))}
+              </select>
+              <span className="text-[10px] text-codex-text-muted">Medium</span>
+            </div>
+            <div className="text-[10px] text-codex-text-muted">
+              Enter to send
+            </div>
           </div>
         </div>
       </div>

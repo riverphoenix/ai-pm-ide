@@ -10,17 +10,17 @@ export default function MarkdownWithMermaid({ content }: MarkdownWithMermaidProp
   const components: Components = {
     // Headings with proper spacing
     h1: ({ children }) => (
-      <h1 className="text-2xl font-bold text-white mt-6 mb-4 pb-2 border-b border-slate-700">
+      <h1 className="text-2xl font-bold text-codex-text-primary mt-6 mb-4 pb-2 border-b border-codex-border">
         {children}
       </h1>
     ),
     h2: ({ children }) => (
-      <h2 className="text-xl font-bold text-white mt-6 mb-3">
+      <h2 className="text-xl font-bold text-codex-text-primary mt-6 mb-3">
         {children}
       </h2>
     ),
     h3: ({ children }) => (
-      <h3 className="text-lg font-semibold text-white mt-5 mb-2">
+      <h3 className="text-lg font-semibold text-codex-text-primary mt-5 mb-2">
         {children}
       </h3>
     ),
@@ -30,31 +30,31 @@ export default function MarkdownWithMermaid({ content }: MarkdownWithMermaidProp
       </h4>
     ),
     h5: ({ children }) => (
-      <h5 className="text-sm font-semibold text-slate-300 mt-3 mb-2">
+      <h5 className="text-sm font-semibold text-codex-text-secondary mt-3 mb-2">
         {children}
       </h5>
     ),
     h6: ({ children }) => (
-      <h6 className="text-sm font-medium text-slate-400 mt-3 mb-2">
+      <h6 className="text-sm font-medium text-codex-text-secondary mt-3 mb-2">
         {children}
       </h6>
     ),
 
     // Paragraphs with spacing
     p: ({ children }) => (
-      <p className="text-slate-300 leading-relaxed mb-4">
+      <p className="text-codex-text-secondary leading-relaxed mb-4">
         {children}
       </p>
     ),
 
     // Lists with proper spacing
     ul: ({ children }) => (
-      <ul className="list-disc list-outside ml-5 mb-4 space-y-2 text-slate-300">
+      <ul className="list-disc list-outside ml-5 mb-4 space-y-2 text-codex-text-secondary">
         {children}
       </ul>
     ),
     ol: ({ children }) => (
-      <ol className="list-decimal list-outside ml-5 mb-4 space-y-2 text-slate-300">
+      <ol className="list-decimal list-outside ml-5 mb-4 space-y-2 text-codex-text-secondary">
         {children}
       </ol>
     ),
@@ -66,14 +66,14 @@ export default function MarkdownWithMermaid({ content }: MarkdownWithMermaidProp
 
     // Blockquotes
     blockquote: ({ children }) => (
-      <blockquote className="border-l-4 border-indigo-500 pl-4 py-2 my-4 bg-slate-800/30 text-slate-300 italic">
+      <blockquote className="border-l-4 border-indigo-500 pl-4 py-2 my-4 bg-codex-surface/50 text-codex-text-secondary italic">
         {children}
       </blockquote>
     ),
 
     // Horizontal rule
     hr: () => (
-      <hr className="border-slate-700 my-6" />
+      <hr className="border-codex-border my-6" />
     ),
 
     // Links
@@ -91,13 +91,13 @@ export default function MarkdownWithMermaid({ content }: MarkdownWithMermaidProp
     // Tables
     table: ({ children }) => (
       <div className="overflow-x-auto my-4 max-w-full">
-        <table className="w-full border border-slate-700 rounded table-auto">
+        <table className="w-full border border-codex-border rounded table-auto">
           {children}
         </table>
       </div>
     ),
     thead: ({ children }) => (
-      <thead className="bg-slate-800">
+      <thead className="bg-codex-surface">
         {children}
       </thead>
     ),
@@ -107,24 +107,24 @@ export default function MarkdownWithMermaid({ content }: MarkdownWithMermaidProp
       </tbody>
     ),
     tr: ({ children }) => (
-      <tr className="hover:bg-slate-800/30">
+      <tr className="hover:bg-codex-surface/50">
         {children}
       </tr>
     ),
     th: ({ children }) => (
-      <th className="px-4 py-2 text-left text-sm font-semibold text-white border-b border-slate-700">
+      <th className="px-4 py-2 text-left text-sm font-semibold text-codex-text-primary border-b border-codex-border">
         {children}
       </th>
     ),
     td: ({ children }) => (
-      <td className="px-4 py-2 text-sm text-slate-300">
+      <td className="px-4 py-2 text-sm text-codex-text-secondary">
         {children}
       </td>
     ),
 
     // Strong and emphasis
     strong: ({ children }) => (
-      <strong className="font-bold text-white">
+      <strong className="font-bold text-codex-text-primary">
         {children}
       </strong>
     ),
@@ -135,20 +135,21 @@ export default function MarkdownWithMermaid({ content }: MarkdownWithMermaidProp
     ),
 
     // Code blocks and inline code
-    code: ({ node, inline, className, children, ...props }) => {
+    code: ({ node, className, children, ...props }) => {
       const match = /language-(\w+)/.exec(className || '');
       const language = match ? match[1] : '';
       const codeString = String(children).replace(/\n$/, '');
+      const isInline = node?.position?.start.line === node?.position?.end.line;
 
       // Render Mermaid diagrams
-      if (!inline && language === 'mermaid') {
+      if (!isInline && language === 'mermaid') {
         return <MermaidRenderer chart={codeString} />;
       }
 
       // Regular code blocks
-      if (!inline) {
+      if (!isInline) {
         return (
-          <pre className="bg-slate-800 rounded p-4 overflow-x-auto my-4 border border-slate-700">
+          <pre className="bg-codex-surface rounded p-4 overflow-x-auto my-4 border border-codex-border">
             <code className={`${className} text-sm text-slate-200`} {...props}>
               {children}
             </code>
@@ -158,7 +159,7 @@ export default function MarkdownWithMermaid({ content }: MarkdownWithMermaidProp
 
       // Inline code
       return (
-        <code className="bg-slate-800 px-1.5 py-0.5 rounded text-sm text-indigo-300 font-mono" {...props}>
+        <code className="bg-codex-surface px-1.5 py-0.5 rounded text-sm text-indigo-300 font-mono" {...props}>
           {children}
         </code>
       );

@@ -144,7 +144,7 @@ export default function FrameworkGenerator({
             id: 'temp-file',
             project_id: projectId,
             name: newDocFile.name,
-            type: 'file',
+            type: 'text',
             content: fileContent,
             size_bytes: newDocFile.size,
             created_at: Date.now() / 1000,
@@ -501,28 +501,28 @@ export default function FrameworkGenerator({
 
   if (!framework) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-slate-900">
-        <div className="text-slate-400">Framework not found</div>
+      <div className="flex-1 flex items-center justify-center bg-codex-bg">
+        <div className="text-codex-text-secondary">Framework not found</div>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-slate-900 h-full overflow-hidden">
+    <div className="flex-1 flex flex-col bg-codex-bg h-full overflow-hidden">
       {/* Header */}
-      <div className="flex-shrink-0 border-b border-slate-700 bg-slate-800/30 px-6 py-4">
+      <div className="flex-shrink-0 border-b border-codex-border bg-codex-surface/50 px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <span className="text-2xl">{framework.icon}</span>
             <div>
-              <h2 className="text-sm font-semibold text-white">{framework.name}</h2>
-              <p className="text-xs text-slate-400">{framework.description}</p>
+              <h2 className="text-sm font-semibold text-codex-text-primary">{framework.name}</h2>
+              <p className="text-xs text-codex-text-secondary">{framework.description}</p>
             </div>
           </div>
           {onCancel && (
             <button
               onClick={onCancel}
-              className="px-3 py-1.5 text-xs text-slate-400 hover:text-white transition-colors"
+              className="px-3 py-1.5 text-xs text-codex-text-secondary hover:text-codex-text-primary transition-colors"
             >
               ✕ Close
             </button>
@@ -533,28 +533,28 @@ export default function FrameworkGenerator({
       <div className="flex-1 flex min-h-0 items-stretch">
         {/* Left Panel: Context Input */}
         <div
-          className="flex-shrink-0 flex flex-col border-r border-slate-700 h-full"
+          className="flex-shrink-0 flex flex-col border-r border-codex-border h-full"
           style={{ width: `${leftPanelWidth}%` }}
         >
 
           <div className="flex-1 p-6 space-y-6 overflow-y-auto">
             {/* User Prompt */}
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-2">
+              <label className="block text-xs font-medium text-codex-text-secondary mb-2">
                 What do you want to generate?
               </label>
               <textarea
                 value={userPrompt}
                 onChange={(e) => setUserPrompt(e.target.value)}
                 placeholder={`e.g., "Prioritize these 3 features for Q2" or "Create a PRD for dark mode"`}
-                className="w-full h-24 px-3 py-2 bg-slate-800 border border-slate-700 rounded text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                className="w-full h-24 px-3 py-2 bg-codex-surface border border-codex-border rounded text-codex-text-primary text-sm placeholder-codex-text-muted focus:outline-none focus:ring-2 focus:ring-codex-accent resize-none"
               />
             </div>
 
             {/* Context Documents */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className="text-xs font-medium text-slate-300">
+                <label className="text-xs font-medium text-codex-text-secondary">
                   Context Documents ({selectedDocIds.length} selected)
                 </label>
                 <button
@@ -567,14 +567,14 @@ export default function FrameworkGenerator({
 
               {/* Add Document Panel */}
               {showAddDocPanel && (
-                <div className="mb-3 p-3 bg-slate-800/30 border border-slate-700 rounded space-y-3">
-                  <div className="text-[10px] text-slate-500 mb-2">
+                <div className="mb-3 p-3 bg-codex-surface/50 border border-codex-border rounded space-y-3">
+                  <div className="text-[10px] text-codex-text-muted mb-2">
                     Add files or URLs to create new context documents
                   </div>
 
                   {/* File Upload */}
                   <div>
-                    <div className="text-[10px] text-slate-400 mb-1.5 uppercase font-medium">
+                    <div className="text-[10px] text-codex-text-secondary mb-1.5 uppercase font-medium">
                       Upload File
                     </div>
                     <div className="flex items-center gap-2">
@@ -586,7 +586,7 @@ export default function FrameworkGenerator({
                             setNewDocFile(file);
                           }
                         }}
-                        className="text-xs text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-slate-700 file:text-slate-300 hover:file:bg-slate-600 file:cursor-pointer"
+                        className="text-xs text-codex-text-secondary file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-codex-surface file:text-codex-text-secondary hover:file:bg-slate-600 file:cursor-pointer"
                       />
                       {newDocFile && (
                         <button
@@ -601,7 +601,7 @@ export default function FrameworkGenerator({
 
                   {/* URL Input */}
                   <div>
-                    <div className="text-[10px] text-slate-400 mb-1.5 uppercase font-medium">
+                    <div className="text-[10px] text-codex-text-secondary mb-1.5 uppercase font-medium">
                       Fetch URL
                     </div>
                     <div className="flex gap-2">
@@ -610,7 +610,7 @@ export default function FrameworkGenerator({
                         value={newDocUrl}
                         onChange={(e) => setNewDocUrl(e.target.value)}
                         placeholder="https://example.com/document"
-                        className="flex-1 px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-slate-200 text-xs placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        className="flex-1 px-2 py-1.5 bg-codex-surface border border-codex-surface-hover rounded text-slate-200 text-xs placeholder-codex-text-muted focus:outline-none focus:ring-1 focus:ring-codex-accent"
                       />
                       {newDocUrl.trim() && (
                         <button
@@ -623,16 +623,16 @@ export default function FrameworkGenerator({
                     </div>
                   </div>
 
-                  <div className="text-[10px] text-slate-500 italic">
+                  <div className="text-[10px] text-codex-text-muted italic">
                     Note: These will be added as temporary context for this generation only. Save them in Context tab for reuse.
                   </div>
                 </div>
               )}
 
               {availableDocs.length === 0 && !showAddDocPanel ? (
-                <div className="text-center py-8 bg-slate-800/40 border border-slate-700 rounded">
+                <div className="text-center py-8 bg-codex-surface/60 border border-codex-border rounded">
                   <div className="text-2xl mb-2">📄</div>
-                  <p className="text-xs text-slate-400 mb-3">
+                  <p className="text-xs text-codex-text-secondary mb-3">
                     No context documents yet
                   </p>
                   <button
@@ -647,7 +647,7 @@ export default function FrameworkGenerator({
                   {availableDocs.map((doc) => (
                     <label
                       key={doc.id}
-                      className="flex items-start gap-3 p-3 bg-slate-800/40 border border-slate-700 rounded hover:bg-slate-800/60 cursor-pointer"
+                      className="flex items-start gap-3 p-3 bg-codex-surface/60 border border-codex-border rounded hover:bg-codex-surface-hover cursor-pointer"
                     >
                       <input
                         type="checkbox"
@@ -668,7 +668,7 @@ export default function FrameworkGenerator({
                       />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-sm font-medium text-white truncate">
+                          <span className="text-sm font-medium text-codex-text-primary truncate">
                             {doc.name}
                           </span>
                           {doc.is_global && (
@@ -677,7 +677,7 @@ export default function FrameworkGenerator({
                             </span>
                           )}
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-slate-500">
+                        <div className="flex items-center gap-2 text-xs text-codex-text-muted">
                           <span className="capitalize">{doc.type}</span>
                           <span>•</span>
                           <span>{(doc.size_bytes / 1024).toFixed(1)} KB</span>
@@ -692,12 +692,12 @@ export default function FrameworkGenerator({
             {/* Guiding Questions */}
             {framework.guiding_questions.length > 0 && (
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-2">
+                <label className="block text-xs font-medium text-codex-text-secondary mb-2">
                   Guiding Questions
                 </label>
-                <div className="bg-slate-800/40 border border-slate-700 rounded p-3 space-y-1">
+                <div className="bg-codex-surface/60 border border-codex-border rounded p-3 space-y-1">
                   {framework.guiding_questions.map((question, idx) => (
-                    <div key={idx} className="text-xs text-slate-400">
+                    <div key={idx} className="text-xs text-codex-text-secondary">
                       • {question}
                     </div>
                   ))}
@@ -707,7 +707,7 @@ export default function FrameworkGenerator({
           </div>
 
           {/* Generate Button */}
-          <div className="flex-shrink-0 border-t border-slate-700 p-4">
+          <div className="flex-shrink-0 border-t border-codex-border p-4">
             {error && (
               <div className="mb-3 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded text-xs text-red-400">
                 {error}
@@ -716,12 +716,12 @@ export default function FrameworkGenerator({
 
             {/* Model Selector */}
             <div className="mb-3 flex items-center gap-2">
-              <label className="text-xs text-slate-400 font-medium">Model:</label>
+              <label className="text-xs text-codex-text-secondary font-medium">Model:</label>
               <select
                 value={selectedModel}
                 onChange={(e) => setSelectedModel(e.target.value)}
                 disabled={isGenerating}
-                className="flex-1 px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-slate-200 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-2 py-1.5 bg-codex-surface border border-codex-border rounded text-slate-200 text-xs focus:outline-none focus:ring-1 focus:ring-codex-accent disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {availableModels.map((model) => (
                   <option key={model} value={model}>
@@ -736,14 +736,14 @@ export default function FrameworkGenerator({
             {isGenerating ? (
               <button
                 onClick={handleCancel}
-                className="w-full px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded transition-colors"
+                className="w-full px-4 py-2.5 bg-red-600 hover:bg-red-700 text-codex-text-primary text-sm font-medium rounded transition-colors"
               >
                 🛑 Stop Generation
               </button>
             ) : (
               <button
                 onClick={handleGenerate}
-                className="w-full px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded transition-colors"
+                className="w-full px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-codex-text-primary text-sm font-medium rounded transition-colors"
               >
                 Generate {framework.name}
               </button>
@@ -756,17 +756,17 @@ export default function FrameworkGenerator({
 
         {/* Right Panel: Output Preview - Scrollable */}
         <div
-          className="flex-shrink-0 flex flex-col bg-slate-900 h-full overflow-x-hidden"
+          className="flex-shrink-0 flex flex-col bg-codex-bg h-full overflow-x-hidden"
           style={{ width: `${100 - leftPanelWidth}%` }}
         >
           {!generatedContent ? (
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center max-w-md px-8">
                 <div className="text-3xl mb-3">{framework.icon}</div>
-                <h3 className="text-sm font-semibold text-white mb-1">
+                <h3 className="text-sm font-semibold text-codex-text-primary mb-1">
                   {isGenerating ? 'Generating...' : 'Ready to Generate'}
                 </h3>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-codex-text-secondary">
                   {isGenerating
                     ? 'AI is creating your framework output...'
                     : 'Click Generate to create your framework (context documents optional)'}
@@ -775,15 +775,15 @@ export default function FrameworkGenerator({
             </div>
           ) : (
             <>
-              <div className="flex-shrink-0 border-b border-slate-700 bg-slate-800/30 px-6 py-3 flex items-center justify-between">
-                <h3 className="text-xs font-medium text-slate-300">Generated Output</h3>
+              <div className="flex-shrink-0 border-b border-codex-border bg-codex-surface/50 px-6 py-3 flex items-center justify-between">
+                <h3 className="text-xs font-medium text-codex-text-secondary">Generated Output</h3>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={handleCopyToClipboard}
                     className={`px-2 py-1 text-xs transition-colors ${
                       copied
                         ? 'text-green-400'
-                        : 'text-slate-400 hover:text-white'
+                        : 'text-codex-text-secondary hover:text-codex-text-primary'
                     }`}
                     title="Copy to clipboard"
                   >
@@ -791,14 +791,14 @@ export default function FrameworkGenerator({
                   </button>
                   <button
                     onClick={handleDownloadMarkdown}
-                    className="px-2 py-1 text-xs text-slate-400 hover:text-white transition-colors"
+                    className="px-2 py-1 text-xs text-codex-text-secondary hover:text-codex-text-primary transition-colors"
                     title="Download as markdown"
                   >
                     ⬇️ Download
                   </button>
                   <button
                     onClick={() => setShowSaveDialog(true)}
-                    className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded transition-colors"
+                    className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-codex-text-primary text-xs font-medium rounded transition-colors"
                   >
                     Save
                   </button>
@@ -812,7 +812,7 @@ export default function FrameworkGenerator({
 
               {/* Refinement Chat Toggle */}
               {!showRefinementChat && !isGenerating && (
-                <div className="flex-shrink-0 border-t border-slate-700 p-3 bg-slate-800/20">
+                <div className="flex-shrink-0 border-t border-codex-border p-3 bg-codex-surface/40">
                   <button
                     onClick={() => setShowRefinementChat(true)}
                     className="w-full px-4 py-2 bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 text-indigo-300 text-sm font-medium rounded transition-colors"
@@ -824,15 +824,15 @@ export default function FrameworkGenerator({
 
               {/* Refinement Chat Interface */}
               {showRefinementChat && (
-                <div className="flex-1 flex flex-col border-t border-slate-700 bg-slate-800/10 min-h-0">
+                <div className="flex-1 flex flex-col border-t border-codex-border bg-codex-surface/10 min-h-0">
                   {/* Chat Messages */}
                   <div className="flex-1 overflow-y-auto p-4 space-y-3">
                     {refinementMessages.map((msg, idx) => (
                       <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                         <div className={`max-w-[80%] px-4 py-2 rounded-lg text-sm ${
                           msg.role === 'user'
-                            ? 'bg-indigo-600 text-white'
-                            : 'bg-slate-700 text-slate-200'
+                            ? 'bg-indigo-600 text-codex-text-primary'
+                            : 'bg-codex-surface text-slate-200'
                         }`}>
                           {msg.content}
                         </div>
@@ -841,7 +841,7 @@ export default function FrameworkGenerator({
                   </div>
 
                   {/* Chat Input */}
-                  <div className="flex-shrink-0 p-4 border-t border-slate-700">
+                  <div className="flex-shrink-0 p-4 border-t border-codex-border">
                     {/* Document Selection */}
                     <div className="mb-2 flex gap-2 flex-wrap">
                       {availableDocs.map(doc => (
@@ -856,8 +856,8 @@ export default function FrameworkGenerator({
                           }}
                           className={`px-2 py-1 text-xs rounded transition-colors ${
                             selectedRefinementDocs.includes(doc.id)
-                              ? 'bg-indigo-600 text-white'
-                              : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                              ? 'bg-indigo-600 text-codex-text-primary'
+                              : 'bg-codex-surface text-codex-text-secondary hover:bg-slate-600'
                           }`}
                         >
                           📄 {doc.name}
@@ -873,12 +873,12 @@ export default function FrameworkGenerator({
                         onKeyPress={(e) => e.key === 'Enter' && !isRefining && handleRefinement()}
                         placeholder="Ask for changes or clarifications..."
                         disabled={isRefining}
-                        className="flex-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+                        className="flex-1 px-3 py-2 bg-codex-surface border border-codex-border rounded text-codex-text-primary text-sm placeholder-codex-text-muted focus:outline-none focus:ring-2 focus:ring-codex-accent disabled:opacity-50"
                       />
                       <button
                         onClick={handleRefinement}
                         disabled={isRefining || !refinementInput.trim()}
-                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-700 disabled:cursor-not-allowed text-white text-sm font-medium rounded transition-colors"
+                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-codex-surface disabled:cursor-not-allowed text-codex-text-primary text-sm font-medium rounded transition-colors"
                       >
                         {isRefining ? '...' : 'Send'}
                       </button>
@@ -888,7 +888,7 @@ export default function FrameworkGenerator({
                           setRefinementMessages([]);
                           setRefinementInput('');
                         }}
-                        className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded transition-colors"
+                        className="px-3 py-2 bg-codex-surface hover:bg-slate-600 text-codex-text-primary text-sm rounded transition-colors"
                       >
                         ✕
                       </button>
@@ -904,25 +904,25 @@ export default function FrameworkGenerator({
       {/* Save Dialog */}
       {showSaveDialog && (
         <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-slate-800 border border-slate-700 rounded-lg p-6 w-96">
-            <h3 className="text-sm font-semibold text-white mb-4">Save Framework Output</h3>
+          <div className="bg-codex-surface border border-codex-border rounded-lg p-6 w-96">
+            <h3 className="text-sm font-semibold text-codex-text-primary mb-4">Save Framework Output</h3>
             <input
               type="text"
               value={outputName}
               onChange={(e) => setOutputName(e.target.value)}
               placeholder="Output name"
-              className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-white text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-3 py-2 bg-codex-bg border border-codex-border rounded text-codex-text-primary text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-codex-accent"
             />
             <div className="flex gap-2">
               <button
                 onClick={() => setShowSaveDialog(false)}
-                className="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded transition-colors"
+                className="flex-1 px-4 py-2 bg-codex-surface hover:bg-slate-600 text-codex-text-primary text-sm rounded transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSaveOutput}
-                className="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded transition-colors"
+                className="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-codex-text-primary text-sm font-medium rounded transition-colors"
               >
                 Save
               </button>

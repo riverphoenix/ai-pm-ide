@@ -32,51 +32,44 @@ export default function FrameworksHome({ onSelectFramework }: FrameworksHomeProp
     : null;
 
   return (
-    <div className="flex-1 flex flex-col bg-slate-900 overflow-hidden">
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }} className="bg-codex-bg">
       {/* Header */}
-      <div className="flex-shrink-0 border-b border-slate-700 bg-slate-800/30 px-6 py-4">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
+      <div style={{ flexShrink: 0 }} className="px-8 pt-8 pb-4">
+        <div className="flex items-start justify-between mb-4">
+          <div>
             {selectedCategory && (
               <button
                 onClick={() => setSelectedCategoryId(null)}
-                className="text-slate-400 hover:text-white transition-colors"
+                className="text-sm text-codex-text-secondary hover:text-codex-text-primary transition-colors mb-2 block"
               >
                 ← Back
               </button>
             )}
-            <div>
-              <h1 className="text-xl font-bold text-white mb-1">
-                {selectedCategory ? selectedCategory.name : 'PM Frameworks'}
-              </h1>
-              <p className="text-xs text-slate-400">
-                {selectedCategory
-                  ? `${selectedCategory.frameworks.length} frameworks in this category`
-                  : `${stats.totalFrameworks} frameworks across ${stats.totalCategories} categories`
-                }
-              </p>
-            </div>
+            <h1 className="text-2xl font-semibold text-codex-text-primary">
+              {selectedCategory ? selectedCategory.name : 'Frameworks'}
+            </h1>
+            <p className="text-sm text-codex-text-secondary mt-1">
+              {selectedCategory
+                ? `${selectedCategory.frameworks.length} frameworks in this category`
+                : `${stats.totalFrameworks} frameworks across ${stats.totalCategories} categories. ${stats.visualFrameworks} with visual generation.`
+              }
+            </p>
           </div>
-          {!selectedCategory && (
-            <div className="text-xs text-slate-500">
-              {stats.visualFrameworks} with visual generation
-            </div>
-          )}
         </div>
 
         {/* Search Bar */}
-        <div className="relative">
+        <div className="relative max-w-md">
           <input
             type="text"
             placeholder="Search frameworks..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            className="w-full px-3 py-2 bg-codex-surface border border-codex-border rounded-md text-codex-text-primary text-sm placeholder-codex-text-muted focus:outline-none focus:ring-1 focus:ring-codex-accent"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-codex-text-muted hover:text-codex-text-primary"
             >
               ✕
             </button>
@@ -84,14 +77,14 @@ export default function FrameworksHome({ onSelectFramework }: FrameworksHomeProp
         </div>
 
         {filteredContent.showingResults && (
-          <div className="mt-2 text-xs text-slate-400">
+          <div className="mt-2 text-xs text-codex-text-muted">
             Found {filteredContent.categories.reduce((sum, cat) => sum + cat.frameworks.length, 0)} frameworks
           </div>
         )}
       </div>
 
       {/* Categories Grid */}
-      <div className="flex-1 overflow-y-auto p-6">
+      <div style={{ flex: 1, overflowY: 'auto' }} className="px-8 pb-8">
         {selectedCategory ? (
           // Show frameworks in selected category
           <div className="max-w-4xl">
@@ -100,12 +93,12 @@ export default function FrameworksHome({ onSelectFramework }: FrameworksHomeProp
                 <div
                   key={framework.id}
                   onClick={() => onSelectFramework(framework.id, selectedCategory.id)}
-                  className="bg-slate-800/40 border border-slate-700 rounded-lg p-5 hover:bg-slate-800/60 hover:border-indigo-500/50 transition-all cursor-pointer"
+                  className="bg-codex-surface/60 border border-codex-border rounded-lg p-5 hover:bg-codex-surface-hover hover:border-codex-accent/50 transition-all duration-200 cursor-pointer"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <span className="text-2xl">{framework.icon}</span>
-                      <h3 className="text-sm font-semibold text-white">
+                      <h3 className="text-sm font-semibold text-codex-text-primary">
                         {framework.name}
                       </h3>
                     </div>
@@ -115,7 +108,7 @@ export default function FrameworksHome({ onSelectFramework }: FrameworksHomeProp
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-slate-400 leading-relaxed">
+                  <p className="text-[10px] text-codex-text-muted leading-relaxed">
                     {framework.description}
                   </p>
                 </div>
@@ -128,7 +121,7 @@ export default function FrameworksHome({ onSelectFramework }: FrameworksHomeProp
             {categories.map((category) => (
               <div
                 key={category.id}
-                className="bg-slate-800/40 border border-slate-700 rounded-lg p-5 hover:bg-slate-800/60 hover:border-indigo-500/50 transition-all cursor-pointer group"
+                className="bg-codex-surface/60 border border-codex-border rounded-lg p-5 hover:bg-codex-surface-hover hover:border-codex-accent/50 transition-all duration-200 cursor-pointer group"
                 onClick={() => {
                   // If only 1 framework, open it directly
                   if (category.frameworks.length === 1) {
@@ -141,29 +134,29 @@ export default function FrameworksHome({ onSelectFramework }: FrameworksHomeProp
               >
                 <div className="flex items-start justify-between mb-3">
                   <div className="text-3xl">{category.icon}</div>
-                  <div className="px-2 py-1 bg-slate-700/50 rounded text-xs font-medium text-slate-300">
+                  <div className="px-2 py-1 bg-codex-surface/50 rounded text-xs font-medium text-codex-text-secondary">
                     {category.frameworks.length} frameworks
                   </div>
                 </div>
-                <h3 className="text-sm font-semibold text-white mb-1 group-hover:text-indigo-300 transition-colors">
+                <h3 className="text-sm font-semibold text-codex-text-primary mb-1 group-hover:text-codex-accent transition-colors">
                   {category.name}
                 </h3>
-                <p className="text-xs text-slate-400 leading-relaxed">
+                <p className="text-[10px] text-codex-text-muted leading-relaxed">
                   {category.description}
                 </p>
                 {category.frameworks.length > 0 && (
-                  <div className="mt-3 pt-3 border-t border-slate-700/50">
+                  <div className="mt-3 pt-3 border-t border-codex-border/50">
                     <div className="flex flex-wrap gap-1">
                       {category.frameworks.slice(0, 3).map((fw) => (
                         <span
                           key={fw.id}
-                          className="text-[10px] px-2 py-1 bg-slate-700/30 text-slate-400 rounded"
+                          className="text-[10px] px-2 py-1 bg-codex-surface/30 text-codex-text-secondary rounded"
                         >
                           {fw.name}
                         </span>
                       ))}
                       {category.frameworks.length > 3 && (
-                        <span className="text-[10px] px-2 py-1 text-slate-500">
+                        <span className="text-[10px] px-2 py-1 text-codex-text-muted">
                           +{category.frameworks.length - 3} more
                         </span>
                       )}
@@ -180,8 +173,8 @@ export default function FrameworksHome({ onSelectFramework }: FrameworksHomeProp
               <div key={category.id}>
                 <div className="flex items-center gap-2 mb-3">
                   <span className="text-2xl">{category.icon}</span>
-                  <h2 className="text-sm font-semibold text-white">{category.name}</h2>
-                  <span className="text-xs text-slate-500">
+                  <h2 className="text-sm font-semibold text-codex-text-primary">{category.name}</h2>
+                  <span className="text-xs text-codex-text-muted">
                     ({category.frameworks.length})
                   </span>
                 </div>
@@ -190,12 +183,12 @@ export default function FrameworksHome({ onSelectFramework }: FrameworksHomeProp
                     <div
                       key={framework.id}
                       onClick={() => onSelectFramework(framework.id, category.id)}
-                      className="bg-slate-800/40 border border-slate-700 rounded-lg p-4 hover:bg-slate-800/60 hover:border-indigo-500/50 transition-all cursor-pointer"
+                      className="bg-codex-surface/60 border border-codex-border rounded-lg p-4 hover:bg-codex-surface-hover hover:border-codex-accent/50 transition-all duration-200 cursor-pointer"
                     >
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex items-center gap-2">
                           <span className="text-xl">{framework.icon}</span>
-                          <h3 className="text-sm font-semibold text-white">
+                          <h3 className="text-sm font-semibold text-codex-text-primary">
                             {framework.name}
                           </h3>
                         </div>
@@ -205,7 +198,7 @@ export default function FrameworksHome({ onSelectFramework }: FrameworksHomeProp
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-slate-400">
+                      <p className="text-[10px] text-codex-text-muted">
                         {framework.description}
                       </p>
                     </div>
@@ -219,8 +212,8 @@ export default function FrameworksHome({ onSelectFramework }: FrameworksHomeProp
         {filteredContent.showingResults && filteredContent.categories.length === 0 && (
           <div className="text-center py-12">
             <div className="text-4xl mb-3">🔍</div>
-            <h3 className="text-sm font-semibold text-white mb-1">No frameworks found</h3>
-            <p className="text-xs text-slate-400">
+            <h3 className="text-sm font-semibold text-codex-text-primary mb-1">No frameworks found</h3>
+            <p className="text-[10px] text-codex-text-muted">
               Try a different search term
             </p>
           </div>
