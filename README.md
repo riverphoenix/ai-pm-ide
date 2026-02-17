@@ -21,7 +21,7 @@ PM IDE enables product managers to:
 - **Database**: SQLite with CASCADE delete patterns
 - **Diagrams**: Mermaid for Customer Journey Maps and visual frameworks
 
-## ✅ Current Status: Phase 1 Complete (Codex UI Redesign)
+## ✅ Current Status: Phase 4 Complete (Framework Expansion + Editing)
 
 ### Core Features Implemented
 
@@ -39,35 +39,49 @@ PM IDE enables product managers to:
 - Size tracking and content display
 
 #### 3. **Framework Generation (AI-Driven)** ✅
-- **8 frameworks implemented** across 7 categories:
-  - **Strategy**: Blue Ocean Strategy
-  - **Prioritization**: RICE Prioritization, ICE Scoring
-  - **Discovery**: Customer Journey Map
-  - **Development**: PRD Template
-  - **Execution**: Sprint Planning
-  - **Decision**: DACI Decision Framework
-  - **Communication**: Stakeholder Update
+- **45 frameworks** across 7 categories (Strategy, Prioritization, Discovery, Development, Execution, Decision, Communication)
 - **Context-driven generation**: Upload documents + user prompt → AI generates complete framework output
 - **Visual generation**: Mermaid diagrams for Customer Journey Maps
 - **Save/Export**: Save to library, download markdown, copy to clipboard
+
+#### 3b. **Framework Management (Phase 4)** ✅
+- **SQLite-backed frameworks**: All definitions stored in database with full CRUD
+- **Prompt editing**: Monaco editor for customizing system prompts and guiding questions
+- **Framework Manager**: Browse, create, edit, duplicate, and delete frameworks
+- **Category Manager**: Create custom categories, edit existing ones
+- **Reset to Default**: Restore built-in frameworks from seed data
+- **Search**: Full-text search across framework names and descriptions
 
 #### 4. **Outputs Library** ✅
 - View all saved framework outputs
 - Filter by category (Strategy, Prioritization, etc.)
 - Search across output names and content
 - Preview with rich markdown rendering + Mermaid diagrams
-- Delete, copy, or download any output
 
 #### 5. **Chat Interface** ✅
 - GPT-5 chat integration with streaming responses
 - Conversation history per project
 - Token usage tracking and cost calculation
 - Model selector (GPT-5 / GPT-5 Mini / GPT-5 Nano)
-- Rich markdown rendering with code highlighting
 
-#### 6. **Settings** ✅
+#### 6. **Documents Explorer (Phase 2)** ✅
+- **Folder tree**: Hierarchical file management with unlimited depth
+- **Drag & drop**: Move files between folders with @dnd-kit
+- **Search**: Fuzzy search across all documents and outputs
+- **Favorites**: Star items for quick access
+- **Folder colors**: 6 preset color labels for organization
+- **Inline rename**: Double-click to rename files and folders
+- **Breadcrumb navigation**: Path display above preview panel
+
+#### 7. **Console Integration (Phase 3)** ✅
+- **Command Palette (Cmd+K)**: Fuzzy-search all commands, keyboard navigation, shortcut hints
+- **Global Keyboard Shortcuts**: Cmd+1-5 (tabs), Cmd+` (terminal), Cmd+B (sidebar)
+- **Terminal Panel**: Execute shell commands, command history, exit code display
+- **Resizable Bottom Panel**: Drag-to-resize with Terminal/Output tabs
+- **Sidebar Toggle**: Show/hide sidebar with keyboard or button
+
+#### 8. **Settings** ✅
 - Secure API key storage in system keychain
-- Dark/light theme toggle
 - User profile context (name, role, company)
 
 ### Architecture
@@ -80,18 +94,25 @@ PM IDE enables product managers to:
 │  │                                                    │ │
 │  │  ├─ FrameworksHome (category browser)            │ │
 │  │  ├─ FrameworkGenerator (AI generation)           │ │
+│  │  ├─ FrameworkManager (CRUD + editing)            │ │
+│  │  ├─ FrameworkCustomizer (prompt editor)          │ │
+│  │  ├─ CategoryManager (category CRUD)              │ │
 │  │  ├─ ContextManager (document management)         │ │
 │  │  ├─ OutputsLibrary (saved outputs)               │ │
+│  │  ├─ DocumentsExplorer (folder tree + preview)    │ │
 │  │  ├─ ChatInterface (GPT-5 chat)                   │ │
+│  │  ├─ CommandPalette (Cmd+K quick actions)         │ │
+│  │  ├─ BottomPanel (terminal + output)              │ │
 │  │  └─ Settings (API keys, preferences)             │ │
 │  └────────────────────────────────────────────────────┘ │
 │                          ↕                              │
 │  ┌────────────────────────────────────────────────────┐ │
 │  │              Tauri Core (Rust)                     │ │
 │  │                                                    │ │
-│  │  ├─ IPC Commands (frontend ↔ backend)           │ │
-│  │  ├─ SQLite Database                              │ │
-│  │  ├─ File System Operations                       │ │
+│  │  ├─ IPC Commands (51 commands)                   │ │
+│  │  ├─ SQLite Database (projects, folders, docs,    │ │
+│  │  │   frameworks, categories)                     │ │
+│  │  ├─ Shell Command Execution                      │ │
 │  │  └─ Security (API key storage)                   │ │
 │  └────────────────────────────────────────────────────┘ │
 │                          ↕                              │
@@ -147,31 +168,47 @@ pm-ide/
 │   ├── components/               # React components
 │   │   ├── ChatInterface.tsx     # GPT-5 chat UI
 │   │   ├── FrameworkGenerator.tsx # Framework generation UI
+│   │   ├── FrameworkManager.tsx  # Framework CRUD management
+│   │   ├── FrameworkCustomizer.tsx # Prompt editor slide-over
+│   │   ├── CategoryManager.tsx   # Category CRUD modal
+│   │   ├── PromptEditor.tsx      # Monaco editor wrapper
+│   │   ├── FolderTree.tsx        # Drag-and-drop folder tree
+│   │   ├── TreeItem.tsx          # Individual tree node
+│   │   ├── CommandPalette.tsx    # Cmd+K command palette
+│   │   ├── BottomPanel.tsx       # Terminal/output panel
+│   │   ├── TerminalView.tsx      # Shell command terminal
+│   │   ├── TopActionBar.tsx      # IDE action buttons
+│   │   ├── ResizableDivider.tsx  # Drag-to-resize panels
 │   │   ├── MermaidRenderer.tsx   # Mermaid diagram renderer
 │   │   └── MarkdownWithMermaid.tsx # Custom markdown renderer
+│   ├── hooks/                    # Custom React hooks
+│   │   └── useKeyboardShortcuts.ts # Global keyboard shortcuts
 │   ├── lib/                      # Utilities and helpers
-│   │   ├── db.ts                 # Database client
 │   │   ├── ipc.ts                # Tauri IPC wrappers
 │   │   ├── types.ts              # TypeScript types
+│   │   ├── shortcuts.ts          # Keyboard shortcut registry
+│   │   ├── commandRegistry.ts    # Command palette definitions
 │   │   └── frameworks.ts         # Framework loader utility
 │   ├── pages/                    # Page components
 │   │   ├── ProjectView.tsx       # Main project workspace
+│   │   ├── DocumentsExplorer.tsx # Folder tree + preview panel
 │   │   ├── FrameworksHome.tsx    # Framework category browser
 │   │   ├── ContextManager.tsx    # Document management
 │   │   └── OutputsLibrary.tsx    # Saved outputs viewer
-│   └── frameworks/               # Framework JSON definitions
-│       ├── strategy/             # Strategy frameworks (Blue Ocean, etc.)
-│       ├── prioritization/       # RICE, ICE, etc.
-│       ├── discovery/            # Customer Journey Map, etc.
-│       ├── development/          # PRD Template, etc.
-│       ├── execution/            # Sprint Planning, etc.
-│       ├── decision/             # DACI, etc.
-│       └── communication/        # Stakeholder Update, etc.
+│   └── frameworks/               # Framework JSON definitions (seed data)
+│       ├── categories.json       # 7 category definitions
+│       ├── strategy/             # 8 frameworks
+│       ├── prioritization/       # 6 frameworks
+│       ├── discovery/            # 8 frameworks
+│       ├── development/          # 5 frameworks
+│       ├── execution/            # 6 frameworks
+│       ├── decision/             # 5 frameworks
+│       └── communication/        # 7 frameworks
 ├── src-tauri/                    # Tauri / Rust backend
 │   └── src/
 │       ├── main.rs               # Entry point
-│       ├── commands.rs           # IPC commands (projects, docs, outputs)
-│       └── db.rs                 # SQLite operations
+│       ├── lib.rs                # Command registration (51 commands)
+│       └── commands.rs           # All IPC commands + SQLite schema
 ├── python-sidecar/               # Python FastAPI server
 │   ├── main.py                   # FastAPI app
 │   ├── openai_client.py          # OpenAI API client
@@ -193,37 +230,80 @@ CREATE TABLE projects (
 );
 ```
 
-#### Context Documents
+#### Folders (Phase 2)
+```sql
+CREATE TABLE folders (
+    id TEXT PRIMARY KEY NOT NULL,
+    project_id TEXT NOT NULL,
+    parent_id TEXT,           -- NULL for root
+    name TEXT NOT NULL,
+    color TEXT,               -- red, orange, yellow, green, blue, purple
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+    FOREIGN KEY (parent_id) REFERENCES folders(id) ON DELETE CASCADE
+);
+```
+
+#### Context Documents (with folder support)
 ```sql
 CREATE TABLE context_documents (
     id TEXT PRIMARY KEY NOT NULL,
     project_id TEXT NOT NULL,
     name TEXT NOT NULL,
-    type TEXT NOT NULL,  -- 'pdf', 'url', 'google_doc', 'text'
+    type TEXT NOT NULL,       -- 'pdf', 'url', 'google_doc', 'text'
     content TEXT NOT NULL,
-    url TEXT,
-    is_global INTEGER NOT NULL DEFAULT 0,  -- Global context flag
-    size_bytes INTEGER NOT NULL DEFAULT 0,
+    folder_id TEXT,           -- NULL = root level
+    is_favorite INTEGER NOT NULL DEFAULT 0,
+    tags TEXT DEFAULT '[]',
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+);
+```
+
+#### Command History (Phase 3)
+```sql
+CREATE TABLE command_history (
+    id TEXT PRIMARY KEY NOT NULL,
+    project_id TEXT NOT NULL,
+    command TEXT NOT NULL,
+    output TEXT NOT NULL,
+    exit_code INTEGER NOT NULL,
     created_at INTEGER NOT NULL,
     FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
 );
 ```
 
-#### Framework Outputs
+#### Framework Categories (Phase 4)
 ```sql
-CREATE TABLE framework_outputs (
+CREATE TABLE framework_categories (
     id TEXT PRIMARY KEY NOT NULL,
-    project_id TEXT NOT NULL,
-    framework_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL,
+    icon TEXT NOT NULL,
+    is_builtin INTEGER NOT NULL DEFAULT 1,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+);
+```
+
+#### Framework Definitions (Phase 4)
+```sql
+CREATE TABLE framework_definitions (
+    id TEXT PRIMARY KEY NOT NULL,
     category TEXT NOT NULL,
     name TEXT NOT NULL,
-    user_prompt TEXT NOT NULL,
-    context_doc_ids TEXT NOT NULL,  -- JSON array of document IDs
-    generated_content TEXT NOT NULL,
-    format TEXT NOT NULL DEFAULT 'markdown',
+    description TEXT NOT NULL,
+    icon TEXT NOT NULL,
+    example_output TEXT NOT NULL DEFAULT '',
+    system_prompt TEXT NOT NULL DEFAULT '',
+    guiding_questions TEXT NOT NULL DEFAULT '[]',
+    supports_visuals INTEGER NOT NULL DEFAULT 0,
+    visual_instructions TEXT,
+    is_builtin INTEGER NOT NULL DEFAULT 0,
+    sort_order INTEGER NOT NULL DEFAULT 0,
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL,
-    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+    FOREIGN KEY (category) REFERENCES framework_categories(id)
 );
 ```
 
@@ -251,10 +331,16 @@ Each framework is defined in JSON format with:
 
 ### Adding New Frameworks
 
-1. Create a JSON file in the appropriate category folder (`src/frameworks/{category}/`)
-2. Follow the schema above with all required fields
-3. For visual frameworks, set `supports_visuals: true` and provide `visual_instructions`
-4. The framework will be automatically loaded and available in the UI
+**Via UI (recommended):**
+1. Go to Frameworks tab → click "Manage"
+2. Click "New Framework" → fill in name, category, description, icon
+3. Edit the system prompt using the built-in Monaco editor
+4. Add guiding questions and example output
+
+**Via seed data (built-in):**
+1. Create a JSON file in `src/frameworks/{category}/`
+2. Add an `include_str!` entry in `commands.rs` (both `seed_frameworks` and `reset_framework_def`)
+3. The framework will be seeded on first launch via `INSERT OR IGNORE`
 
 ## 🚀 API Endpoints
 
@@ -284,19 +370,23 @@ Python sidecar runs on `http://127.0.0.1:8000` and provides:
 
 ✅ **Project Management** - Create unlimited projects
 ✅ **Context Documents** - Upload PDFs, fetch URLs, import Google Docs
-✅ **AI Framework Generation** - 8 frameworks with context-driven prompts
+✅ **AI Framework Generation** - 45 frameworks with context-driven prompts
+✅ **Framework Management** - Create, edit, duplicate, delete frameworks with Monaco editor
 ✅ **Visual Diagrams** - Mermaid rendering for Customer Journey Maps
 ✅ **Outputs Library** - Save, search, filter, and view all outputs
-✅ **Global Context** - Documents available to all prompts
 ✅ **Document Parsing** - Automatic content extraction (PDF, HTML)
 ✅ **Chat Interface** - GPT-5 chat with streaming, history, cost tracking
-✅ **Settings** - Secure API key storage, theme toggle
+✅ **Documents Explorer** - Folder tree, drag-and-drop, search, favorites, colors
+✅ **Command Palette** - Cmd+K with fuzzy search and keyboard navigation
+✅ **Keyboard Shortcuts** - Cmd+1-5 tabs, Cmd+` terminal, Cmd+B sidebar
+✅ **Terminal Panel** - Execute shell commands with history
+✅ **Settings** - Secure API key storage, user profile
 
 ## 🔮 Roadmap: 7-Phase Transformation Plan
 
 **📋 Full Implementation Plan**: [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)
 **Timeline**: 22 weeks (~5.5 months)
-**Status**: Phase 0 (MVP) ✅ | Phase 1 (UI Redesign) ✅
+**Status**: Phase 0 (MVP) ✅ | Phase 1 (UI) ✅ | Phase 2 (Files) ✅ | Phase 3 (Console) ✅ | Phase 4 (Frameworks) ✅
 
 ---
 
@@ -316,87 +406,65 @@ Transformed the interface into a modern, agent-native workspace inspired by Open
 
 ---
 
-### **Phase 2: File System & Project Structure (3-4 weeks)** - VSCode-Like 📁
-**Status**: Not Started
+### **Phase 2: File System & Project Structure (3-4 weeks)** - VSCode-Like 📁 ✅
+**Status**: Complete
 
-Add VSCode-style file management with folder tree and organization.
+Added VSCode-style file management with folder tree and organization.
 
-**Key Features**:
-- 🌲 **Folder Tree**: Unlimited depth, expandable/collapsible
-- 🎯 **Drag & Drop**: Move files and folders with visual feedback
-- ⚙️ **File Operations**: Create, rename, delete, move, duplicate
-- 🔍 **Smart Search**: Fuzzy search across all files
-- 🏷️ **Metadata**: Tags, favorites, color labels
-
-**Database Changes**:
-```sql
-CREATE TABLE folders (
-    id TEXT PRIMARY KEY,
-    project_id TEXT NOT NULL,
-    parent_id TEXT,
-    name TEXT NOT NULL
-);
-```
-
-**Success Metrics**:
-- Support 1000+ files without lag
-- Tree navigation 3x faster than flat list
-- Drag & drop success rate >95%
+**Completed**:
+- 🌲 **Folder Tree**: Hierarchical folders with expand/collapse, depth indicators
+- 🎯 **Drag & Drop**: @dnd-kit integration with visual drop targets
+- ⚙️ **File Operations**: Create folders, rename (inline), delete, move to folder
+- 🔍 **Fuzzy Search**: Backend SQL LIKE search across documents and outputs
+- 🏷️ **Metadata**: Favorites (star toggle), 6 folder color labels, breadcrumbs
+- 📄 **Preview Panel**: Split view with content preview for selected items
 
 ---
 
-### **Phase 3: Console Integration (2-3 weeks)** - Power User Features ⌨️
-**Status**: Not Started
+### **Phase 3: Console Integration (2-3 weeks)** - Power User Features ⌨️ ✅
+**Status**: Complete
 
-Add IDE-style terminal, command palette, and keyboard shortcuts.
+Added IDE-style terminal, command palette, and keyboard shortcuts.
 
-**Key Features**:
-- 💻 **Terminal Panel**: Execute shell commands at bottom of workspace
-- 🎯 **Command Palette (Cmd+K)**: Universal quick actions, fuzzy search
-- ⚡ **Keyboard Shortcuts**: Full system (Cmd+P file open, Cmd+B sidebar, etc.)
-- 📊 **Output Management**: Tabs for Terminal, Output, Console, Problems
+**Completed**:
+- 💻 **Terminal Panel**: Resizable bottom panel with shell command execution
+- 🎯 **Command Palette (Cmd+K)**: Fuzzy-search commands with keyboard navigation
+- ⚡ **Keyboard Shortcuts**: 8 shortcuts (tabs, terminal, sidebar, palette)
+- 📊 **Bottom Panel**: Terminal/Output tabs, drag-to-resize, close button
 
 **Keyboard Shortcuts**:
 | Shortcut | Action |
 |----------|--------|
 | `Cmd+K` | Command palette |
-| `Cmd+P` | Quick file open |
+| `Cmd+1-5` | Switch tabs (Chat, Documents, Frameworks, Context, Outputs) |
 | `Cmd+B` | Toggle sidebar |
-| `Cmd+J` | Toggle terminal |
-| `Cmd+Shift+F` | Global search |
-
-**Success Metrics**:
-- Command palette opens <100ms
-- 50% of power users adopt keyboard shortcuts
-- Terminal executes correctly 99%+ of time
+| `` Cmd+` `` | Toggle terminal |
 
 ---
 
-### **Phase 4: Framework Expansion (4-6 weeks)** - Complete PM Toolkit 🎯
-**Status**: Not Started (8/45 frameworks complete)
+### **Phase 4: Framework Expansion + Editing (4-6 weeks)** - Complete PM Toolkit 🎯 ✅
+**Status**: Complete
 
-Expand from 8 to 45 modern PM frameworks with full customization.
+Expanded from 8 to 45 frameworks, migrated to SQLite, added full editing and management UI.
 
-**Key Features**:
-- 📚 **37 New Frameworks**: MoSCoW, Kano, JTBD, Empathy Maps, OKRs, RACI, etc.
-- ✏️ **Editable Prompts**: Edit system prompts with Monaco editor
-- 🏷️ **Custom Categories**: Add/edit/delete framework categories
-- 🎨 **Visual Frameworks**: Opportunity Solution Trees, User Story Mapping with Mermaid
-- 📋 **Agent Skills Pattern**: Following product-on-purpose/pm-skills specification
+**Completed**:
+- 📚 **45 Frameworks** across 7 categories, all stored in SQLite with full CRUD
+- ✏️ **Monaco Prompt Editor**: Edit system prompts with syntax highlighting and Codex dark theme
+- 🏷️ **Category Management**: Create, edit, and delete custom categories
+- 🔧 **Framework Manager**: Browse, create, edit, duplicate, and delete frameworks
+- 🔄 **Reset to Default**: Restore any built-in framework from seed data
+- 🔍 **Full-text Search**: Search frameworks by name and description
+- 📊 **13 New Rust Commands**: Complete CRUD for categories and framework definitions
+- 🗃️ **Database Migration**: `INSERT OR IGNORE` seeding — existing installs get new frameworks without overwriting customizations
 
-**New Frameworks by Category**:
-- **Strategy** (6): Porter's Five Forces, Value Proposition Canvas, North Star Metric, Ansoff Matrix
-- **Prioritization** (8): MoSCoW, Kano Model, WSJF, Value vs Effort, Cost of Delay, Opportunity Scoring
-- **Discovery** (8): JTBD, Empathy Mapping, User Story Mapping, Personas, Opportunity Solution Tree, Lean Canvas
-- **Development** (4): User Stories, Acceptance Criteria, Technical Specification
-- **Execution** (10): 4Ls Retrospective, Start/Stop/Continue, Pirate Metrics, NPS, HEART, Metrics Dashboard
-- **Decision** (4): RACI, RAPID, Decision Matrix
-- **Communication** (5): Feature Brief, Go-to-Market Plan, Product Roadmap, Executive Summary
-
-**Success Metrics**:
-- All 45 frameworks implemented and tested
-- Users can edit any framework without errors
-- Average 10+ frameworks used per project
+**Frameworks by Category (45 total)**:
+- **Strategy** (8): Business Model Canvas, SWOT, Porter's Five Forces, Lean Canvas, Value Proposition Canvas, Blue Ocean Strategy, Ansoff Matrix, Strategic Planning
+- **Prioritization** (6): RICE, MoSCoW, Kano Model, ICE Scoring, Value-Effort Matrix, Weighted Scoring
+- **Discovery** (8): JTBD, Customer Journey Map, User Personas, Empathy Map, Problem Statement, Competitive Analysis, Survey Design, Feature Audit
+- **Development** (5): Sprint Planning, Technical Spec, Architecture Decision Record, Definition of Done, Release Plan
+- **Execution** (6): OKRs, North Star Metric, KPI Dashboard, Retrospective, Roadmap Template, Success Metrics
+- **Decision** (5): Decision Matrix, RACI, Pre-Mortem, Opportunity Assessment, Trade-Off Analysis
+- **Communication** (7): PRD, User Stories, Stakeholder Update, Launch Plan, Feature Brief, Product Vision, Changelog
 
 ---
 
@@ -491,22 +559,19 @@ Add multi-agent workflows, context memory, and integrations.
 
 ## 📊 Overall Success Metrics
 
-**Current State** (Phase 1 Complete):
-- ✅ 8 frameworks implemented
+**Current State** (Phase 4 Complete):
+- ✅ 45 frameworks across 7 categories with full CRUD
 - ✅ Core features complete (projects, context, generation, outputs, chat)
-- ✅ Mac desktop app with Tauri
-- ✅ Codex-inspired UI redesign complete
+- ✅ Mac desktop app with Tauri + Codex UI
+- ✅ VSCode-like folder tree with drag-and-drop
+- ✅ Command palette, keyboard shortcuts, terminal panel
+- ✅ Framework editing with Monaco editor, category management
+- ✅ 51 Rust IPC commands, SQLite with 7 tables
 
-**Target State** (All Phases):
-- 🎯 45 frameworks covering all PM workflows
-- 🎯 Codex-inspired modern UI with agent-native patterns
-- 🎯 File system with VSCode-like folder tree
-- 🎯 Console, command palette, full keyboard shortcuts
-- 🎯 Prompts library with 30+ reusable templates
-- 🎯 Framework marketplace for community sharing
-- 🎯 Multi-agent orchestration and advanced AI features
-
-**Timeline**: 22 weeks (~5.5 months) from MVP to complete vision
+**Target State** (Remaining Phases):
+- 🎯 Prompts library with 30+ reusable templates (Phase 5)
+- 🎯 Framework marketplace for community sharing (Phase 6)
+- 🎯 Multi-agent orchestration and advanced AI features (Phase 7)
 
 ## 📝 License
 
@@ -537,6 +602,6 @@ Built with ❤️ for Product Managers by Product Managers.
 
 ---
 
-**Status**: Phase 1 Complete | 8/45 Frameworks | Codex UI | Mac Desktop App
-**Version**: 0.2.0-phase1
+**Status**: Phase 4 Complete | 45/45 Frameworks | Codex UI + Console + Framework Editor | Mac Desktop App
+**Version**: 0.5.0-phase4
 **Last Updated**: February 2026

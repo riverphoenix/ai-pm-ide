@@ -1,5 +1,45 @@
 import { invoke } from '@tauri-apps/api/core';
-import { Project, Conversation, Message, Settings, SettingsUpdate, TokenUsage, TokenUsageAggregate, ContextDocument, FrameworkOutput } from './types';
+import { Project, Conversation, Message, Settings, SettingsUpdate, TokenUsage, TokenUsageAggregate, ContextDocument, FrameworkOutput, Folder, SearchResult, CommandHistoryEntry, CommandResult, FrameworkDefinition, FrameworkCategory } from './types';
+
+interface FrameworkDefRow {
+  id: string;
+  category: string;
+  name: string;
+  description: string;
+  icon: string;
+  example_output: string;
+  system_prompt: string;
+  guiding_questions: string;
+  supports_visuals: boolean;
+  visual_instructions: string | null;
+  is_builtin: boolean;
+  sort_order: number;
+  created_at: number;
+  updated_at: number;
+}
+
+interface FrameworkCategoryRow {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  is_builtin: boolean;
+  sort_order: number;
+  created_at: number;
+  updated_at: number;
+}
+
+function parseFrameworkDef(row: FrameworkDefRow): FrameworkDefinition {
+  return {
+    ...row,
+    guiding_questions: JSON.parse(row.guiding_questions || '[]'),
+    visual_instructions: row.visual_instructions || undefined,
+  };
+}
+
+function parseCategoryRow(row: FrameworkCategoryRow): Omit<FrameworkCategory, 'frameworks'> {
+  return row;
+}
 
 export const projectsAPI = {
   async create(name: string, description?: string): Promise<Project> {
@@ -157,6 +197,59 @@ export const modelsAPI = {
   },
 };
 
+export const foldersAPI = {
+  async create(projectId: string, name: string, parentId?: string, color?: string): Promise<Folder> {
+    return await invoke('create_folder', { projectId, name, parentId, color });
+  },
+
+  async list(projectId: string): Promise<Folder[]> {
+    return await invoke('list_folders', { projectId });
+  },
+
+  async get(id: string): Promise<Folder | null> {
+    return await invoke('get_folder', { id });
+  },
+
+  async update(id: string, name?: string, parentId?: string | null, color?: string): Promise<Folder> {
+    return await invoke('update_folder', {
+      id,
+      name,
+      parentId: parentId === null ? '__null__' : parentId,
+      color,
+    });
+  },
+
+  async delete(id: string): Promise<void> {
+    return await invoke('delete_folder', { id });
+  },
+
+  async moveItem(itemId: string, itemType: 'context_doc' | 'framework_output', folderId: string | null): Promise<void> {
+    return await invoke('move_item_to_folder', { itemId, itemType, folderId });
+  },
+
+  async searchItems(projectId: string, query: string): Promise<SearchResult[]> {
+    return await invoke('search_project_items', { projectId, query });
+  },
+
+  async toggleItemFavorite(itemId: string, itemType: 'context_doc' | 'framework_output', isFavorite: boolean): Promise<void> {
+    return await invoke('toggle_item_favorite', { itemId, itemType, isFavorite });
+  },
+
+  async setFolderColor(id: string, color: string | null): Promise<void> {
+    return await invoke('set_folder_color', { id, color });
+  },
+};
+
+export const terminalAPI = {
+  async execute(projectId: string, command: string): Promise<CommandResult> {
+    return await invoke('execute_shell_command', { projectId, command });
+  },
+
+  async getHistory(projectId: string, limit?: number): Promise<CommandHistoryEntry[]> {
+    return await invoke('get_command_history', { projectId, limit: limit || 50 });
+  },
+};
+
 export const contextDocumentsAPI = {
   async create(
     projectId: string,
@@ -195,6 +288,114 @@ export const contextDocumentsAPI = {
   async delete(id: string): Promise<void> {
     return await invoke('delete_context_document', { id });
   }
+};
+
+export const frameworkCategoriesAPI = {
+  async list(): Promise<Omit<FrameworkCategory, 'frameworks'>[]> {
+    const rows: FrameworkCategoryRow[] = await invoke('list_framework_categories');
+    return rows.map(parseCategoryRow);
+  },
+
+  async get(id: string): Promise<Omit<FrameworkCategory, 'frameworks'> | null> {
+    const row: FrameworkCategoryRow | null = await invoke('get_framework_category', { id });
+    return row ? parseCategoryRow(row) : null;
+  },
+
+  async create(name: string, description: string, icon: string): Promise<Omit<FrameworkCategory, 'frameworks'>> {
+    const row: FrameworkCategoryRow = await invoke('create_framework_category', { name, description, icon });
+    return parseCategoryRow(row);
+  },
+
+  async update(id: string, name: string, description: string, icon: string): Promise<Omit<FrameworkCategory, 'frameworks'>> {
+    const row: FrameworkCategoryRow = await invoke('update_framework_category', { id, name, description, icon });
+    return parseCategoryRow(row);
+  },
+
+  async delete(id: string): Promise<void> {
+    return await invoke('delete_framework_category', { id });
+  },
+};
+
+export const frameworkDefsAPI = {
+  async list(category?: string): Promise<FrameworkDefinition[]> {
+    const rows: FrameworkDefRow[] = await invoke('list_framework_defs', { category: category || null });
+    return rows.map(parseFrameworkDef);
+  },
+
+  async get(id: string): Promise<FrameworkDefinition | null> {
+    const row: FrameworkDefRow | null = await invoke('get_framework_def', { id });
+    return row ? parseFrameworkDef(row) : null;
+  },
+
+  async create(params: {
+    category: string;
+    name: string;
+    description: string;
+    icon: string;
+    systemPrompt: string;
+    guidingQuestions: string[];
+    exampleOutput: string;
+    supportsVisuals: boolean;
+    visualInstructions?: string;
+  }): Promise<FrameworkDefinition> {
+    const row: FrameworkDefRow = await invoke('create_framework_def', {
+      category: params.category,
+      name: params.name,
+      description: params.description,
+      icon: params.icon,
+      systemPrompt: params.systemPrompt,
+      guidingQuestions: JSON.stringify(params.guidingQuestions),
+      exampleOutput: params.exampleOutput,
+      supportsVisuals: params.supportsVisuals,
+      visualInstructions: params.visualInstructions || null,
+    });
+    return parseFrameworkDef(row);
+  },
+
+  async update(id: string, params: {
+    category?: string;
+    name?: string;
+    description?: string;
+    icon?: string;
+    systemPrompt?: string;
+    guidingQuestions?: string[];
+    exampleOutput?: string;
+    supportsVisuals?: boolean;
+    visualInstructions?: string | null;
+  }): Promise<FrameworkDefinition> {
+    const row: FrameworkDefRow = await invoke('update_framework_def', {
+      id,
+      category: params.category,
+      name: params.name,
+      description: params.description,
+      icon: params.icon,
+      systemPrompt: params.systemPrompt,
+      guidingQuestions: params.guidingQuestions ? JSON.stringify(params.guidingQuestions) : undefined,
+      exampleOutput: params.exampleOutput,
+      supportsVisuals: params.supportsVisuals,
+      visualInstructions: params.visualInstructions,
+    });
+    return parseFrameworkDef(row);
+  },
+
+  async delete(id: string): Promise<void> {
+    return await invoke('delete_framework_def', { id });
+  },
+
+  async reset(id: string): Promise<FrameworkDefinition> {
+    const row: FrameworkDefRow = await invoke('reset_framework_def', { id });
+    return parseFrameworkDef(row);
+  },
+
+  async search(query: string): Promise<FrameworkDefinition[]> {
+    const rows: FrameworkDefRow[] = await invoke('search_framework_defs', { query });
+    return rows.map(parseFrameworkDef);
+  },
+
+  async duplicate(id: string, newName: string): Promise<FrameworkDefinition> {
+    const row: FrameworkDefRow = await invoke('duplicate_framework_def', { id, newName });
+    return parseFrameworkDef(row);
+  },
 };
 
 export const frameworkOutputsAPI = {

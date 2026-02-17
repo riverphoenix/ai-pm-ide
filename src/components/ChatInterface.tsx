@@ -22,7 +22,7 @@ export default function ChatInterface({
   conversationId: initialConversationId,
   apiKey,
   settings,
-  model = 'gpt-5',
+  model: _model = 'gpt-5',
   onModelChange,
 }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<MessageWithContext[]>([]);

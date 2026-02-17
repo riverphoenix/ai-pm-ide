@@ -6,7 +6,7 @@ type SettingsTab = 'general' | 'profile' | 'usage';
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState<SettingsTab>('general');
-  const [settings, setSettings] = useState<SettingsType | null>(null);
+  const [_settings, setSettings] = useState<SettingsType | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);

@@ -80,6 +80,7 @@ class ContextDocument(BaseModel):
 class GenerateFrameworkRequest(BaseModel):
     project_id: str
     framework_id: str
+    framework_definition: Optional[Dict[str, Any]] = None
     context_documents: List[ContextDocument]
     user_prompt: str
     api_key: str
@@ -318,8 +319,8 @@ async def generate_framework(request: GenerateFrameworkRequest):
     try:
         logger.info(f"Generate framework request: {request.framework_id} for project {request.project_id}")
 
-        # Load framework definition
-        framework = get_framework(request.framework_id)
+        # Use provided definition or load from file
+        framework = request.framework_definition or get_framework(request.framework_id)
         if not framework:
             raise HTTPException(
                 status_code=404,
@@ -417,8 +418,8 @@ async def generate_framework_stream(request: GenerateFrameworkRequest):
         try:
             logger.info(f"Stream generate framework: {request.framework_id} for project {request.project_id}")
 
-            # Load framework definition
-            framework = get_framework(request.framework_id)
+            # Use provided definition or load from file
+            framework = request.framework_definition or get_framework(request.framework_id)
             if not framework:
                 yield f"data: {json.dumps({'type': 'error', 'error': f'Framework {request.framework_id} not found'})}\n\n"
                 return

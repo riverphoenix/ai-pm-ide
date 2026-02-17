@@ -118,6 +118,10 @@ export interface ContextDocument {
   is_global: boolean;
   size_bytes: number;
   created_at: number;
+  folder_id: string | null;
+  tags: string;
+  is_favorite: boolean;
+  sort_order: number;
 }
 
 export interface FrameworkOutput {
@@ -132,6 +136,63 @@ export interface FrameworkOutput {
   format: 'markdown' | 'html';
   created_at: number;
   updated_at: number;
+  folder_id: string | null;
+  tags: string;
+  is_favorite: boolean;
+  sort_order: number;
+}
+
+export interface Folder {
+  id: string;
+  project_id: string;
+  parent_id: string | null;
+  name: string;
+  color: string | null;
+  sort_order: number;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface TreeNode {
+  id: string;
+  name: string;
+  type: 'folder' | 'context_doc' | 'framework_output';
+  parent_id: string | null;
+  sort_order: number;
+  is_favorite: boolean;
+  tags: string[];
+  color?: string;
+  doc_type?: string;
+  category?: string;
+  framework_id?: string;
+  size_bytes?: number;
+  created_at: number;
+  children?: TreeNode[];
+}
+
+export interface SearchResult {
+  id: string;
+  name: string;
+  item_type: string;
+  folder_id: string | null;
+  category: string | null;
+  doc_type: string | null;
+  is_favorite: boolean;
+  created_at: number;
+}
+
+export interface CommandHistoryEntry {
+  id: string;
+  project_id: string;
+  command: string;
+  output: string;
+  exit_code: number;
+  created_at: number;
+}
+
+export interface CommandResult {
+  output: string;
+  exit_code: number;
 }
 
 export interface FrameworkDefinition {
@@ -144,6 +205,11 @@ export interface FrameworkDefinition {
   system_prompt: string;
   guiding_questions: string[];
   supports_visuals: boolean;
+  visual_instructions?: string;
+  is_builtin: boolean;
+  sort_order: number;
+  created_at: number;
+  updated_at: number;
 }
 
 export interface FrameworkCategory {
@@ -151,5 +217,9 @@ export interface FrameworkCategory {
   name: string;
   description: string;
   icon: string;
+  is_builtin: boolean;
+  sort_order: number;
+  created_at: number;
+  updated_at: number;
   frameworks: FrameworkDefinition[];
 }

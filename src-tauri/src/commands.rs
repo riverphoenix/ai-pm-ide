@@ -328,6 +328,106 @@ pub fn init_db(app: &tauri::AppHandle) -> Result<(), String> {
         [],
     ).map_err(|e| format!("Failed to create framework_outputs framework index: {}", e))?;
 
+    // Create folders table
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS folders (
+            id TEXT PRIMARY KEY NOT NULL,
+            project_id TEXT NOT NULL,
+            parent_id TEXT,
+            name TEXT NOT NULL,
+            color TEXT,
+            sort_order INTEGER NOT NULL DEFAULT 0,
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL,
+            FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+            FOREIGN KEY (parent_id) REFERENCES folders(id) ON DELETE CASCADE
+        )",
+        [],
+    ).map_err(|e| format!("Failed to create folders table: {}", e))?;
+
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_folders_project ON folders(project_id)",
+        [],
+    ).map_err(|e| format!("Failed to create folders project index: {}", e))?;
+
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_folders_parent ON folders(parent_id)",
+        [],
+    ).map_err(|e| format!("Failed to create folders parent index: {}", e))?;
+
+    // Migrations: add folder_id, tags, is_favorite, sort_order to context_documents
+    let _ = conn.execute("ALTER TABLE context_documents ADD COLUMN folder_id TEXT", []);
+    let _ = conn.execute("ALTER TABLE context_documents ADD COLUMN tags TEXT DEFAULT '[]'", []);
+    let _ = conn.execute("ALTER TABLE context_documents ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0", []);
+    let _ = conn.execute("ALTER TABLE context_documents ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0", []);
+
+    // Migrations: add folder_id, tags, is_favorite, sort_order to framework_outputs
+    let _ = conn.execute("ALTER TABLE framework_outputs ADD COLUMN folder_id TEXT", []);
+    let _ = conn.execute("ALTER TABLE framework_outputs ADD COLUMN tags TEXT DEFAULT '[]'", []);
+    let _ = conn.execute("ALTER TABLE framework_outputs ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0", []);
+    let _ = conn.execute("ALTER TABLE framework_outputs ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0", []);
+
+    // Create command_history table
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS command_history (
+            id TEXT PRIMARY KEY NOT NULL,
+            project_id TEXT NOT NULL,
+            command TEXT NOT NULL,
+            output TEXT NOT NULL,
+            exit_code INTEGER NOT NULL,
+            created_at INTEGER NOT NULL,
+            FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+        )",
+        [],
+    ).map_err(|e| format!("Failed to create command_history table: {}", e))?;
+
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_command_history_project ON command_history(project_id)",
+        [],
+    ).map_err(|e| format!("Failed to create command_history index: {}", e))?;
+
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS framework_categories (
+            id TEXT PRIMARY KEY NOT NULL,
+            name TEXT NOT NULL,
+            description TEXT NOT NULL,
+            icon TEXT NOT NULL,
+            is_builtin INTEGER NOT NULL DEFAULT 1,
+            sort_order INTEGER NOT NULL DEFAULT 0,
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL
+        )",
+        [],
+    ).map_err(|e| format!("Failed to create framework_categories table: {}", e))?;
+
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS framework_definitions (
+            id TEXT PRIMARY KEY NOT NULL,
+            category TEXT NOT NULL,
+            name TEXT NOT NULL,
+            description TEXT NOT NULL,
+            icon TEXT NOT NULL,
+            example_output TEXT NOT NULL DEFAULT '',
+            system_prompt TEXT NOT NULL DEFAULT '',
+            guiding_questions TEXT NOT NULL DEFAULT '[]',
+            supports_visuals INTEGER NOT NULL DEFAULT 0,
+            visual_instructions TEXT,
+            is_builtin INTEGER NOT NULL DEFAULT 0,
+            sort_order INTEGER NOT NULL DEFAULT 0,
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL,
+            FOREIGN KEY (category) REFERENCES framework_categories(id)
+        )",
+        [],
+    ).map_err(|e| format!("Failed to create framework_definitions table: {}", e))?;
+
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_framework_defs_category ON framework_definitions(category)",
+        [],
+    ).map_err(|e| format!("Failed to create framework_definitions index: {}", e))?;
+
+    seed_frameworks(&conn)?;
+
     // Create default settings if none exist
     let count: i64 = conn.query_row("SELECT COUNT(*) FROM settings", [], |row| row.get(0))
         .map_err(|e| format!("Failed to count settings: {}", e))?;
@@ -341,6 +441,502 @@ pub fn init_db(app: &tauri::AppHandle) -> Result<(), String> {
     }
 
     Ok(())
+}
+
+fn seed_frameworks(conn: &Connection) -> Result<(), String> {
+    let cat_count: i64 = conn.query_row("SELECT COUNT(*) FROM framework_categories", [], |row| row.get(0))
+        .map_err(|e| format!("Failed to count framework_categories: {}", e))?;
+
+    if cat_count > 0 {
+        return Ok(());
+    }
+
+    let now = Utc::now().timestamp();
+    let categories_json = include_str!("../../src/frameworks/categories.json");
+    let categories: Vec<serde_json::Value> = serde_json::from_str(categories_json)
+        .map_err(|e| format!("Failed to parse seed categories: {}", e))?;
+
+    for (i, cat) in categories.iter().enumerate() {
+        conn.execute(
+            "INSERT OR IGNORE INTO framework_categories (id, name, description, icon, is_builtin, sort_order, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, 1, ?5, ?6, ?7)",
+            params![
+                cat["id"].as_str().unwrap_or(""),
+                cat["name"].as_str().unwrap_or(""),
+                cat["description"].as_str().unwrap_or(""),
+                cat["icon"].as_str().unwrap_or(""),
+                i as i32,
+                &now,
+                &now,
+            ],
+        ).map_err(|e| format!("Failed to seed category: {}", e))?;
+    }
+
+    let framework_files: &[&str] = &[
+        // Strategy (8)
+        include_str!("../../src/frameworks/strategy/business-model-canvas.json"),
+        include_str!("../../src/frameworks/strategy/swot.json"),
+        include_str!("../../src/frameworks/strategy/porters-five-forces.json"),
+        include_str!("../../src/frameworks/strategy/lean-canvas.json"),
+        include_str!("../../src/frameworks/strategy/value-proposition-canvas.json"),
+        include_str!("../../src/frameworks/strategy/blue-ocean-strategy.json"),
+        include_str!("../../src/frameworks/strategy/ansoff-matrix.json"),
+        include_str!("../../src/frameworks/strategy/strategic-planning.json"),
+        // Prioritization (6)
+        include_str!("../../src/frameworks/prioritization/rice.json"),
+        include_str!("../../src/frameworks/prioritization/moscow.json"),
+        include_str!("../../src/frameworks/prioritization/kano-model.json"),
+        include_str!("../../src/frameworks/prioritization/ice-scoring.json"),
+        include_str!("../../src/frameworks/prioritization/value-effort-matrix.json"),
+        include_str!("../../src/frameworks/prioritization/weighted-scoring.json"),
+        // Discovery (8)
+        include_str!("../../src/frameworks/discovery/jtbd.json"),
+        include_str!("../../src/frameworks/discovery/customer-journey-map.json"),
+        include_str!("../../src/frameworks/discovery/user-personas.json"),
+        include_str!("../../src/frameworks/discovery/empathy-map.json"),
+        include_str!("../../src/frameworks/discovery/problem-statement.json"),
+        include_str!("../../src/frameworks/discovery/competitive-analysis.json"),
+        include_str!("../../src/frameworks/discovery/survey-design.json"),
+        include_str!("../../src/frameworks/discovery/feature-audit.json"),
+        // Development (5)
+        include_str!("../../src/frameworks/development/sprint-planning.json"),
+        include_str!("../../src/frameworks/development/technical-spec.json"),
+        include_str!("../../src/frameworks/development/architecture-decision-record.json"),
+        include_str!("../../src/frameworks/development/definition-of-done.json"),
+        include_str!("../../src/frameworks/development/release-plan.json"),
+        // Execution (6)
+        include_str!("../../src/frameworks/execution/okrs.json"),
+        include_str!("../../src/frameworks/execution/north-star-metric.json"),
+        include_str!("../../src/frameworks/execution/kpi-dashboard.json"),
+        include_str!("../../src/frameworks/execution/retrospective.json"),
+        include_str!("../../src/frameworks/execution/roadmap-template.json"),
+        include_str!("../../src/frameworks/execution/success-metrics.json"),
+        // Decision Making (5)
+        include_str!("../../src/frameworks/decision/decision-matrix.json"),
+        include_str!("../../src/frameworks/decision/raci.json"),
+        include_str!("../../src/frameworks/decision/pre-mortem.json"),
+        include_str!("../../src/frameworks/decision/opportunity-assessment.json"),
+        include_str!("../../src/frameworks/decision/trade-off-analysis.json"),
+        // Communication (7)
+        include_str!("../../src/frameworks/communication/prd.json"),
+        include_str!("../../src/frameworks/communication/user-stories.json"),
+        include_str!("../../src/frameworks/communication/stakeholder-update.json"),
+        include_str!("../../src/frameworks/communication/launch-plan.json"),
+        include_str!("../../src/frameworks/communication/feature-brief.json"),
+        include_str!("../../src/frameworks/communication/product-vision.json"),
+        include_str!("../../src/frameworks/communication/changelog.json"),
+    ];
+
+    for (i, fw_json) in framework_files.iter().enumerate() {
+        let fw: serde_json::Value = serde_json::from_str(fw_json)
+            .map_err(|e| format!("Failed to parse seed framework: {}", e))?;
+
+        let guiding_questions = fw["guiding_questions"].to_string();
+        let supports_visuals = fw["supports_visuals"].as_bool().unwrap_or(false);
+
+        conn.execute(
+            "INSERT OR IGNORE INTO framework_definitions (id, category, name, description, icon, example_output, system_prompt, guiding_questions, supports_visuals, visual_instructions, is_builtin, sort_order, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, 1, ?11, ?12, ?13)",
+            params![
+                fw["id"].as_str().unwrap_or(""),
+                fw["category"].as_str().unwrap_or(""),
+                fw["name"].as_str().unwrap_or(""),
+                fw["description"].as_str().unwrap_or(""),
+                fw["icon"].as_str().unwrap_or(""),
+                fw["example_output"].as_str().unwrap_or(""),
+                fw["system_prompt"].as_str().unwrap_or(""),
+                &guiding_questions,
+                supports_visuals,
+                fw["visual_instructions"].as_str(),
+                i as i32,
+                &now,
+                &now,
+            ],
+        ).map_err(|e| format!("Failed to seed framework: {}", e))?;
+    }
+
+    Ok(())
+}
+
+fn row_to_category(row: &rusqlite::Row) -> rusqlite::Result<FrameworkCategoryRow> {
+    Ok(FrameworkCategoryRow {
+        id: row.get(0)?,
+        name: row.get(1)?,
+        description: row.get(2)?,
+        icon: row.get(3)?,
+        is_builtin: row.get::<_, i32>(4)? != 0,
+        sort_order: row.get(5)?,
+        created_at: row.get(6)?,
+        updated_at: row.get(7)?,
+    })
+}
+
+fn row_to_framework_def(row: &rusqlite::Row) -> rusqlite::Result<FrameworkDefRow> {
+    Ok(FrameworkDefRow {
+        id: row.get(0)?,
+        category: row.get(1)?,
+        name: row.get(2)?,
+        description: row.get(3)?,
+        icon: row.get(4)?,
+        example_output: row.get(5)?,
+        system_prompt: row.get(6)?,
+        guiding_questions: row.get(7)?,
+        supports_visuals: row.get::<_, i32>(8)? != 0,
+        visual_instructions: row.get(9)?,
+        is_builtin: row.get::<_, i32>(10)? != 0,
+        sort_order: row.get(11)?,
+        created_at: row.get(12)?,
+        updated_at: row.get(13)?,
+    })
+}
+
+const FRAMEWORK_DEF_COLUMNS: &str = "id, category, name, description, icon, example_output, system_prompt, guiding_questions, supports_visuals, visual_instructions, is_builtin, sort_order, created_at, updated_at";
+
+#[tauri::command]
+pub async fn list_framework_categories(app: tauri::AppHandle) -> Result<Vec<FrameworkCategoryRow>, String> {
+    let conn = get_db_connection(&app)?;
+    let mut stmt = conn.prepare(
+        "SELECT id, name, description, icon, is_builtin, sort_order, created_at, updated_at
+         FROM framework_categories ORDER BY sort_order ASC"
+    ).map_err(|e| format!("Failed to prepare statement: {}", e))?;
+
+    let rows = stmt.query_map([], row_to_category)
+        .map_err(|e| format!("Failed to query categories: {}", e))?;
+    let result: Result<Vec<_>, _> = rows.collect();
+    result.map_err(|e| format!("Failed to collect categories: {}", e))
+}
+
+#[tauri::command]
+pub async fn get_framework_category(id: String, app: tauri::AppHandle) -> Result<Option<FrameworkCategoryRow>, String> {
+    let conn = get_db_connection(&app)?;
+    let mut stmt = conn.prepare(
+        "SELECT id, name, description, icon, is_builtin, sort_order, created_at, updated_at
+         FROM framework_categories WHERE id = ?1"
+    ).map_err(|e| format!("Failed to prepare statement: {}", e))?;
+
+    let cat = stmt.query_row(params![&id], row_to_category).optional()
+        .map_err(|e| format!("Failed to get category: {}", e))?;
+    Ok(cat)
+}
+
+#[tauri::command]
+pub async fn create_framework_category(
+    name: String,
+    description: String,
+    icon: String,
+    app: tauri::AppHandle,
+) -> Result<FrameworkCategoryRow, String> {
+    let conn = get_db_connection(&app)?;
+    let id = name.to_lowercase().replace(' ', "-");
+    let now = Utc::now().timestamp();
+
+    let max_order: i32 = conn.query_row(
+        "SELECT COALESCE(MAX(sort_order), -1) FROM framework_categories", [], |row| row.get(0)
+    ).map_err(|e| format!("Failed to get max sort_order: {}", e))?;
+
+    conn.execute(
+        "INSERT INTO framework_categories (id, name, description, icon, is_builtin, sort_order, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, 0, ?5, ?6, ?7)",
+        params![&id, &name, &description, &icon, max_order + 1, &now, &now],
+    ).map_err(|e| format!("Failed to create category: {}", e))?;
+
+    Ok(FrameworkCategoryRow { id, name, description, icon, is_builtin: false, sort_order: max_order + 1, created_at: now, updated_at: now })
+}
+
+#[tauri::command]
+pub async fn update_framework_category(
+    id: String,
+    name: String,
+    description: String,
+    icon: String,
+    app: tauri::AppHandle,
+) -> Result<FrameworkCategoryRow, String> {
+    let conn = get_db_connection(&app)?;
+    let now = Utc::now().timestamp();
+
+    conn.execute(
+        "UPDATE framework_categories SET name = ?1, description = ?2, icon = ?3, updated_at = ?4 WHERE id = ?5",
+        params![&name, &description, &icon, &now, &id],
+    ).map_err(|e| format!("Failed to update category: {}", e))?;
+
+    get_framework_category(id, app).await?
+        .ok_or_else(|| "Category not found after update".to_string())
+}
+
+#[tauri::command]
+pub async fn delete_framework_category(id: String, app: tauri::AppHandle) -> Result<(), String> {
+    let conn = get_db_connection(&app)?;
+
+    let is_builtin: i32 = conn.query_row(
+        "SELECT is_builtin FROM framework_categories WHERE id = ?1", params![&id], |row| row.get(0)
+    ).map_err(|e| format!("Category not found: {}", e))?;
+
+    if is_builtin != 0 {
+        return Err("Cannot delete built-in category".to_string());
+    }
+
+    let fw_count: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM framework_definitions WHERE category = ?1", params![&id], |row| row.get(0)
+    ).map_err(|e| format!("Failed to count frameworks: {}", e))?;
+
+    if fw_count > 0 {
+        return Err("Cannot delete category with frameworks. Delete or move frameworks first.".to_string());
+    }
+
+    conn.execute("DELETE FROM framework_categories WHERE id = ?1", params![&id])
+        .map_err(|e| format!("Failed to delete category: {}", e))?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn list_framework_defs(category: Option<String>, app: tauri::AppHandle) -> Result<Vec<FrameworkDefRow>, String> {
+    let conn = get_db_connection(&app)?;
+
+    if let Some(ref cat) = category {
+        let q = format!("SELECT {} FROM framework_definitions WHERE category = ?1 ORDER BY sort_order ASC", FRAMEWORK_DEF_COLUMNS);
+        let mut stmt = conn.prepare(&q).map_err(|e| format!("Failed to prepare: {}", e))?;
+        let rows = stmt.query_map(params![cat], row_to_framework_def)
+            .map_err(|e| format!("Failed to query: {}", e))?;
+        let r: Result<Vec<_>, _> = rows.collect();
+        r.map_err(|e| format!("Failed to collect: {}", e))
+    } else {
+        let q = format!("SELECT {} FROM framework_definitions ORDER BY sort_order ASC", FRAMEWORK_DEF_COLUMNS);
+        let mut stmt = conn.prepare(&q).map_err(|e| format!("Failed to prepare: {}", e))?;
+        let rows = stmt.query_map([], row_to_framework_def)
+            .map_err(|e| format!("Failed to query: {}", e))?;
+        let r: Result<Vec<_>, _> = rows.collect();
+        r.map_err(|e| format!("Failed to collect: {}", e))
+    }
+}
+
+#[tauri::command]
+pub async fn get_framework_def(id: String, app: tauri::AppHandle) -> Result<Option<FrameworkDefRow>, String> {
+    let conn = get_db_connection(&app)?;
+    let q = format!("SELECT {} FROM framework_definitions WHERE id = ?1", FRAMEWORK_DEF_COLUMNS);
+    let mut stmt = conn.prepare(&q).map_err(|e| format!("Failed to prepare: {}", e))?;
+
+    let fw = stmt.query_row(params![&id], row_to_framework_def).optional()
+        .map_err(|e| format!("Failed to get framework: {}", e))?;
+    Ok(fw)
+}
+
+#[tauri::command]
+pub async fn create_framework_def(
+    category: String,
+    name: String,
+    description: String,
+    icon: String,
+    system_prompt: String,
+    guiding_questions: String,
+    example_output: String,
+    supports_visuals: bool,
+    visual_instructions: Option<String>,
+    app: tauri::AppHandle,
+) -> Result<FrameworkDefRow, String> {
+    let conn = get_db_connection(&app)?;
+    let id = name.to_lowercase().replace(' ', "-").replace('(', "").replace(')', "");
+    let now = Utc::now().timestamp();
+
+    let max_order: i32 = conn.query_row(
+        "SELECT COALESCE(MAX(sort_order), -1) FROM framework_definitions WHERE category = ?1", params![&category], |row| row.get(0)
+    ).map_err(|e| format!("Failed to get max sort_order: {}", e))?;
+
+    conn.execute(
+        &format!("INSERT INTO framework_definitions ({}) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, 0, ?11, ?12, ?13)", FRAMEWORK_DEF_COLUMNS),
+        params![&id, &category, &name, &description, &icon, &example_output, &system_prompt, &guiding_questions, supports_visuals, &visual_instructions, max_order + 1, &now, &now],
+    ).map_err(|e| format!("Failed to create framework: {}", e))?;
+
+    Ok(FrameworkDefRow {
+        id, category, name, description, icon, example_output, system_prompt, guiding_questions,
+        supports_visuals, visual_instructions, is_builtin: false, sort_order: max_order + 1,
+        created_at: now, updated_at: now,
+    })
+}
+
+#[tauri::command]
+pub async fn update_framework_def(
+    id: String,
+    category: Option<String>,
+    name: Option<String>,
+    description: Option<String>,
+    icon: Option<String>,
+    system_prompt: Option<String>,
+    guiding_questions: Option<String>,
+    example_output: Option<String>,
+    supports_visuals: Option<bool>,
+    visual_instructions: Option<String>,
+    app: tauri::AppHandle,
+) -> Result<FrameworkDefRow, String> {
+    let conn = get_db_connection(&app)?;
+    let now = Utc::now().timestamp();
+
+    conn.execute(
+        "UPDATE framework_definitions SET
+            category = COALESCE(?1, category),
+            name = COALESCE(?2, name),
+            description = COALESCE(?3, description),
+            icon = COALESCE(?4, icon),
+            system_prompt = COALESCE(?5, system_prompt),
+            guiding_questions = COALESCE(?6, guiding_questions),
+            example_output = COALESCE(?7, example_output),
+            supports_visuals = COALESCE(?8, supports_visuals),
+            visual_instructions = COALESCE(?9, visual_instructions),
+            updated_at = ?10
+         WHERE id = ?11",
+        params![
+            &category, &name, &description, &icon, &system_prompt,
+            &guiding_questions, &example_output,
+            supports_visuals.map(|v| if v { 1 } else { 0 }),
+            &visual_instructions, &now, &id
+        ],
+    ).map_err(|e| format!("Failed to update framework: {}", e))?;
+
+    get_framework_def(id, app).await?
+        .ok_or_else(|| "Framework not found after update".to_string())
+}
+
+#[tauri::command]
+pub async fn delete_framework_def(id: String, app: tauri::AppHandle) -> Result<(), String> {
+    let conn = get_db_connection(&app)?;
+
+    let is_builtin: i32 = conn.query_row(
+        "SELECT is_builtin FROM framework_definitions WHERE id = ?1", params![&id], |row| row.get(0)
+    ).map_err(|e| format!("Framework not found: {}", e))?;
+
+    if is_builtin != 0 {
+        return Err("Cannot delete built-in framework".to_string());
+    }
+
+    conn.execute("DELETE FROM framework_definitions WHERE id = ?1", params![&id])
+        .map_err(|e| format!("Failed to delete framework: {}", e))?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn reset_framework_def(id: String, app: tauri::AppHandle) -> Result<FrameworkDefRow, String> {
+    let conn = get_db_connection(&app)?;
+
+    let is_builtin: i32 = conn.query_row(
+        "SELECT is_builtin FROM framework_definitions WHERE id = ?1", params![&id], |row| row.get(0)
+    ).map_err(|e| format!("Framework not found: {}", e))?;
+
+    if is_builtin == 0 {
+        return Err("Can only reset built-in frameworks".to_string());
+    }
+
+    let framework_files: &[&str] = &[
+        // Strategy (8)
+        include_str!("../../src/frameworks/strategy/business-model-canvas.json"),
+        include_str!("../../src/frameworks/strategy/swot.json"),
+        include_str!("../../src/frameworks/strategy/porters-five-forces.json"),
+        include_str!("../../src/frameworks/strategy/lean-canvas.json"),
+        include_str!("../../src/frameworks/strategy/value-proposition-canvas.json"),
+        include_str!("../../src/frameworks/strategy/blue-ocean-strategy.json"),
+        include_str!("../../src/frameworks/strategy/ansoff-matrix.json"),
+        include_str!("../../src/frameworks/strategy/strategic-planning.json"),
+        // Prioritization (6)
+        include_str!("../../src/frameworks/prioritization/rice.json"),
+        include_str!("../../src/frameworks/prioritization/moscow.json"),
+        include_str!("../../src/frameworks/prioritization/kano-model.json"),
+        include_str!("../../src/frameworks/prioritization/ice-scoring.json"),
+        include_str!("../../src/frameworks/prioritization/value-effort-matrix.json"),
+        include_str!("../../src/frameworks/prioritization/weighted-scoring.json"),
+        // Discovery (8)
+        include_str!("../../src/frameworks/discovery/jtbd.json"),
+        include_str!("../../src/frameworks/discovery/customer-journey-map.json"),
+        include_str!("../../src/frameworks/discovery/user-personas.json"),
+        include_str!("../../src/frameworks/discovery/empathy-map.json"),
+        include_str!("../../src/frameworks/discovery/problem-statement.json"),
+        include_str!("../../src/frameworks/discovery/competitive-analysis.json"),
+        include_str!("../../src/frameworks/discovery/survey-design.json"),
+        include_str!("../../src/frameworks/discovery/feature-audit.json"),
+        // Development (5)
+        include_str!("../../src/frameworks/development/sprint-planning.json"),
+        include_str!("../../src/frameworks/development/technical-spec.json"),
+        include_str!("../../src/frameworks/development/architecture-decision-record.json"),
+        include_str!("../../src/frameworks/development/definition-of-done.json"),
+        include_str!("../../src/frameworks/development/release-plan.json"),
+        // Execution (6)
+        include_str!("../../src/frameworks/execution/okrs.json"),
+        include_str!("../../src/frameworks/execution/north-star-metric.json"),
+        include_str!("../../src/frameworks/execution/kpi-dashboard.json"),
+        include_str!("../../src/frameworks/execution/retrospective.json"),
+        include_str!("../../src/frameworks/execution/roadmap-template.json"),
+        include_str!("../../src/frameworks/execution/success-metrics.json"),
+        // Decision Making (5)
+        include_str!("../../src/frameworks/decision/decision-matrix.json"),
+        include_str!("../../src/frameworks/decision/raci.json"),
+        include_str!("../../src/frameworks/decision/pre-mortem.json"),
+        include_str!("../../src/frameworks/decision/opportunity-assessment.json"),
+        include_str!("../../src/frameworks/decision/trade-off-analysis.json"),
+        // Communication (7)
+        include_str!("../../src/frameworks/communication/prd.json"),
+        include_str!("../../src/frameworks/communication/user-stories.json"),
+        include_str!("../../src/frameworks/communication/stakeholder-update.json"),
+        include_str!("../../src/frameworks/communication/launch-plan.json"),
+        include_str!("../../src/frameworks/communication/feature-brief.json"),
+        include_str!("../../src/frameworks/communication/product-vision.json"),
+        include_str!("../../src/frameworks/communication/changelog.json"),
+    ];
+
+    let now = Utc::now().timestamp();
+    for fw_json in framework_files {
+        let fw: serde_json::Value = serde_json::from_str(fw_json)
+            .map_err(|e| format!("Failed to parse framework: {}", e))?;
+        if fw["id"].as_str() == Some(id.as_str()) {
+            conn.execute(
+                "UPDATE framework_definitions SET system_prompt = ?1, guiding_questions = ?2, example_output = ?3, visual_instructions = ?4, updated_at = ?5 WHERE id = ?6",
+                params![
+                    fw["system_prompt"].as_str().unwrap_or(""),
+                    fw["guiding_questions"].to_string(),
+                    fw["example_output"].as_str().unwrap_or(""),
+                    fw["visual_instructions"].as_str(),
+                    &now,
+                    &id,
+                ],
+            ).map_err(|e| format!("Failed to reset framework: {}", e))?;
+
+            return get_framework_def(id, app).await?
+                .ok_or_else(|| "Framework not found after reset".to_string());
+        }
+    }
+
+    Err(format!("No seed data found for framework '{}'", id))
+}
+
+#[tauri::command]
+pub async fn search_framework_defs(query: String, app: tauri::AppHandle) -> Result<Vec<FrameworkDefRow>, String> {
+    let conn = get_db_connection(&app)?;
+    let search = format!("%{}%", query);
+    let q = format!("SELECT {} FROM framework_definitions WHERE name LIKE ?1 OR description LIKE ?1 ORDER BY sort_order ASC", FRAMEWORK_DEF_COLUMNS);
+    let mut stmt = conn.prepare(&q).map_err(|e| format!("Failed to prepare: {}", e))?;
+
+    let rows = stmt.query_map(params![&search], row_to_framework_def)
+        .map_err(|e| format!("Failed to search: {}", e))?;
+    let result: Result<Vec<_>, _> = rows.collect();
+    result.map_err(|e| format!("Failed to collect: {}", e))
+}
+
+#[tauri::command]
+pub async fn duplicate_framework_def(id: String, new_name: String, app: tauri::AppHandle) -> Result<FrameworkDefRow, String> {
+    let original = get_framework_def(id.clone(), app.clone()).await?
+        .ok_or_else(|| format!("Framework '{}' not found", id))?;
+
+    let conn = get_db_connection(&app)?;
+    let new_id = new_name.to_lowercase().replace(' ', "-").replace('(', "").replace(')', "");
+    let now = Utc::now().timestamp();
+
+    conn.execute(
+        &format!("INSERT INTO framework_definitions ({}) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, 0, ?11, ?12, ?13)", FRAMEWORK_DEF_COLUMNS),
+        params![
+            &new_id, &original.category, &new_name, &original.description, &original.icon,
+            &original.example_output, &original.system_prompt, &original.guiding_questions,
+            original.supports_visuals, &original.visual_instructions, original.sort_order + 1, &now, &now
+        ],
+    ).map_err(|e| format!("Failed to duplicate framework: {}", e))?;
+
+    get_framework_def(new_id, app).await?
+        .ok_or_else(|| "Framework not found after duplicate".to_string())
 }
 
 #[tauri::command]
@@ -884,6 +1480,281 @@ pub async fn delete_api_key(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+// Folder commands
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Folder {
+    pub id: String,
+    pub project_id: String,
+    pub parent_id: Option<String>,
+    pub name: String,
+    pub color: Option<String>,
+    pub sort_order: i32,
+    pub created_at: i64,
+    pub updated_at: i64,
+}
+
+#[tauri::command]
+pub async fn create_folder(
+    project_id: String,
+    name: String,
+    parent_id: Option<String>,
+    color: Option<String>,
+    app: tauri::AppHandle,
+) -> Result<Folder, String> {
+    let conn = get_db_connection(&app)?;
+    let id = Uuid::new_v4().to_string();
+    let now = Utc::now().timestamp();
+
+    let folder = Folder {
+        id: id.clone(),
+        project_id: project_id.clone(),
+        parent_id: parent_id.clone(),
+        name: name.clone(),
+        color: color.clone(),
+        sort_order: 0,
+        created_at: now,
+        updated_at: now,
+    };
+
+    conn.execute(
+        "INSERT INTO folders (id, project_id, parent_id, name, color, sort_order, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        params![&id, &project_id, &parent_id, &name, &color, &0, &now, &now],
+    ).map_err(|e| format!("Failed to create folder: {}", e))?;
+
+    Ok(folder)
+}
+
+#[tauri::command]
+pub async fn list_folders(
+    project_id: String,
+    app: tauri::AppHandle,
+) -> Result<Vec<Folder>, String> {
+    let conn = get_db_connection(&app)?;
+
+    let mut stmt = conn.prepare(
+        "SELECT id, project_id, parent_id, name, color, sort_order, created_at, updated_at
+         FROM folders
+         WHERE project_id = ?1
+         ORDER BY sort_order ASC, name ASC"
+    ).map_err(|e| format!("Failed to prepare statement: {}", e))?;
+
+    let folders = stmt.query_map(params![&project_id], |row| {
+        Ok(Folder {
+            id: row.get(0)?,
+            project_id: row.get(1)?,
+            parent_id: row.get(2)?,
+            name: row.get(3)?,
+            color: row.get(4)?,
+            sort_order: row.get(5)?,
+            created_at: row.get(6)?,
+            updated_at: row.get(7)?,
+        })
+    }).map_err(|e| format!("Failed to query folders: {}", e))?;
+
+    let result: Result<Vec<Folder>, _> = folders.collect();
+    result.map_err(|e| format!("Failed to collect folders: {}", e))
+}
+
+#[tauri::command]
+pub async fn get_folder(
+    id: String,
+    app: tauri::AppHandle,
+) -> Result<Option<Folder>, String> {
+    let conn = get_db_connection(&app)?;
+
+    let mut stmt = conn.prepare(
+        "SELECT id, project_id, parent_id, name, color, sort_order, created_at, updated_at
+         FROM folders WHERE id = ?1"
+    ).map_err(|e| format!("Failed to prepare statement: {}", e))?;
+
+    let folder = stmt.query_row(params![&id], |row| {
+        Ok(Folder {
+            id: row.get(0)?,
+            project_id: row.get(1)?,
+            parent_id: row.get(2)?,
+            name: row.get(3)?,
+            color: row.get(4)?,
+            sort_order: row.get(5)?,
+            created_at: row.get(6)?,
+            updated_at: row.get(7)?,
+        })
+    }).optional()
+        .map_err(|e| format!("Failed to get folder: {}", e))?;
+
+    Ok(folder)
+}
+
+#[tauri::command]
+pub async fn update_folder(
+    id: String,
+    name: Option<String>,
+    parent_id: Option<String>,
+    color: Option<String>,
+    sort_order: Option<i32>,
+    app: tauri::AppHandle,
+) -> Result<Folder, String> {
+    let conn = get_db_connection(&app)?;
+    let now = Utc::now().timestamp();
+
+    conn.execute(
+        "UPDATE folders
+         SET name = COALESCE(?1, name),
+             parent_id = CASE WHEN ?2 = '__null__' THEN NULL WHEN ?2 IS NOT NULL THEN ?2 ELSE parent_id END,
+             color = COALESCE(?3, color),
+             sort_order = COALESCE(?4, sort_order),
+             updated_at = ?5
+         WHERE id = ?6",
+        params![&name, &parent_id, &color, &sort_order, &now, &id],
+    ).map_err(|e| format!("Failed to update folder: {}", e))?;
+
+    get_folder(id, app).await?
+        .ok_or_else(|| "Folder not found after update".to_string())
+}
+
+#[tauri::command]
+pub async fn delete_folder(
+    id: String,
+    app: tauri::AppHandle,
+) -> Result<(), String> {
+    let conn = get_db_connection(&app)?;
+
+    // Set folder_id to NULL on items in this folder before deleting
+    conn.execute(
+        "UPDATE context_documents SET folder_id = NULL WHERE folder_id = ?1",
+        params![&id],
+    ).map_err(|e| format!("Failed to unlink context documents: {}", e))?;
+
+    conn.execute(
+        "UPDATE framework_outputs SET folder_id = NULL WHERE folder_id = ?1",
+        params![&id],
+    ).map_err(|e| format!("Failed to unlink framework outputs: {}", e))?;
+
+    conn.execute(
+        "DELETE FROM folders WHERE id = ?1",
+        params![&id],
+    ).map_err(|e| format!("Failed to delete folder: {}", e))?;
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn move_item_to_folder(
+    item_id: String,
+    item_type: String,
+    folder_id: Option<String>,
+    app: tauri::AppHandle,
+) -> Result<(), String> {
+    let conn = get_db_connection(&app)?;
+
+    match item_type.as_str() {
+        "context_doc" => {
+            conn.execute(
+                "UPDATE context_documents SET folder_id = ?1 WHERE id = ?2",
+                params![&folder_id, &item_id],
+            ).map_err(|e| format!("Failed to move context document: {}", e))?;
+        },
+        "framework_output" => {
+            conn.execute(
+                "UPDATE framework_outputs SET folder_id = ?1 WHERE id = ?2",
+                params![&folder_id, &item_id],
+            ).map_err(|e| format!("Failed to move framework output: {}", e))?;
+        },
+        _ => return Err(format!("Unknown item type: {}", item_type)),
+    }
+
+    Ok(())
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SearchResult {
+    pub id: String,
+    pub name: String,
+    pub item_type: String,
+    pub folder_id: Option<String>,
+    pub category: Option<String>,
+    pub doc_type: Option<String>,
+    pub is_favorite: bool,
+    pub created_at: i64,
+}
+
+#[tauri::command]
+pub async fn search_project_items(
+    project_id: String,
+    query: String,
+    app: tauri::AppHandle,
+) -> Result<Vec<SearchResult>, String> {
+    let conn = get_db_connection(&app)?;
+    let search = format!("%{}%", query);
+
+    let mut stmt = conn.prepare(
+        "SELECT id, name, 'context_doc' as item_type, folder_id, NULL as category, type as doc_type, is_favorite, created_at
+         FROM context_documents WHERE project_id = ?1 AND (name LIKE ?2 OR tags LIKE ?2)
+         UNION ALL
+         SELECT id, name, 'framework_output' as item_type, folder_id, category, NULL as doc_type, is_favorite, created_at
+         FROM framework_outputs WHERE project_id = ?1 AND (name LIKE ?2 OR tags LIKE ?2)
+         ORDER BY name ASC"
+    ).map_err(|e| format!("Failed to prepare search: {}", e))?;
+
+    let results = stmt.query_map(params![&project_id, &search], |row| {
+        Ok(SearchResult {
+            id: row.get(0)?,
+            name: row.get(1)?,
+            item_type: row.get(2)?,
+            folder_id: row.get(3)?,
+            category: row.get(4)?,
+            doc_type: row.get(5)?,
+            is_favorite: row.get::<_, i32>(6)? != 0,
+            created_at: row.get(7)?,
+        })
+    }).map_err(|e| format!("Failed to search: {}", e))?;
+
+    let result: Result<Vec<SearchResult>, _> = results.collect();
+    result.map_err(|e| format!("Failed to collect search results: {}", e))
+}
+
+#[tauri::command]
+pub async fn toggle_item_favorite(
+    item_id: String,
+    item_type: String,
+    is_favorite: bool,
+    app: tauri::AppHandle,
+) -> Result<(), String> {
+    let conn = get_db_connection(&app)?;
+    let fav_val = if is_favorite { 1 } else { 0 };
+
+    let table = match item_type.as_str() {
+        "context_doc" => "context_documents",
+        "framework_output" => "framework_outputs",
+        _ => return Err(format!("Invalid item type: {}", item_type)),
+    };
+
+    conn.execute(
+        &format!("UPDATE {} SET is_favorite = ?1 WHERE id = ?2", table),
+        params![&fav_val, &item_id],
+    ).map_err(|e| format!("Failed to toggle favorite: {}", e))?;
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn set_folder_color(
+    id: String,
+    color: Option<String>,
+    app: tauri::AppHandle,
+) -> Result<(), String> {
+    let conn = get_db_connection(&app)?;
+    let now = Utc::now().timestamp();
+
+    conn.execute(
+        "UPDATE folders SET color = ?1, updated_at = ?2 WHERE id = ?3",
+        params![&color, &now, &id],
+    ).map_err(|e| format!("Failed to set folder color: {}", e))?;
+
+    Ok(())
+}
+
 // Context Document commands
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -892,12 +1763,16 @@ pub struct ContextDocument {
     pub project_id: String,
     pub name: String,
     #[serde(rename = "type")]
-    pub doc_type: String,  // 'pdf', 'url', 'google_doc', 'text'
+    pub doc_type: String,
     pub content: String,
     pub url: Option<String>,
     pub is_global: bool,
     pub size_bytes: i64,
     pub created_at: i64,
+    pub folder_id: Option<String>,
+    pub tags: String,
+    pub is_favorite: bool,
+    pub sort_order: i32,
 }
 
 #[tauri::command]
@@ -925,6 +1800,10 @@ pub async fn create_context_document(
         is_global,
         size_bytes,
         created_at: now,
+        folder_id: None,
+        tags: "[]".to_string(),
+        is_favorite: false,
+        sort_order: 0,
     };
 
     conn.execute(
@@ -944,10 +1823,10 @@ pub async fn list_context_documents(
     let conn = get_db_connection(&app)?;
 
     let mut stmt = conn.prepare(
-        "SELECT id, project_id, name, type, content, url, is_global, size_bytes, created_at
+        "SELECT id, project_id, name, type, content, url, is_global, size_bytes, created_at, folder_id, tags, is_favorite, sort_order
          FROM context_documents
          WHERE project_id = ?1
-         ORDER BY created_at DESC"
+         ORDER BY sort_order ASC, created_at DESC"
     ).map_err(|e| format!("Failed to prepare statement: {}", e))?;
 
     let documents = stmt.query_map(params![&project_id], |row| {
@@ -961,6 +1840,10 @@ pub async fn list_context_documents(
             is_global: row.get::<_, i32>(6)? != 0,
             size_bytes: row.get(7)?,
             created_at: row.get(8)?,
+            folder_id: row.get(9)?,
+            tags: row.get::<_, Option<String>>(10)?.unwrap_or_else(|| "[]".to_string()),
+            is_favorite: row.get::<_, Option<i32>>(11)?.unwrap_or(0) != 0,
+            sort_order: row.get::<_, Option<i32>>(12)?.unwrap_or(0),
         })
     }).map_err(|e| format!("Failed to query context documents: {}", e))?;
 
@@ -976,7 +1859,7 @@ pub async fn get_context_document(
     let conn = get_db_connection(&app)?;
 
     let mut stmt = conn.prepare(
-        "SELECT id, project_id, name, type, content, url, is_global, size_bytes, created_at
+        "SELECT id, project_id, name, type, content, url, is_global, size_bytes, created_at, folder_id, tags, is_favorite, sort_order
          FROM context_documents
          WHERE id = ?1"
     ).map_err(|e| format!("Failed to prepare statement: {}", e))?;
@@ -992,6 +1875,10 @@ pub async fn get_context_document(
             is_global: row.get::<_, i32>(6)? != 0,
             size_bytes: row.get(7)?,
             created_at: row.get(8)?,
+            folder_id: row.get(9)?,
+            tags: row.get::<_, Option<String>>(10)?.unwrap_or_else(|| "[]".to_string()),
+            is_favorite: row.get::<_, Option<i32>>(11)?.unwrap_or(0) != 0,
+            sort_order: row.get::<_, Option<i32>>(12)?.unwrap_or(0),
         })
     }).optional()
         .map_err(|e| format!("Failed to get context document: {}", e))?;
@@ -1045,11 +1932,15 @@ pub struct FrameworkOutput {
     pub category: String,
     pub name: String,
     pub user_prompt: String,
-    pub context_doc_ids: String,  // JSON array string
+    pub context_doc_ids: String,
     pub generated_content: String,
-    pub format: String,  // 'markdown', 'html'
+    pub format: String,
     pub created_at: i64,
     pub updated_at: i64,
+    pub folder_id: Option<String>,
+    pub tags: String,
+    pub is_favorite: bool,
+    pub sort_order: i32,
 }
 
 #[tauri::command]
@@ -1080,6 +1971,10 @@ pub async fn create_framework_output(
         format: format.clone(),
         created_at: now,
         updated_at: now,
+        folder_id: None,
+        tags: "[]".to_string(),
+        is_favorite: false,
+        sort_order: 0,
     };
 
     conn.execute(
@@ -1099,10 +1994,10 @@ pub async fn list_framework_outputs(
     let conn = get_db_connection(&app)?;
 
     let mut stmt = conn.prepare(
-        "SELECT id, project_id, framework_id, category, name, user_prompt, context_doc_ids, generated_content, format, created_at, updated_at
+        "SELECT id, project_id, framework_id, category, name, user_prompt, context_doc_ids, generated_content, format, created_at, updated_at, folder_id, tags, is_favorite, sort_order
          FROM framework_outputs
          WHERE project_id = ?1
-         ORDER BY updated_at DESC"
+         ORDER BY sort_order ASC, updated_at DESC"
     ).map_err(|e| format!("Failed to prepare statement: {}", e))?;
 
     let outputs = stmt.query_map(params![&project_id], |row| {
@@ -1118,6 +2013,10 @@ pub async fn list_framework_outputs(
             format: row.get(8)?,
             created_at: row.get(9)?,
             updated_at: row.get(10)?,
+            folder_id: row.get(11)?,
+            tags: row.get::<_, Option<String>>(12)?.unwrap_or_else(|| "[]".to_string()),
+            is_favorite: row.get::<_, Option<i32>>(13)?.unwrap_or(0) != 0,
+            sort_order: row.get::<_, Option<i32>>(14)?.unwrap_or(0),
         })
     }).map_err(|e| format!("Failed to query framework outputs: {}", e))?;
 
@@ -1133,7 +2032,7 @@ pub async fn get_framework_output(
     let conn = get_db_connection(&app)?;
 
     let mut stmt = conn.prepare(
-        "SELECT id, project_id, framework_id, category, name, user_prompt, context_doc_ids, generated_content, format, created_at, updated_at
+        "SELECT id, project_id, framework_id, category, name, user_prompt, context_doc_ids, generated_content, format, created_at, updated_at, folder_id, tags, is_favorite, sort_order
          FROM framework_outputs
          WHERE id = ?1"
     ).map_err(|e| format!("Failed to prepare statement: {}", e))?;
@@ -1151,6 +2050,10 @@ pub async fn get_framework_output(
             format: row.get(8)?,
             created_at: row.get(9)?,
             updated_at: row.get(10)?,
+            folder_id: row.get(11)?,
+            tags: row.get::<_, Option<String>>(12)?.unwrap_or_else(|| "[]".to_string()),
+            is_favorite: row.get::<_, Option<i32>>(13)?.unwrap_or(0) != 0,
+            sort_order: row.get::<_, Option<i32>>(14)?.unwrap_or(0),
         })
     }).optional()
         .map_err(|e| format!("Failed to get framework output: {}", e))?;
@@ -1193,4 +2096,128 @@ pub async fn delete_framework_output(
     ).map_err(|e| format!("Failed to delete framework output: {}", e))?;
 
     Ok(())
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CommandHistoryEntry {
+    pub id: String,
+    pub project_id: String,
+    pub command: String,
+    pub output: String,
+    pub exit_code: i32,
+    pub created_at: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CommandResult {
+    pub output: String,
+    pub exit_code: i32,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct FrameworkCategoryRow {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    pub icon: String,
+    pub is_builtin: bool,
+    pub sort_order: i32,
+    pub created_at: i64,
+    pub updated_at: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct FrameworkDefRow {
+    pub id: String,
+    pub category: String,
+    pub name: String,
+    pub description: String,
+    pub icon: String,
+    pub example_output: String,
+    pub system_prompt: String,
+    pub guiding_questions: String,
+    pub supports_visuals: bool,
+    pub visual_instructions: Option<String>,
+    pub is_builtin: bool,
+    pub sort_order: i32,
+    pub created_at: i64,
+    pub updated_at: i64,
+}
+
+#[tauri::command]
+pub async fn execute_shell_command(
+    project_id: String,
+    command: String,
+    app: tauri::AppHandle,
+) -> Result<CommandResult, String> {
+    use std::process::Command as StdCommand;
+
+    let output = StdCommand::new("sh")
+        .arg("-c")
+        .arg(&command)
+        .output()
+        .map_err(|e| format!("Failed to execute command: {}", e))?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let combined = if stderr.is_empty() {
+        stdout.to_string()
+    } else if stdout.is_empty() {
+        stderr.to_string()
+    } else {
+        format!("{}\n{}", stdout, stderr)
+    };
+    let exit_code = output.status.code().unwrap_or(-1);
+
+    let conn = get_db_connection(&app)?;
+    let id = Uuid::new_v4().to_string();
+    let now = Utc::now().timestamp();
+
+    conn.execute(
+        "INSERT INTO command_history (id, project_id, command, output, exit_code, created_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        params![&id, &project_id, &command, &combined, &exit_code, &now],
+    ).map_err(|e| format!("Failed to save command history: {}", e))?;
+
+    Ok(CommandResult {
+        output: combined,
+        exit_code,
+    })
+}
+
+#[tauri::command]
+pub async fn get_command_history(
+    project_id: String,
+    limit: Option<i32>,
+    app: tauri::AppHandle,
+) -> Result<Vec<CommandHistoryEntry>, String> {
+    let conn = get_db_connection(&app)?;
+    let limit = limit.unwrap_or(50);
+
+    let mut stmt = conn.prepare(
+        "SELECT id, project_id, command, output, exit_code, created_at
+         FROM command_history
+         WHERE project_id = ?1
+         ORDER BY created_at DESC
+         LIMIT ?2"
+    ).map_err(|e| format!("Failed to prepare query: {}", e))?;
+
+    let entries = stmt.query_map(params![&project_id, &limit], |row| {
+        Ok(CommandHistoryEntry {
+            id: row.get(0)?,
+            project_id: row.get(1)?,
+            command: row.get(2)?,
+            output: row.get(3)?,
+            exit_code: row.get(4)?,
+            created_at: row.get(5)?,
+        })
+    }).map_err(|e| format!("Failed to query command history: {}", e))?;
+
+    let mut results = Vec::new();
+    for entry in entries {
+        results.push(entry.map_err(|e| format!("Failed to read command history entry: {}", e))?);
+    }
+
+    results.reverse();
+    Ok(results)
 }

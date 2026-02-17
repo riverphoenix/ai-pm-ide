@@ -1,107 +1,67 @@
 import { FrameworkDefinition, FrameworkCategory } from './types';
+import { frameworkCategoriesAPI, frameworkDefsAPI } from './ipc';
 
-// Import category definitions
-import categoriesData from '../frameworks/categories.json';
+let cachedCategories: FrameworkCategory[] | null = null;
+let cachedFrameworks: FrameworkDefinition[] | null = null;
 
-// Import framework definitions
-// Strategy
-import businessModelCanvas from '../frameworks/strategy/business-model-canvas.json';
-import swot from '../frameworks/strategy/swot.json';
+export function invalidateCache() {
+  cachedCategories = null;
+  cachedFrameworks = null;
+}
 
-// Prioritization
-import rice from '../frameworks/prioritization/rice.json';
+async function getAllFrameworks(): Promise<FrameworkDefinition[]> {
+  if (cachedFrameworks) return cachedFrameworks;
+  cachedFrameworks = await frameworkDefsAPI.list();
+  return cachedFrameworks;
+}
 
-// Discovery
-import jtbd from '../frameworks/discovery/jtbd.json';
-import customerJourneyMap from '../frameworks/discovery/customer-journey-map.json';
+export async function getCategories(): Promise<FrameworkCategory[]> {
+  if (cachedCategories) return cachedCategories;
 
-// Execution
-import okrs from '../frameworks/execution/okrs.json';
+  const [cats, frameworks] = await Promise.all([
+    frameworkCategoriesAPI.list(),
+    getAllFrameworks(),
+  ]);
 
-// Communication
-import prd from '../frameworks/communication/prd.json';
-import userStories from '../frameworks/communication/user-stories.json';
-
-// All framework definitions
-const allFrameworks: FrameworkDefinition[] = [
-  // Strategy
-  businessModelCanvas as FrameworkDefinition,
-  swot as FrameworkDefinition,
-
-  // Prioritization
-  rice as FrameworkDefinition,
-
-  // Discovery
-  jtbd as FrameworkDefinition,
-  customerJourneyMap as FrameworkDefinition,
-
-  // Execution
-  okrs as FrameworkDefinition,
-
-  // Communication
-  prd as FrameworkDefinition,
-  userStories as FrameworkDefinition,
-];
-
-/**
- * Get all framework categories with their associated frameworks
- */
-export function getCategories(): FrameworkCategory[] {
-  const categories = categoriesData as Omit<FrameworkCategory, 'frameworks'>[];
-
-  return categories.map(category => ({
-    ...category,
-    frameworks: allFrameworks.filter(f => f.category === category.id)
+  cachedCategories = cats.map(cat => ({
+    ...cat,
+    frameworks: frameworks.filter(f => f.category === cat.id),
   }));
+
+  return cachedCategories;
 }
 
-/**
- * Get a specific framework by ID
- */
-export function getFramework(id: string): FrameworkDefinition | undefined {
-  return allFrameworks.find(f => f.id === id);
+export async function getFramework(id: string): Promise<FrameworkDefinition | null> {
+  const all = await getAllFrameworks();
+  return all.find(f => f.id === id) || null;
 }
 
-/**
- * Get all frameworks in a specific category
- */
-export function getFrameworksByCategory(categoryId: string): FrameworkDefinition[] {
-  return allFrameworks.filter(f => f.category === categoryId);
+export async function getFrameworksByCategory(categoryId: string): Promise<FrameworkDefinition[]> {
+  const all = await getAllFrameworks();
+  return all.filter(f => f.category === categoryId);
 }
 
-/**
- * Search frameworks by name or description
- */
-export function searchFrameworks(query: string): FrameworkDefinition[] {
-  const lowerQuery = query.toLowerCase();
-  return allFrameworks.filter(f =>
-    f.name.toLowerCase().includes(lowerQuery) ||
-    f.description.toLowerCase().includes(lowerQuery)
-  );
+export async function searchFrameworks(query: string): Promise<FrameworkDefinition[]> {
+  return frameworkDefsAPI.search(query);
 }
 
-/**
- * Get frameworks that support visual generation
- */
-export function getVisualFrameworks(): FrameworkDefinition[] {
-  return allFrameworks.filter(f => f.supports_visuals);
+export async function getVisualFrameworks(): Promise<FrameworkDefinition[]> {
+  const all = await getAllFrameworks();
+  return all.filter(f => f.supports_visuals);
 }
 
-/**
- * Get framework statistics
- */
-export function getFrameworkStats() {
-  const categories = getCategories();
-  const totalFrameworks = allFrameworks.length;
-  const visualFrameworks = getVisualFrameworks().length;
+export async function getFrameworkStats() {
+  const categories = await getCategories();
+  const all = await getAllFrameworks();
+  const visualFrameworks = all.filter(f => f.supports_visuals).length;
 
   return {
-    totalFrameworks,
+    totalFrameworks: all.length,
     totalCategories: categories.length,
     visualFrameworks,
     frameworksByCategory: categories.map(c => ({
       category: c.name,
-      count: c.frameworks.length
-    }))
+      count: c.frameworks.length,
+    })),
   };
 }

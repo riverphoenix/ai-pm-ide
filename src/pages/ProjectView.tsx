@@ -6,47 +6,42 @@ import ConversationHistory from '../components/ConversationHistory';
 import ResizableDivider from '../components/ResizableDivider';
 import FrameworksHome from './FrameworksHome';
 import FrameworkGenerator from '../components/FrameworkGenerator';
+import FrameworkManager from '../components/FrameworkManager';
 import ContextManager from './ContextManager';
 import OutputsLibrary from './OutputsLibrary';
+import DocumentsExplorer from './DocumentsExplorer';
 
 const MIN_HISTORY_WIDTH = 180;
 const MAX_HISTORY_WIDTH = 400;
 const DEFAULT_HISTORY_WIDTH = 224;
 
+type Tab = 'documents' | 'chat' | 'frameworks' | 'context' | 'outputs';
+
 interface ProjectViewProps {
   projectId: string;
-  initialTab?: 'documents' | 'chat' | 'frameworks' | 'context' | 'outputs';
+  activeTab: Tab;
+  onTabChange: (tab: Tab) => void;
   onModelChange?: (model: string) => void;
 }
 
-export default function ProjectView({ projectId, initialTab = 'chat', onModelChange }: ProjectViewProps) {
-  console.log('🟢 ProjectView rendered with:', { projectId, initialTab });
+export default function ProjectView({ projectId, activeTab, onTabChange, onModelChange }: ProjectViewProps) {
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [apiKey, setApiKey] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'documents' | 'chat' | 'frameworks' | 'context' | 'outputs'>(initialTab);
-  console.log('🟡 activeTab state:', activeTab);
   const [currentConversationId, setCurrentConversationId] = useState<string | undefined>(undefined);
   const [historyWidth, setHistoryWidth] = useState<number>(() => {
     const saved = localStorage.getItem('conversationHistoryWidth');
     return saved ? parseInt(saved, 10) : DEFAULT_HISTORY_WIDTH;
   });
 
-  // Frameworks state
   const [selectedFrameworkId, setSelectedFrameworkId] = useState<string | null>(null);
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
-  const [frameworksView, setFrameworksView] = useState<'home' | 'generator'>('home');
+  const [_selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const [frameworksView, setFrameworksView] = useState<'home' | 'generator' | 'manager'>('home');
 
   useEffect(() => {
     loadProjectAndSettings();
   }, [projectId]);
-
-  // Update active tab when initialTab prop changes
-  useEffect(() => {
-    console.log('🔄 initialTab changed to:', initialTab);
-    setActiveTab(initialTab);
-  }, [initialTab]);
 
   const loadProjectAndSettings = async () => {
     setLoading(true);
@@ -56,12 +51,6 @@ export default function ProjectView({ projectId, initialTab = 'chat', onModelCha
         settingsAPI.get(),
         settingsAPI.getDecryptedApiKey(),
       ]);
-      console.log('🔑 API Key Check:', {
-        exists: !!key,
-        length: key?.length || 0,
-        startsWithSkAnt: key?.startsWith('sk-ant-') || false,
-        preview: key ? `${key.substring(0, 7)}...${key.substring(key.length - 4)}` : 'null'
-      });
       setProject(proj);
       setSettings(sett);
       setApiKey(key);
@@ -91,7 +80,6 @@ export default function ProjectView({ projectId, initialTab = 'chat', onModelCha
     localStorage.setItem('conversationHistoryWidth', historyWidth.toString());
   }, [historyWidth]);
 
-  // Framework handlers
   const handleSelectFramework = (frameworkId: string, categoryId: string) => {
     setSelectedFrameworkId(frameworkId);
     setSelectedCategoryId(categoryId);
@@ -105,8 +93,7 @@ export default function ProjectView({ projectId, initialTab = 'chat', onModelCha
   };
 
   const handleFrameworkSave = () => {
-    // Switch to outputs tab to view saved output
-    setActiveTab('outputs');
+    onTabChange('outputs');
     handleBackToFrameworksHome();
   };
 
@@ -145,67 +132,29 @@ export default function ProjectView({ projectId, initialTab = 'chat', onModelCha
         </div>
       </div>
 
-      {/* Tabs with indicator bars */}
       <div style={{ flexShrink: 0 }} className="h-8 border-b border-codex-border bg-codex-surface/30 flex items-center px-4 gap-1">
-        <button
-          onClick={() => setActiveTab('chat')}
-          className={`relative px-2 py-1.5 text-xs transition-all duration-200 ${
-            activeTab === 'chat'
-              ? 'text-codex-text-primary'
-              : 'text-codex-text-secondary hover:text-codex-text-primary'
-          }`}
-        >
-          Chat
-          {activeTab === 'chat' && (
-            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-codex-accent" />
-          )}
-        </button>
-        <button
-          onClick={() => {
-            setActiveTab('frameworks');
-            handleBackToFrameworksHome();
-          }}
-          className={`relative px-2 py-1.5 text-xs transition-all duration-200 ${
-            activeTab === 'frameworks'
-              ? 'text-codex-text-primary'
-              : 'text-codex-text-secondary hover:text-codex-text-primary'
-          }`}
-        >
-          Frameworks
-          {activeTab === 'frameworks' && (
-            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-codex-accent" />
-          )}
-        </button>
-        <button
-          onClick={() => setActiveTab('context')}
-          className={`relative px-2 py-1.5 text-xs transition-all duration-200 ${
-            activeTab === 'context'
-              ? 'text-codex-text-primary'
-              : 'text-codex-text-secondary hover:text-codex-text-primary'
-          }`}
-        >
-          Context
-          {activeTab === 'context' && (
-            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-codex-accent" />
-          )}
-        </button>
-        <button
-          onClick={() => setActiveTab('outputs')}
-          className={`relative px-2 py-1.5 text-xs transition-all duration-200 ${
-            activeTab === 'outputs'
-              ? 'text-codex-text-primary'
-              : 'text-codex-text-secondary hover:text-codex-text-primary'
-          }`}
-        >
-          Outputs
-          {activeTab === 'outputs' && (
-            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-codex-accent" />
-          )}
-        </button>
+        {(['chat', 'documents', 'frameworks', 'context', 'outputs'] as Tab[]).map(tab => (
+          <button
+            key={tab}
+            onClick={() => {
+              onTabChange(tab);
+              if (tab === 'frameworks') handleBackToFrameworksHome();
+            }}
+            className={`relative px-2 py-1.5 text-xs transition-all duration-200 ${
+              activeTab === tab
+                ? 'text-codex-text-primary'
+                : 'text-codex-text-secondary hover:text-codex-text-primary'
+            }`}
+          >
+            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            {activeTab === tab && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-codex-accent" />
+            )}
+          </button>
+        ))}
       </div>
 
-      {/* Main Content - calc: 100vh minus TopActionBar(40px) + TopBar(40px) + Tabs(32px) */}
-      <div style={{ height: 'calc(100vh - 112px)', overflow: 'hidden' }}>
+      <div style={{ flex: 1, overflow: 'hidden' }}>
         {activeTab === 'chat' && (
           <>
             {!apiKey ? (
@@ -249,7 +198,12 @@ export default function ProjectView({ projectId, initialTab = 'chat', onModelCha
         {activeTab === 'frameworks' && (
           <>
             {frameworksView === 'home' ? (
-              <FrameworksHome onSelectFramework={handleSelectFramework} />
+              <FrameworksHome
+                onSelectFramework={handleSelectFramework}
+                onManage={() => setFrameworksView('manager')}
+              />
+            ) : frameworksView === 'manager' ? (
+              <FrameworkManager onClose={handleBackToFrameworksHome} />
             ) : selectedFrameworkId ? (
               <FrameworkGenerator
                 projectId={projectId}
@@ -259,6 +213,10 @@ export default function ProjectView({ projectId, initialTab = 'chat', onModelCha
               />
             ) : null}
           </>
+        )}
+
+        {activeTab === 'documents' && (
+          <DocumentsExplorer projectId={projectId} />
         )}
 
         {activeTab === 'context' && (

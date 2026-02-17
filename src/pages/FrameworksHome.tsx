@@ -1,35 +1,75 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { getCategories, searchFrameworks, getFrameworkStats } from '../lib/frameworks';
-import { FrameworkCategory } from '../lib/types';
+import { FrameworkCategory, FrameworkDefinition } from '../lib/types';
 
 interface FrameworksHomeProps {
   onSelectFramework: (frameworkId: string, categoryId: string) => void;
+  onManage?: () => void;
 }
 
-export default function FrameworksHome({ onSelectFramework }: FrameworksHomeProps) {
+export default function FrameworksHome({ onSelectFramework, onManage }: FrameworksHomeProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
-  const categories = getCategories();
-  const stats = getFrameworkStats();
+  const [categories, setCategories] = useState<FrameworkCategory[]>([]);
+  const [stats, setStats] = useState({ totalFrameworks: 0, totalCategories: 0, visualFrameworks: 0, frameworksByCategory: [] as { category: string; count: number }[] });
+  const [loading, setLoading] = useState(true);
+  const [searchResults, setSearchResults] = useState<FrameworkDefinition[] | null>(null);
 
-  // Filter categories and frameworks based on search
-  const filteredContent = useMemo(() => {
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [cats, s] = await Promise.all([getCategories(), getFrameworkStats()]);
+      setCategories(cats);
+      setStats(s);
+    } catch (err) {
+      console.error('Failed to load frameworks:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  useEffect(() => {
     if (!searchQuery.trim()) {
+      setSearchResults(null);
+      return;
+    }
+    let cancelled = false;
+    searchFrameworks(searchQuery).then(results => {
+      if (!cancelled) setSearchResults(results);
+    });
+    return () => { cancelled = true; };
+  }, [searchQuery]);
+
+  const filteredContent = useMemo(() => {
+    if (!searchQuery.trim() || !searchResults) {
       return { categories, showingResults: false };
     }
 
-    const results = searchFrameworks(searchQuery);
     const resultsGrouped: FrameworkCategory[] = categories.map(cat => ({
       ...cat,
-      frameworks: results.filter(f => f.category === cat.id)
+      frameworks: searchResults.filter(f => f.category === cat.id)
     })).filter(cat => cat.frameworks.length > 0);
 
     return { categories: resultsGrouped, showingResults: true };
-  }, [searchQuery, categories]);
+  }, [searchQuery, searchResults, categories]);
 
   const selectedCategory = selectedCategoryId
     ? categories.find(cat => cat.id === selectedCategoryId)
     : null;
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }} className="bg-codex-bg">
+        <div className="h-full flex items-center justify-center">
+          <div className="text-codex-text-secondary">Loading frameworks...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }} className="bg-codex-bg">
@@ -55,6 +95,14 @@ export default function FrameworksHome({ onSelectFramework }: FrameworksHomeProp
               }
             </p>
           </div>
+          {onManage && (
+            <button
+              onClick={onManage}
+              className="px-3 py-1.5 text-xs text-codex-text-secondary hover:text-codex-text-primary bg-codex-surface border border-codex-border rounded-md transition-colors"
+            >
+              Manage
+            </button>
+          )}
         </div>
 
         {/* Search Bar */}

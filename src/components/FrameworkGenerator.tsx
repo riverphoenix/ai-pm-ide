@@ -6,6 +6,7 @@ import { contextDocumentsAPI, frameworkOutputsAPI, settingsAPI } from '../lib/ip
 import { FrameworkDefinition, ContextDocument } from '../lib/types';
 import MarkdownWithMermaid from './MarkdownWithMermaid';
 import ResizableDivider from './ResizableDivider';
+import FrameworkCustomizer from './FrameworkCustomizer';
 
 interface FrameworkGeneratorProps {
   projectId: string;
@@ -47,6 +48,9 @@ export default function FrameworkGenerator({
   const [isRefining, setIsRefining] = useState(false);
   const [selectedRefinementDocs, setSelectedRefinementDocs] = useState<string[]>([]);
 
+  // Customizer state
+  const [showCustomizer, setShowCustomizer] = useState(false);
+
   // Panel resize state
   const [leftPanelWidth, setLeftPanelWidth] = useState(50); // percentage
 
@@ -77,8 +81,8 @@ export default function FrameworkGenerator({
   }, []);
 
   useEffect(() => {
-    const loadFramework = () => {
-      const fw = getFramework(frameworkId);
+    const loadFramework = async () => {
+      const fw = await getFramework(frameworkId);
       setFramework(fw || null);
       if (fw) {
         setOutputName(`${fw.name} - ${new Date().toLocaleDateString()}`);
@@ -89,7 +93,6 @@ export default function FrameworkGenerator({
       try {
         const docs = await contextDocumentsAPI.list(projectId);
         setAvailableDocs(docs);
-        // Auto-select global docs
         setSelectedDocIds(docs.filter(d => d.is_global).map(d => d.id));
       } catch (err) {
         console.error('Failed to load documents:', err);
@@ -148,7 +151,11 @@ export default function FrameworkGenerator({
             content: fileContent,
             size_bytes: newDocFile.size,
             created_at: Date.now() / 1000,
-            is_global: false
+            is_global: false,
+            folder_id: null,
+            tags: '[]',
+            is_favorite: false,
+            sort_order: 0,
           });
           console.log('✅ File added to context');
         } catch (err) {
@@ -178,7 +185,11 @@ export default function FrameworkGenerator({
               content: data.content,
               size_bytes: data.content.length,
               created_at: Date.now() / 1000,
-              is_global: false
+              is_global: false,
+              folder_id: null,
+              tags: '[]',
+              is_favorite: false,
+              sort_order: 0,
             });
             console.log('✅ URL content added to context');
           } else {
@@ -214,6 +225,18 @@ export default function FrameworkGenerator({
         body: JSON.stringify({
           project_id: projectId,
           framework_id: frameworkId,
+          framework_definition: {
+            id: framework.id,
+            name: framework.name,
+            category: framework.category,
+            description: framework.description,
+            icon: framework.icon,
+            system_prompt: framework.system_prompt,
+            guiding_questions: framework.guiding_questions,
+            example_output: framework.example_output,
+            supports_visuals: framework.supports_visuals,
+            visual_instructions: framework.visual_instructions || null,
+          },
           context_documents: docs.map(d => ({
             id: d.id,
             name: d.name,
@@ -519,14 +542,22 @@ export default function FrameworkGenerator({
               <p className="text-xs text-codex-text-secondary">{framework.description}</p>
             </div>
           </div>
-          {onCancel && (
+          <div className="flex items-center gap-2">
             <button
-              onClick={onCancel}
-              className="px-3 py-1.5 text-xs text-codex-text-secondary hover:text-codex-text-primary transition-colors"
+              onClick={() => setShowCustomizer(true)}
+              className="px-3 py-1.5 text-xs text-codex-text-secondary hover:text-codex-text-primary bg-codex-surface border border-codex-border rounded transition-colors"
             >
-              ✕ Close
+              Edit Prompt
             </button>
-          )}
+            {onCancel && (
+              <button
+                onClick={onCancel}
+                className="px-3 py-1.5 text-xs text-codex-text-secondary hover:text-codex-text-primary transition-colors"
+              >
+                ✕ Close
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -929,6 +960,17 @@ export default function FrameworkGenerator({
             </div>
           </div>
         </div>
+      )}
+
+      {showCustomizer && framework && (
+        <FrameworkCustomizer
+          framework={framework}
+          onClose={() => setShowCustomizer(false)}
+          onSaved={(updated) => {
+            setFramework(updated);
+            setShowCustomizer(false);
+          }}
+        />
       )}
     </div>
   );
