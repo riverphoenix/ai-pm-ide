@@ -1,11 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
-import { ask } from '@tauri-apps/plugin-dialog';
-import { FrameworkDefinition, FrameworkCategory } from '../lib/types';
-import { frameworkCategoriesAPI, frameworkDefsAPI } from '../lib/ipc';
+import { ask, save, open } from '@tauri-apps/plugin-dialog';
+import { writeTextFile, readTextFile } from '@tauri-apps/plugin-fs';
+import { FrameworkDefinition, FrameworkCategory, ImportPreview, ConflictAction, BatchExportResult } from '../lib/types';
+import { frameworkCategoriesAPI, frameworkDefsAPI, marketplaceAPI } from '../lib/ipc';
 import { invalidateCache } from '../lib/frameworks';
 import FrameworkCustomizer from './FrameworkCustomizer';
 import CategoryManager from './CategoryManager';
 import PromptEditor from './PromptEditor';
+import ImportPreviewDialog from './ImportPreviewDialog';
+import BatchExportDialog from './BatchExportDialog';
+import BatchImportDialog, { BatchImportItem } from './BatchImportDialog';
 
 interface FrameworkManagerProps {
   onClose: () => void;
@@ -20,6 +24,12 @@ export default function FrameworkManager({ onClose }: FrameworkManagerProps) {
   const [showCustomizer, setShowCustomizer] = useState(false);
   const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showImportPreview, setShowImportPreview] = useState(false);
+  const [showBatchExport, setShowBatchExport] = useState(false);
+  const [showBatchImport, setShowBatchImport] = useState(false);
+  const [batchImportItems, setBatchImportItems] = useState<BatchImportItem[]>([]);
+  const [importMdContent, setImportMdContent] = useState('');
+  const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Create form state
@@ -122,6 +132,65 @@ export default function FrameworkManager({ onClose }: FrameworkManagerProps) {
     setNewSupportsVisuals(false);
   };
 
+  const handleExportSingle = async (fw: FrameworkDefinition) => {
+    try {
+      const content = await marketplaceAPI.exportFramework(fw.id);
+      const filePath = await save({
+        defaultPath: `${fw.id}.md`,
+        filters: [{ name: 'Markdown', extensions: ['md'] }],
+      });
+      if (filePath) {
+        await writeTextFile(filePath, content);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Export failed');
+    }
+  };
+
+  const handleImport = async () => {
+    try {
+      const selected = await open({
+        multiple: true,
+        filters: [{ name: 'Markdown', extensions: ['md'] }],
+      });
+      if (!selected) return;
+
+      const paths = Array.isArray(selected) ? selected : [selected];
+
+      if (paths.length === 1) {
+        const content = await readTextFile(paths[0] as string);
+        setImportMdContent(content);
+        const preview = await marketplaceAPI.previewImportFramework(content);
+        setImportPreview(preview);
+        setShowImportPreview(true);
+      } else {
+        const items: BatchImportItem[] = [];
+        for (const path of paths) {
+          const filename = (path as string).split('/').pop() || 'unknown.md';
+          try {
+            const content = await readTextFile(path as string);
+            const preview = await marketplaceAPI.previewImportFramework(content);
+            items.push({ filename, mdContent: content, preview, error: null, action: preview.already_exists ? 'copy' : 'copy', result: null });
+          } catch (err) {
+            items.push({ filename, mdContent: '', preview: null, error: err instanceof Error ? err.message : String(err), action: 'copy', result: null });
+          }
+        }
+        setBatchImportItems(items);
+        setShowBatchImport(true);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Import failed');
+    }
+  };
+
+  const handleBatchExportSave = async (results: BatchExportResult[]) => {
+    const dir = await open({ directory: true });
+    if (!dir) throw new Error('No directory selected');
+    for (const item of results) {
+      await writeTextFile(`${dir}/${item.filename}`, item.content);
+    }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }} className="bg-codex-bg">
       {/* Header */}
@@ -134,6 +203,18 @@ export default function FrameworkManager({ onClose }: FrameworkManagerProps) {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={handleImport}
+              className="px-3 py-1.5 text-xs text-codex-text-secondary hover:text-codex-text-primary bg-codex-surface border border-codex-border rounded transition-colors"
+            >
+              Import
+            </button>
+            <button
+              onClick={() => setShowBatchExport(true)}
+              className="px-3 py-1.5 text-xs text-codex-text-secondary hover:text-codex-text-primary bg-codex-surface border border-codex-border rounded transition-colors"
+            >
+              Export
+            </button>
             <button
               onClick={() => setShowCategoryManager(true)}
               className="px-3 py-1.5 text-xs text-codex-text-secondary hover:text-codex-text-primary bg-codex-surface border border-codex-border rounded transition-colors"
@@ -382,6 +463,12 @@ export default function FrameworkManager({ onClose }: FrameworkManagerProps) {
                 >
                   Duplicate
                 </button>
+                <button
+                  onClick={() => handleExportSingle(selectedFramework)}
+                  className="px-3 py-1.5 text-xs text-codex-text-secondary hover:text-codex-text-primary bg-codex-surface border border-codex-border rounded transition-colors"
+                >
+                  Export
+                </button>
                 {!selectedFramework.is_builtin && (
                   <button
                     onClick={() => handleDelete(selectedFramework)}
@@ -459,6 +546,48 @@ export default function FrameworkManager({ onClose }: FrameworkManagerProps) {
         <CategoryManager
           onClose={() => setShowCategoryManager(false)}
           onChanged={loadData}
+        />
+      )}
+
+      {/* Import Preview Dialog */}
+      {showImportPreview && importPreview && (
+        <ImportPreviewDialog
+          preview={importPreview}
+          onConfirm={async (action: ConflictAction) => {
+            const result = await marketplaceAPI.confirmImportFramework(importMdContent, action);
+            invalidateCache();
+            await loadData();
+            return result;
+          }}
+          onClose={() => {
+            setShowImportPreview(false);
+            setImportPreview(null);
+            setImportMdContent('');
+          }}
+        />
+      )}
+
+      {/* Batch Export Dialog */}
+      {showBatchExport && (
+        <BatchExportDialog
+          mode="frameworks"
+          items={frameworks}
+          onExport={(ids) => marketplaceAPI.exportFrameworksBatch(ids)}
+          onSaveFiles={handleBatchExportSave}
+          onClose={() => setShowBatchExport(false)}
+        />
+      )}
+
+      {showBatchImport && (
+        <BatchImportDialog
+          items={batchImportItems}
+          onConfirm={async (mdContent, action) => {
+            const result = await marketplaceAPI.confirmImportFramework(mdContent, action);
+            invalidateCache();
+            return result;
+          }}
+          onClose={() => setShowBatchImport(false)}
+          onDone={() => { loadData(); }}
         />
       )}
     </div>

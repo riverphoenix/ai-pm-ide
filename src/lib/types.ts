@@ -249,3 +249,29 @@ export interface SavedPrompt {
   created_at: number;
   updated_at: number;
 }
+
+export interface ImportPreview {
+  item_type: 'framework' | 'prompt';
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  already_exists: boolean;
+  is_builtin_conflict: boolean;
+}
+
+export interface ImportResult {
+  success: boolean;
+  item_type: 'framework' | 'prompt';
+  id: string;
+  name: string;
+  action: 'created' | 'overwritten' | 'copied' | 'skipped';
+  error?: string;
+}
+
+export interface BatchExportResult {
+  filename: string;
+  content: string;
+}
+
+export type ConflictAction = 'overwrite' | 'copy' | 'skip';

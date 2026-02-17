@@ -10,6 +10,7 @@ PM IDE enables product managers to:
 - **Apply 45+ PM frameworks** across Strategy, Prioritization, Discovery, Development, Execution, Decision, and Communication
 - **Use 30+ prompt templates** with `{variable}` substitution for repeatable PM workflows
 - **Upload context documents** (PDFs, URLs, Google Docs, plain text) with automatic content extraction
+- **Import/export frameworks and prompts** as .md files with YAML front matter for sharing and backup
 - **Save and organize outputs** in a searchable library with visual diagrams
 - **Chat with AI** about product strategy, frameworks, and ideas
 
@@ -22,7 +23,7 @@ PM IDE enables product managers to:
 - **Database**: SQLite with CASCADE delete patterns
 - **Diagrams**: Mermaid for Customer Journey Maps and visual frameworks
 
-## ✅ Current Status: Phase 5 Complete (Prompts Library)
+## ✅ Current Status: Phase 6 Complete (Framework Marketplace)
 
 ### Core Features Implemented
 
@@ -62,6 +63,15 @@ PM IDE enables product managers to:
 - **Usage tracking**: Track how often each prompt is used, sort by most-used
 - **Favorites**: Star prompts for quick access
 - **Search & filter**: Full-text search + category filtering
+
+#### 3d. **Framework Marketplace (Phase 6)** ✅
+- **Export frameworks/prompts** as .md files with YAML front matter metadata
+- **Import from .md files** with preview, conflict detection, and resolution (overwrite/copy/skip)
+- **Batch export**: Select multiple items, export to a directory
+- **Multi-file import**: Select multiple .md files, review all with per-file conflict actions
+- **Category auto-creation**: Unknown categories in imported files are auto-created
+- **Validation**: Type checking, required fields, export version validation
+- **Round-trip safe**: Export → re-import preserves all data including variables
 
 #### 4. **Outputs Library** ✅
 - View all saved framework outputs
@@ -111,6 +121,9 @@ PM IDE enables product managers to:
 │  │  ├─ PromptsLibrary (browse/manage prompts)      │ │
 │  │  ├─ PromptEditorModal (create/edit prompts)     │ │
 │  │  ├─ PromptPickerModal (use prompts in gen)      │ │
+│  │  ├─ ImportPreviewDialog (single import preview) │ │
+│  │  ├─ BatchExportDialog (multi-item export)       │ │
+│  │  ├─ BatchImportDialog (multi-file import)       │ │
 │  │  ├─ ContextManager (document management)         │ │
 │  │  ├─ OutputsLibrary (saved outputs)               │ │
 │  │  ├─ DocumentsExplorer (folder tree + preview)    │ │
@@ -123,7 +136,7 @@ PM IDE enables product managers to:
 │  ┌────────────────────────────────────────────────────┐ │
 │  │              Tauri Core (Rust)                     │ │
 │  │                                                    │ │
-│  │  ├─ IPC Commands (64 commands)                   │ │
+│  │  ├─ IPC Commands (74 commands)                   │ │
 │  │  ├─ SQLite Database (projects, folders, docs,    │ │
 │  │  │   frameworks, categories, saved_prompts)      │ │
 │  │  ├─ Shell Command Execution                      │ │
@@ -188,6 +201,9 @@ pm-ide/
 │   │   ├── PromptEditor.tsx      # Monaco editor wrapper
 │   │   ├── PromptEditorModal.tsx # Create/edit saved prompts
 │   │   ├── PromptPickerModal.tsx # Select prompt + fill variables
+│   │   ├── ImportPreviewDialog.tsx # Single file import preview
+│   │   ├── BatchExportDialog.tsx # Multi-item export selector
+│   │   ├── BatchImportDialog.tsx # Multi-file import review
 │   │   ├── FolderTree.tsx        # Drag-and-drop folder tree
 │   │   ├── TreeItem.tsx          # Individual tree node
 │   │   ├── CommandPalette.tsx    # Cmd+K command palette
@@ -232,7 +248,7 @@ pm-ide/
 ├── src-tauri/                    # Tauri / Rust backend
 │   └── src/
 │       ├── main.rs               # Entry point
-│       ├── lib.rs                # Command registration (64 commands)
+│       ├── lib.rs                # Command registration (74 commands)
 │       └── commands.rs           # All IPC commands + SQLite schema
 ├── python-sidecar/               # Python FastAPI server
 │   ├── main.py                   # FastAPI app
@@ -418,6 +434,7 @@ Python sidecar runs on `http://127.0.0.1:8000` and provides:
 ✅ **AI Framework Generation** - 45 frameworks with context-driven prompts
 ✅ **Framework Management** - Create, edit, duplicate, delete frameworks with Monaco editor
 ✅ **Prompts Library** - 30 pre-loaded templates with {variable} substitution, CRUD, usage tracking
+✅ **Framework Marketplace** - Import/export frameworks and prompts as .md files with YAML front matter
 ✅ **Visual Diagrams** - Mermaid rendering for Customer Journey Maps
 ✅ **Outputs Library** - Save, search, filter, and view all outputs
 ✅ **Document Parsing** - Automatic content extraction (PDF, HTML)
@@ -432,7 +449,7 @@ Python sidecar runs on `http://127.0.0.1:8000` and provides:
 
 **📋 Full Implementation Plan**: [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)
 **Timeline**: 22 weeks (~5.5 months)
-**Status**: Phase 0 (MVP) ✅ | Phase 1 (UI) ✅ | Phase 2 (Files) ✅ | Phase 3 (Console) ✅ | Phase 4 (Frameworks) ✅ | Phase 5 (Prompts) ✅
+**Status**: Phase 0 (MVP) ✅ | Phase 1 (UI) ✅ | Phase 2 (Files) ✅ | Phase 3 (Console) ✅ | Phase 4 (Frameworks) ✅ | Phase 5 (Prompts) ✅ | Phase 6 (Marketplace) ✅
 
 ---
 
@@ -540,42 +557,46 @@ Added saved prompts with `{variable}` template system for repeatable PM workflow
 
 ---
 
-### **Phase 6: Framework Marketplace (3-4 weeks)** - Community Sharing 🌐
-**Status**: Not Started
+### **Phase 6: Framework Marketplace (3-4 weeks)** - Import/Export 📦 ✅
+**Status**: Complete
 
-Enable import/export and sharing of frameworks as .md files.
+Added .md file import/export for frameworks and prompts, enabling portability and sharing.
 
-**Key Features**:
-- 📥 **Import/Export**: Standardized .md format with YAML front matter
-- 🔄 **Versioning**: Track framework versions, show diffs on update
-- ✅ **Validation**: Parse and validate imported frameworks
-- 🏪 **Marketplace**: Browse and discover community frameworks (Phase 7)
-- 🔧 **Custom Frameworks**: Create and share team-specific workflows
+**Completed**:
+- 📥 **Single Export**: Export any framework or prompt as a .md file with YAML front matter + markdown body
+- 📤 **Single Import**: Import .md file with preview, conflict detection (already exists, built-in conflict)
+- 📦 **Batch Export**: Select multiple items via checkbox, export all to a directory
+- 📂 **Multi-File Import**: Select multiple .md files, review all with per-file conflict actions (Import/Copy/Overwrite/Skip)
+- ⚠️ **Conflict Resolution**: 3 actions for duplicate IDs — overwrite existing, import as copy (new ID), or skip
+- 🏷️ **Category Auto-Creation**: Unknown categories in imported files are auto-created as custom categories
+- ✅ **Validation**: Type field, export version, required fields, descriptive error messages
+- 🔧 **10 New Rust Commands**: Export/import for both frameworks and prompts (74 total)
+- 🎨 **3 New Dialog Components**: ImportPreviewDialog, BatchExportDialog, BatchImportDialog
 
-**Import Format**:
+**Export Format** (.md with YAML front matter):
 ```markdown
 ---
-id: kano-model
-name: Kano Model
-category: prioritization
-icon: 📊
-tags: [prioritization, satisfaction]
+type: framework
+id: swot
+name: "SWOT Analysis"
+category: strategy
+description: "Analyze Strengths, Weaknesses, Opportunities, and Threats"
+icon: "⚖️"
+supports_visuals: false
+exported_at: "2026-02-17T14:30:00Z"
+export_version: 1
 ---
 
 # System Prompt
-[AI instructions]
+[Full system prompt text]
 
 # Guiding Questions
-- What features are you analyzing?
+1. What product or business are you analyzing?
+2. Who is your target customer?
 
 # Example Output
-[Markdown example]
+[Full example output markdown]
 ```
-
-**Success Metrics**:
-- Import/export works for 100% of valid .md files
-- Users successfully share frameworks
-- 10+ community frameworks in first month
 
 ---
 
@@ -607,18 +628,19 @@ Add multi-agent workflows, context memory, and integrations.
 
 ## 📊 Overall Success Metrics
 
-**Current State** (Phase 5 Complete):
+**Current State** (Phase 6 Complete):
 - ✅ 45 frameworks across 7 categories with full CRUD
 - ✅ 30 prompt templates across 7 categories with {variable} substitution
+- ✅ Import/export frameworks and prompts as .md files with YAML front matter
+- ✅ Batch export and multi-file import with conflict resolution
 - ✅ Core features complete (projects, context, generation, outputs, chat)
 - ✅ Mac desktop app with Tauri + Codex UI
 - ✅ VSCode-like folder tree with drag-and-drop
 - ✅ Command palette, keyboard shortcuts, terminal panel
 - ✅ Framework editing with Monaco editor, category management
-- ✅ 64 Rust IPC commands, SQLite with 8 tables
+- ✅ 74 Rust IPC commands, SQLite with 8 tables
 
-**Target State** (Remaining Phases):
-- 🎯 Framework marketplace for community sharing (Phase 6)
+**Target State** (Remaining Phase):
 - 🎯 Multi-agent orchestration and advanced AI features (Phase 7)
 
 ## 📝 License
@@ -650,6 +672,6 @@ Built with ❤️ for Product Managers by Product Managers.
 
 ---
 
-**Status**: Phase 5 Complete | 45 Frameworks + 30 Prompts | Codex UI + Console + Framework Editor + Prompts Library | Mac Desktop App
-**Version**: 0.6.0-phase5
+**Status**: Phase 6 Complete | 45 Frameworks + 30 Prompts + Import/Export | Codex UI + Console + Framework Editor + Prompts Library + Marketplace | Mac Desktop App
+**Version**: 0.7.0-phase6
 **Last Updated**: February 2026

@@ -76,6 +76,16 @@ pub fn run() {
             search_saved_prompts,
             duplicate_saved_prompt,
             increment_prompt_usage,
+            export_framework,
+            export_frameworks_batch,
+            export_all_frameworks,
+            preview_import_framework,
+            confirm_import_framework,
+            export_prompt,
+            export_prompts_batch,
+            export_all_prompts,
+            preview_import_prompt,
+            confirm_import_prompt,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

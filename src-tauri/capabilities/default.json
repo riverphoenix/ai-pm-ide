@@ -9,7 +9,9 @@
     "dialog:default",
     "dialog:allow-ask",
     "dialog:allow-save",
+    "dialog:allow-open",
     "fs:default",
-    "fs:allow-write-text-file"
+    "fs:allow-write-text-file",
+    "fs:allow-read-text-file"
   ]
 }

@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import { Project, Conversation, Message, Settings, SettingsUpdate, TokenUsage, TokenUsageAggregate, ContextDocument, FrameworkOutput, Folder, SearchResult, CommandHistoryEntry, CommandResult, FrameworkDefinition, FrameworkCategory, SavedPrompt, PromptVariable } from './types';
+import { Project, Conversation, Message, Settings, SettingsUpdate, TokenUsage, TokenUsageAggregate, ContextDocument, FrameworkOutput, Folder, SearchResult, CommandHistoryEntry, CommandResult, FrameworkDefinition, FrameworkCategory, SavedPrompt, PromptVariable, ImportPreview, ImportResult, BatchExportResult, ConflictAction } from './types';
 
 interface FrameworkDefRow {
   id: string;
@@ -574,4 +574,46 @@ export const frameworkOutputsAPI = {
       throw error;
     }
   }
+};
+
+export const marketplaceAPI = {
+  async exportFramework(id: string): Promise<string> {
+    return await invoke('export_framework', { id });
+  },
+
+  async exportFrameworksBatch(ids: string[]): Promise<BatchExportResult[]> {
+    return await invoke('export_frameworks_batch', { ids });
+  },
+
+  async exportAllFrameworks(): Promise<BatchExportResult[]> {
+    return await invoke('export_all_frameworks');
+  },
+
+  async previewImportFramework(mdContent: string): Promise<ImportPreview> {
+    return await invoke('preview_import_framework', { mdContent });
+  },
+
+  async confirmImportFramework(mdContent: string, conflictAction: ConflictAction): Promise<ImportResult> {
+    return await invoke('confirm_import_framework', { mdContent, conflictAction });
+  },
+
+  async exportPrompt(id: string): Promise<string> {
+    return await invoke('export_prompt', { id });
+  },
+
+  async exportPromptsBatch(ids: string[]): Promise<BatchExportResult[]> {
+    return await invoke('export_prompts_batch', { ids });
+  },
+
+  async exportAllPrompts(): Promise<BatchExportResult[]> {
+    return await invoke('export_all_prompts');
+  },
+
+  async previewImportPrompt(mdContent: string): Promise<ImportPreview> {
+    return await invoke('preview_import_prompt', { mdContent });
+  },
+
+  async confirmImportPrompt(mdContent: string, conflictAction: ConflictAction): Promise<ImportResult> {
+    return await invoke('confirm_import_prompt', { mdContent, conflictAction });
+  },
 };

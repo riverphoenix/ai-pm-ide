@@ -9,6 +9,7 @@ use aes_gcm::{
 };
 use sha2::{Sha256, Digest};
 use base64::{Engine as _, engine::general_purpose};
+use serde_yaml;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Project {
@@ -2286,6 +2287,71 @@ pub struct SavedPromptRow {
     pub updated_at: i64,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct FrameworkExportMeta {
+    pub r#type: String,
+    pub id: String,
+    pub name: String,
+    pub category: String,
+    pub description: String,
+    pub icon: String,
+    pub supports_visuals: bool,
+    pub visual_instructions: Option<String>,
+    pub exported_at: String,
+    pub export_version: i32,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PromptVariableExport {
+    pub name: String,
+    pub r#type: String,
+    pub label: Option<String>,
+    pub placeholder: Option<String>,
+    pub options: Option<Vec<String>>,
+    pub required: bool,
+    pub default_value: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PromptExportMeta {
+    pub r#type: String,
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    pub category: String,
+    pub framework_id: Option<String>,
+    pub variables: Vec<PromptVariableExport>,
+    pub exported_at: String,
+    pub export_version: i32,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ImportPreview {
+    pub item_type: String,
+    pub id: String,
+    pub name: String,
+    pub category: String,
+    pub description: String,
+    pub already_exists: bool,
+    pub is_builtin_conflict: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ImportResult {
+    pub success: bool,
+    pub item_type: String,
+    pub id: String,
+    pub name: String,
+    pub action: String,
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct BatchExportResult {
+    pub filename: String,
+    pub content: String,
+}
+
 #[tauri::command]
 pub async fn execute_shell_command(
     project_id: String,
@@ -2553,4 +2619,568 @@ pub async fn increment_prompt_usage(id: String, app: tauri::AppHandle) -> Result
         params![&now, &id],
     ).map_err(|e| format!("Failed to increment prompt usage: {}", e))?;
     Ok(())
+}
+
+// === Phase 6: Import/Export Helpers ===
+
+fn parse_yaml_frontmatter(md: &str) -> Result<(String, String), String> {
+    let trimmed = md.trim();
+    if !trimmed.starts_with("---") {
+        return Err("File must start with YAML front matter (---)".to_string());
+    }
+    let after_first = &trimmed[3..];
+    let end_idx = after_first.find("\n---")
+        .ok_or("Missing closing --- for YAML front matter")?;
+    let yaml_str = after_first[..end_idx].trim().to_string();
+    let body = after_first[end_idx + 4..].trim().to_string();
+    Ok((yaml_str, body))
+}
+
+fn framework_to_markdown(fw: &FrameworkDefRow) -> Result<String, String> {
+    let meta = FrameworkExportMeta {
+        r#type: "framework".to_string(),
+        id: fw.id.clone(),
+        name: fw.name.clone(),
+        category: fw.category.clone(),
+        description: fw.description.clone(),
+        icon: fw.icon.clone(),
+        supports_visuals: fw.supports_visuals,
+        visual_instructions: fw.visual_instructions.clone(),
+        exported_at: Utc::now().to_rfc3339(),
+        export_version: 1,
+    };
+    let yaml = serde_yaml::to_string(&meta)
+        .map_err(|e| format!("Failed to serialize YAML: {}", e))?;
+
+    let questions: Vec<String> = serde_json::from_str(&fw.guiding_questions)
+        .unwrap_or_default();
+    let questions_md: String = questions.iter()
+        .enumerate()
+        .map(|(i, q)| format!("{}. {}", i + 1, q))
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    Ok(format!(
+        "---\n{}---\n\n# System Prompt\n\n{}\n\n# Guiding Questions\n\n{}\n\n# Example Output\n\n{}",
+        yaml,
+        fw.system_prompt,
+        questions_md,
+        fw.example_output,
+    ))
+}
+
+fn markdown_to_framework_parts(body: &str) -> Result<(String, Vec<String>, String), String> {
+    let system_prompt_start = body.find("# System Prompt")
+        .ok_or("Missing '# System Prompt' section")?;
+    let questions_start = body.find("# Guiding Questions")
+        .ok_or("Missing '# Guiding Questions' section")?;
+    let example_start = body.find("# Example Output")
+        .ok_or("Missing '# Example Output' section")?;
+
+    let system_prompt = body[system_prompt_start + 15..questions_start].trim().to_string();
+    let questions_section = body[questions_start + 19..example_start].trim();
+    let example_output = body[example_start + 16..].trim().to_string();
+
+    let questions: Vec<String> = questions_section
+        .lines()
+        .filter(|l| !l.trim().is_empty())
+        .map(|l| {
+            let trimmed = l.trim();
+            if let Some(pos) = trimmed.find(". ") {
+                if trimmed[..pos].chars().all(|c| c.is_ascii_digit()) {
+                    return trimmed[pos + 2..].to_string();
+                }
+            }
+            if trimmed.starts_with("- ") {
+                return trimmed[2..].to_string();
+            }
+            trimmed.to_string()
+        })
+        .collect();
+
+    Ok((system_prompt, questions, example_output))
+}
+
+fn prompt_to_markdown(prompt: &SavedPromptRow) -> Result<String, String> {
+    let variables: Vec<PromptVariableExport> = serde_json::from_str(&prompt.variables)
+        .unwrap_or_default();
+    let meta = PromptExportMeta {
+        r#type: "prompt".to_string(),
+        id: prompt.id.clone(),
+        name: prompt.name.clone(),
+        description: prompt.description.clone(),
+        category: prompt.category.clone(),
+        framework_id: prompt.framework_id.clone(),
+        variables,
+        exported_at: Utc::now().to_rfc3339(),
+        export_version: 1,
+    };
+    let yaml = serde_yaml::to_string(&meta)
+        .map_err(|e| format!("Failed to serialize YAML: {}", e))?;
+
+    Ok(format!(
+        "---\n{}---\n\n# Prompt Text\n\n{}",
+        yaml,
+        prompt.prompt_text,
+    ))
+}
+
+fn sanitize_filename(name: &str) -> String {
+    name.to_lowercase()
+        .chars()
+        .map(|c| if c.is_alphanumeric() || c == '-' || c == '_' { c } else if c == ' ' { '-' } else { '-' })
+        .collect::<String>()
+        .replace("--", "-")
+        .trim_matches('-')
+        .to_string()
+}
+
+// === Phase 6: Export Commands ===
+
+#[tauri::command]
+pub async fn export_framework(id: String, app: tauri::AppHandle) -> Result<String, String> {
+    let conn = get_db_connection(&app)?;
+    let fw = conn.query_row(
+        "SELECT id, category, name, description, icon, example_output, system_prompt, guiding_questions, supports_visuals, visual_instructions, is_builtin, sort_order, created_at, updated_at FROM framework_defs WHERE id = ?1",
+        params![&id],
+        |row| {
+            Ok(FrameworkDefRow {
+                id: row.get(0)?,
+                category: row.get(1)?,
+                name: row.get(2)?,
+                description: row.get(3)?,
+                icon: row.get(4)?,
+                example_output: row.get(5)?,
+                system_prompt: row.get(6)?,
+                guiding_questions: row.get(7)?,
+                supports_visuals: row.get(8)?,
+                visual_instructions: row.get(9)?,
+                is_builtin: row.get(10)?,
+                sort_order: row.get(11)?,
+                created_at: row.get(12)?,
+                updated_at: row.get(13)?,
+            })
+        },
+    ).map_err(|e| format!("Framework not found: {}", e))?;
+    framework_to_markdown(&fw)
+}
+
+#[tauri::command]
+pub async fn export_frameworks_batch(ids: Vec<String>, app: tauri::AppHandle) -> Result<Vec<BatchExportResult>, String> {
+    let conn = get_db_connection(&app)?;
+    let mut results = Vec::new();
+    for id in &ids {
+        let fw = conn.query_row(
+            "SELECT id, category, name, description, icon, example_output, system_prompt, guiding_questions, supports_visuals, visual_instructions, is_builtin, sort_order, created_at, updated_at FROM framework_defs WHERE id = ?1",
+            params![id],
+            |row| {
+                Ok(FrameworkDefRow {
+                    id: row.get(0)?,
+                    category: row.get(1)?,
+                    name: row.get(2)?,
+                    description: row.get(3)?,
+                    icon: row.get(4)?,
+                    example_output: row.get(5)?,
+                    system_prompt: row.get(6)?,
+                    guiding_questions: row.get(7)?,
+                    supports_visuals: row.get(8)?,
+                    visual_instructions: row.get(9)?,
+                    is_builtin: row.get(10)?,
+                    sort_order: row.get(11)?,
+                    created_at: row.get(12)?,
+                    updated_at: row.get(13)?,
+                })
+            },
+        ).map_err(|e| format!("Framework {} not found: {}", id, e))?;
+        let content = framework_to_markdown(&fw)?;
+        let filename = format!("{}.md", sanitize_filename(&fw.name));
+        results.push(BatchExportResult { filename, content });
+    }
+    Ok(results)
+}
+
+#[tauri::command]
+pub async fn export_all_frameworks(app: tauri::AppHandle) -> Result<Vec<BatchExportResult>, String> {
+    let conn = get_db_connection(&app)?;
+    let mut stmt = conn.prepare(
+        "SELECT id, category, name, description, icon, example_output, system_prompt, guiding_questions, supports_visuals, visual_instructions, is_builtin, sort_order, created_at, updated_at FROM framework_defs ORDER BY sort_order"
+    ).map_err(|e| format!("Failed to query frameworks: {}", e))?;
+
+    let frameworks: Vec<FrameworkDefRow> = stmt.query_map([], |row| {
+        Ok(FrameworkDefRow {
+            id: row.get(0)?,
+            category: row.get(1)?,
+            name: row.get(2)?,
+            description: row.get(3)?,
+            icon: row.get(4)?,
+            example_output: row.get(5)?,
+            system_prompt: row.get(6)?,
+            guiding_questions: row.get(7)?,
+            supports_visuals: row.get(8)?,
+            visual_instructions: row.get(9)?,
+            is_builtin: row.get(10)?,
+            sort_order: row.get(11)?,
+            created_at: row.get(12)?,
+            updated_at: row.get(13)?,
+        })
+    }).map_err(|e| format!("Query error: {}", e))?
+    .filter_map(|r| r.ok())
+    .collect();
+
+    let mut results = Vec::new();
+    for fw in &frameworks {
+        let content = framework_to_markdown(fw)?;
+        let filename = format!("{}.md", sanitize_filename(&fw.name));
+        results.push(BatchExportResult { filename, content });
+    }
+    Ok(results)
+}
+
+#[tauri::command]
+pub async fn preview_import_framework(md_content: String, app: tauri::AppHandle) -> Result<ImportPreview, String> {
+    let (yaml_str, _body) = parse_yaml_frontmatter(&md_content)?;
+    let meta: FrameworkExportMeta = serde_yaml::from_str(&yaml_str)
+        .map_err(|e| format!("Invalid YAML front matter: {}", e))?;
+
+    if meta.r#type != "framework" {
+        return Err(format!("Expected type 'framework', got '{}'", meta.r#type));
+    }
+    if meta.export_version != 1 {
+        return Err(format!("Unsupported export version: {}", meta.export_version));
+    }
+    if meta.name.is_empty() { return Err("Missing required field: name".to_string()); }
+    if meta.category.is_empty() { return Err("Missing required field: category".to_string()); }
+    if meta.id.is_empty() { return Err("Missing required field: id".to_string()); }
+
+    let conn = get_db_connection(&app)?;
+    let existing: Option<(String, bool)> = conn.query_row(
+        "SELECT id, is_builtin FROM framework_defs WHERE id = ?1",
+        params![&meta.id],
+        |row| Ok((row.get(0)?, row.get(1)?)),
+    ).optional().map_err(|e| format!("DB error: {}", e))?;
+
+    let (already_exists, is_builtin_conflict) = match existing {
+        Some((_, is_builtin)) => (true, is_builtin),
+        None => (false, false),
+    };
+
+    Ok(ImportPreview {
+        item_type: "framework".to_string(),
+        id: meta.id,
+        name: meta.name,
+        category: meta.category,
+        description: meta.description,
+        already_exists,
+        is_builtin_conflict,
+    })
+}
+
+#[tauri::command]
+pub async fn confirm_import_framework(md_content: String, conflict_action: String, app: tauri::AppHandle) -> Result<ImportResult, String> {
+    let (yaml_str, body) = parse_yaml_frontmatter(&md_content)?;
+    let meta: FrameworkExportMeta = serde_yaml::from_str(&yaml_str)
+        .map_err(|e| format!("Invalid YAML: {}", e))?;
+    let (system_prompt, questions, example_output) = markdown_to_framework_parts(&body)?;
+    let questions_json = serde_json::to_string(&questions)
+        .map_err(|e| format!("Failed to serialize questions: {}", e))?;
+
+    let conn = get_db_connection(&app)?;
+    let now = Utc::now().timestamp();
+
+    let existing: Option<bool> = conn.query_row(
+        "SELECT is_builtin FROM framework_defs WHERE id = ?1",
+        params![&meta.id],
+        |row| row.get(0),
+    ).optional().map_err(|e| format!("DB error: {}", e))?;
+
+    let final_id: String;
+    let action: String;
+
+    match (existing, conflict_action.as_str()) {
+        (None, _) => {
+            final_id = meta.id.clone();
+            action = "created".to_string();
+            ensure_category_exists(&conn, &meta.category)?;
+            conn.execute(
+                "INSERT INTO framework_defs (id, category, name, description, icon, example_output, system_prompt, guiding_questions, supports_visuals, visual_instructions, is_builtin, sort_order, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, 0, 999, ?11, ?12)",
+                params![&meta.id, &meta.category, &meta.name, &meta.description, &meta.icon, &example_output, &system_prompt, &questions_json, &meta.supports_visuals, &meta.visual_instructions, &now, &now],
+            ).map_err(|e| format!("Failed to insert framework: {}", e))?;
+        },
+        (Some(_), "skip") => {
+            return Ok(ImportResult {
+                success: true,
+                item_type: "framework".to_string(),
+                id: meta.id,
+                name: meta.name,
+                action: "skipped".to_string(),
+                error: None,
+            });
+        },
+        (Some(_), "overwrite") => {
+            final_id = meta.id.clone();
+            action = "overwritten".to_string();
+            ensure_category_exists(&conn, &meta.category)?;
+            conn.execute(
+                "UPDATE framework_defs SET category=?1, name=?2, description=?3, icon=?4, example_output=?5, system_prompt=?6, guiding_questions=?7, supports_visuals=?8, visual_instructions=?9, updated_at=?10 WHERE id=?11",
+                params![&meta.category, &meta.name, &meta.description, &meta.icon, &example_output, &system_prompt, &questions_json, &meta.supports_visuals, &meta.visual_instructions, &now, &meta.id],
+            ).map_err(|e| format!("Failed to update framework: {}", e))?;
+        },
+        (Some(_), "copy") | (Some(_), _) => {
+            final_id = format!("{}-imported-{}", meta.id, &Uuid::new_v4().to_string()[..8]);
+            action = "copied".to_string();
+            ensure_category_exists(&conn, &meta.category)?;
+            conn.execute(
+                "INSERT INTO framework_defs (id, category, name, description, icon, example_output, system_prompt, guiding_questions, supports_visuals, visual_instructions, is_builtin, sort_order, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, 0, 999, ?11, ?12)",
+                params![&final_id, &meta.category, &format!("{} (Imported)", meta.name), &meta.description, &meta.icon, &example_output, &system_prompt, &questions_json, &meta.supports_visuals, &meta.visual_instructions, &now, &now],
+            ).map_err(|e| format!("Failed to insert framework copy: {}", e))?;
+        },
+    }
+
+    Ok(ImportResult {
+        success: true,
+        item_type: "framework".to_string(),
+        id: final_id,
+        name: meta.name,
+        action,
+        error: None,
+    })
+}
+
+fn ensure_category_exists(conn: &Connection, category_id: &str) -> Result<(), String> {
+    let exists: bool = conn.query_row(
+        "SELECT COUNT(*) > 0 FROM framework_categories WHERE id = ?1",
+        params![category_id],
+        |row| row.get(0),
+    ).map_err(|e| format!("DB error checking category: {}", e))?;
+
+    if !exists {
+        let now = Utc::now().timestamp();
+        let name = category_id.replace('-', " ")
+            .split_whitespace()
+            .map(|w| {
+                let mut c = w.chars();
+                match c.next() {
+                    None => String::new(),
+                    Some(f) => f.to_uppercase().collect::<String>() + c.as_str(),
+                }
+            })
+            .collect::<Vec<_>>()
+            .join(" ");
+        conn.execute(
+            "INSERT INTO framework_categories (id, name, description, icon, is_builtin, sort_order, created_at, updated_at) VALUES (?1, ?2, ?3, '📁', 0, 999, ?4, ?5)",
+            params![category_id, &name, &format!("Imported category: {}", name), &now, &now],
+        ).map_err(|e| format!("Failed to create category: {}", e))?;
+    }
+    Ok(())
+}
+
+// === Phase 6: Prompt Export Commands ===
+
+#[tauri::command]
+pub async fn export_prompt(id: String, app: tauri::AppHandle) -> Result<String, String> {
+    let conn = get_db_connection(&app)?;
+    let prompt = conn.query_row(
+        "SELECT id, name, description, category, prompt_text, variables, framework_id, is_builtin, is_favorite, usage_count, sort_order, created_at, updated_at FROM saved_prompts WHERE id = ?1",
+        params![&id],
+        |row| {
+            Ok(SavedPromptRow {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                description: row.get(2)?,
+                category: row.get(3)?,
+                prompt_text: row.get(4)?,
+                variables: row.get(5)?,
+                framework_id: row.get(6)?,
+                is_builtin: row.get(7)?,
+                is_favorite: row.get(8)?,
+                usage_count: row.get(9)?,
+                sort_order: row.get(10)?,
+                created_at: row.get(11)?,
+                updated_at: row.get(12)?,
+            })
+        },
+    ).map_err(|e| format!("Prompt not found: {}", e))?;
+    prompt_to_markdown(&prompt)
+}
+
+#[tauri::command]
+pub async fn export_prompts_batch(ids: Vec<String>, app: tauri::AppHandle) -> Result<Vec<BatchExportResult>, String> {
+    let conn = get_db_connection(&app)?;
+    let mut results = Vec::new();
+    for id in &ids {
+        let prompt = conn.query_row(
+            "SELECT id, name, description, category, prompt_text, variables, framework_id, is_builtin, is_favorite, usage_count, sort_order, created_at, updated_at FROM saved_prompts WHERE id = ?1",
+            params![id],
+            |row| {
+                Ok(SavedPromptRow {
+                    id: row.get(0)?,
+                    name: row.get(1)?,
+                    description: row.get(2)?,
+                    category: row.get(3)?,
+                    prompt_text: row.get(4)?,
+                    variables: row.get(5)?,
+                    framework_id: row.get(6)?,
+                    is_builtin: row.get(7)?,
+                    is_favorite: row.get(8)?,
+                    usage_count: row.get(9)?,
+                    sort_order: row.get(10)?,
+                    created_at: row.get(11)?,
+                    updated_at: row.get(12)?,
+                })
+            },
+        ).map_err(|e| format!("Prompt {} not found: {}", id, e))?;
+        let content = prompt_to_markdown(&prompt)?;
+        let filename = format!("{}.md", sanitize_filename(&prompt.name));
+        results.push(BatchExportResult { filename, content });
+    }
+    Ok(results)
+}
+
+#[tauri::command]
+pub async fn export_all_prompts(app: tauri::AppHandle) -> Result<Vec<BatchExportResult>, String> {
+    let conn = get_db_connection(&app)?;
+    let mut stmt = conn.prepare(
+        "SELECT id, name, description, category, prompt_text, variables, framework_id, is_builtin, is_favorite, usage_count, sort_order, created_at, updated_at FROM saved_prompts ORDER BY sort_order"
+    ).map_err(|e| format!("Failed to query prompts: {}", e))?;
+
+    let prompts: Vec<SavedPromptRow> = stmt.query_map([], |row| {
+        Ok(SavedPromptRow {
+            id: row.get(0)?,
+            name: row.get(1)?,
+            description: row.get(2)?,
+            category: row.get(3)?,
+            prompt_text: row.get(4)?,
+            variables: row.get(5)?,
+            framework_id: row.get(6)?,
+            is_builtin: row.get(7)?,
+            is_favorite: row.get(8)?,
+            usage_count: row.get(9)?,
+            sort_order: row.get(10)?,
+            created_at: row.get(11)?,
+            updated_at: row.get(12)?,
+        })
+    }).map_err(|e| format!("Query error: {}", e))?
+    .filter_map(|r| r.ok())
+    .collect();
+
+    let mut results = Vec::new();
+    for prompt in &prompts {
+        let content = prompt_to_markdown(prompt)?;
+        let filename = format!("{}.md", sanitize_filename(&prompt.name));
+        results.push(BatchExportResult { filename, content });
+    }
+    Ok(results)
+}
+
+// === Phase 6: Prompt Import Commands ===
+
+#[tauri::command]
+pub async fn preview_import_prompt(md_content: String, app: tauri::AppHandle) -> Result<ImportPreview, String> {
+    let (yaml_str, _body) = parse_yaml_frontmatter(&md_content)?;
+    let meta: PromptExportMeta = serde_yaml::from_str(&yaml_str)
+        .map_err(|e| format!("Invalid YAML front matter: {}", e))?;
+
+    if meta.r#type != "prompt" {
+        return Err(format!("Expected type 'prompt', got '{}'", meta.r#type));
+    }
+    if meta.export_version != 1 {
+        return Err(format!("Unsupported export version: {}", meta.export_version));
+    }
+    if meta.name.is_empty() { return Err("Missing required field: name".to_string()); }
+    if meta.category.is_empty() { return Err("Missing required field: category".to_string()); }
+    if meta.id.is_empty() { return Err("Missing required field: id".to_string()); }
+
+    let conn = get_db_connection(&app)?;
+    let existing: Option<(String, bool)> = conn.query_row(
+        "SELECT id, is_builtin FROM saved_prompts WHERE id = ?1",
+        params![&meta.id],
+        |row| Ok((row.get(0)?, row.get(1)?)),
+    ).optional().map_err(|e| format!("DB error: {}", e))?;
+
+    let (already_exists, is_builtin_conflict) = match existing {
+        Some((_, is_builtin)) => (true, is_builtin),
+        None => (false, false),
+    };
+
+    Ok(ImportPreview {
+        item_type: "prompt".to_string(),
+        id: meta.id,
+        name: meta.name,
+        category: meta.category,
+        description: meta.description,
+        already_exists,
+        is_builtin_conflict,
+    })
+}
+
+#[tauri::command]
+pub async fn confirm_import_prompt(md_content: String, conflict_action: String, app: tauri::AppHandle) -> Result<ImportResult, String> {
+    let (yaml_str, body) = parse_yaml_frontmatter(&md_content)?;
+    let meta: PromptExportMeta = serde_yaml::from_str(&yaml_str)
+        .map_err(|e| format!("Invalid YAML: {}", e))?;
+
+    let prompt_text_start = body.find("# Prompt Text")
+        .ok_or("Missing '# Prompt Text' section")?;
+    let prompt_text = body[prompt_text_start + 13..].trim().to_string();
+
+    let variables_json = serde_json::to_string(&meta.variables)
+        .map_err(|e| format!("Failed to serialize variables: {}", e))?;
+
+    let conn = get_db_connection(&app)?;
+    let now = Utc::now().timestamp();
+
+    let existing: Option<bool> = conn.query_row(
+        "SELECT is_builtin FROM saved_prompts WHERE id = ?1",
+        params![&meta.id],
+        |row| row.get(0),
+    ).optional().map_err(|e| format!("DB error: {}", e))?;
+
+    let final_id: String;
+    let action: String;
+
+    match (existing, conflict_action.as_str()) {
+        (None, _) => {
+            final_id = meta.id.clone();
+            action = "created".to_string();
+            conn.execute(
+                "INSERT INTO saved_prompts (id, name, description, category, prompt_text, variables, framework_id, is_builtin, is_favorite, usage_count, sort_order, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 0, 0, 0, 999, ?8, ?9)",
+                params![&meta.id, &meta.name, &meta.description, &meta.category, &prompt_text, &variables_json, &meta.framework_id, &now, &now],
+            ).map_err(|e| format!("Failed to insert prompt: {}", e))?;
+        },
+        (Some(_), "skip") => {
+            return Ok(ImportResult {
+                success: true,
+                item_type: "prompt".to_string(),
+                id: meta.id,
+                name: meta.name,
+                action: "skipped".to_string(),
+                error: None,
+            });
+        },
+        (Some(_), "overwrite") => {
+            final_id = meta.id.clone();
+            action = "overwritten".to_string();
+            conn.execute(
+                "UPDATE saved_prompts SET name=?1, description=?2, category=?3, prompt_text=?4, variables=?5, framework_id=?6, updated_at=?7 WHERE id=?8",
+                params![&meta.name, &meta.description, &meta.category, &prompt_text, &variables_json, &meta.framework_id, &now, &meta.id],
+            ).map_err(|e| format!("Failed to update prompt: {}", e))?;
+        },
+        (Some(_), "copy") | (Some(_), _) => {
+            final_id = format!("{}-imported-{}", meta.id, &Uuid::new_v4().to_string()[..8]);
+            action = "copied".to_string();
+            conn.execute(
+                "INSERT INTO saved_prompts (id, name, description, category, prompt_text, variables, framework_id, is_builtin, is_favorite, usage_count, sort_order, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 0, 0, 0, 999, ?8, ?9)",
+                params![&final_id, &format!("{} (Imported)", meta.name), &meta.description, &meta.category, &prompt_text, &variables_json, &meta.framework_id, &now, &now],
+            ).map_err(|e| format!("Failed to insert prompt copy: {}", e))?;
+        },
+    }
+
+    Ok(ImportResult {
+        success: true,
+        item_type: "prompt".to_string(),
+        id: final_id,
+        name: meta.name,
+        action,
+        error: None,
+    })
 }

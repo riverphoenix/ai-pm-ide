@@ -1,7 +1,12 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { SavedPrompt } from '../lib/types';
-import { savedPromptsAPI } from '../lib/ipc';
+import { save, open } from '@tauri-apps/plugin-dialog';
+import { writeTextFile, readTextFile } from '@tauri-apps/plugin-fs';
+import { SavedPrompt, ImportPreview, ConflictAction, BatchExportResult } from '../lib/types';
+import { savedPromptsAPI, marketplaceAPI } from '../lib/ipc';
 import PromptEditorModal from '../components/PromptEditorModal';
+import ImportPreviewDialog from '../components/ImportPreviewDialog';
+import BatchExportDialog from '../components/BatchExportDialog';
+import BatchImportDialog, { BatchImportItem } from '../components/BatchImportDialog';
 
 const PROMPT_CATEGORIES = [
   { id: 'all', label: 'All' },
@@ -30,6 +35,13 @@ export default function PromptsLibrary({ projectId: _projectId }: PromptsLibrary
   const [searchResults, setSearchResults] = useState<SavedPrompt[] | null>(null);
   const [editingPrompt, setEditingPrompt] = useState<SavedPrompt | null>(null);
   const [showEditor, setShowEditor] = useState(false);
+  const [showImportPreview, setShowImportPreview] = useState(false);
+  const [showBatchExport, setShowBatchExport] = useState(false);
+  const [showBatchImport, setShowBatchImport] = useState(false);
+  const [batchImportItems, setBatchImportItems] = useState<BatchImportItem[]>([]);
+  const [importMdContent, setImportMdContent] = useState('');
+  const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const loadPrompts = useCallback(async () => {
     setLoading(true);
@@ -114,6 +126,65 @@ export default function PromptsLibrary({ projectId: _projectId }: PromptsLibrary
     await loadPrompts();
   };
 
+  const handleExportSingle = async (prompt: SavedPrompt) => {
+    try {
+      const content = await marketplaceAPI.exportPrompt(prompt.id);
+      const filePath = await save({
+        defaultPath: `${prompt.id}.md`,
+        filters: [{ name: 'Markdown', extensions: ['md'] }],
+      });
+      if (filePath) {
+        await writeTextFile(filePath, content);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Export failed');
+    }
+  };
+
+  const handleImport = async () => {
+    try {
+      const selected = await open({
+        multiple: true,
+        filters: [{ name: 'Markdown', extensions: ['md'] }],
+      });
+      if (!selected) return;
+
+      const paths = Array.isArray(selected) ? selected : [selected];
+
+      if (paths.length === 1) {
+        const content = await readTextFile(paths[0] as string);
+        setImportMdContent(content);
+        const preview = await marketplaceAPI.previewImportPrompt(content);
+        setImportPreview(preview);
+        setShowImportPreview(true);
+      } else {
+        const items: BatchImportItem[] = [];
+        for (const path of paths) {
+          const filename = (path as string).split('/').pop() || 'unknown.md';
+          try {
+            const content = await readTextFile(path as string);
+            const preview = await marketplaceAPI.previewImportPrompt(content);
+            items.push({ filename, mdContent: content, preview, error: null, action: preview.already_exists ? 'copy' : 'copy', result: null });
+          } catch (err) {
+            items.push({ filename, mdContent: '', preview: null, error: err instanceof Error ? err.message : String(err), action: 'copy', result: null });
+          }
+        }
+        setBatchImportItems(items);
+        setShowBatchImport(true);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Import failed');
+    }
+  };
+
+  const handleBatchExportSave = async (results: BatchExportResult[]) => {
+    const dir = await open({ directory: true });
+    if (!dir) throw new Error('No directory selected');
+    for (const item of results) {
+      await writeTextFile(`${dir}/${item.filename}`, item.content);
+    }
+  };
+
   const categoryStats = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const p of prompts) {
@@ -142,12 +213,26 @@ export default function PromptsLibrary({ projectId: _projectId }: PromptsLibrary
               {prompts.length} saved prompts across {Object.keys(categoryStats).length} categories
             </p>
           </div>
-          <button
-            onClick={() => { setEditingPrompt(null); setShowEditor(true); }}
-            className="px-3 py-1.5 text-xs text-white bg-codex-accent hover:bg-codex-accent/80 rounded-md transition-colors"
-          >
-            + New Prompt
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleImport}
+              className="px-3 py-1.5 text-xs text-codex-text-secondary hover:text-codex-text-primary bg-codex-surface border border-codex-border rounded-md transition-colors"
+            >
+              Import
+            </button>
+            <button
+              onClick={() => setShowBatchExport(true)}
+              className="px-3 py-1.5 text-xs text-codex-text-secondary hover:text-codex-text-primary bg-codex-surface border border-codex-border rounded-md transition-colors"
+            >
+              Export
+            </button>
+            <button
+              onClick={() => { setEditingPrompt(null); setShowEditor(true); }}
+              className="px-3 py-1.5 text-xs text-white bg-codex-accent hover:bg-codex-accent/80 rounded-md transition-colors"
+            >
+              + New Prompt
+            </button>
+          </div>
         </div>
 
         <div className="flex items-center gap-4 mb-4">
@@ -273,6 +358,12 @@ export default function PromptsLibrary({ projectId: _projectId }: PromptsLibrary
                     >
                       Duplicate
                     </button>
+                    <button
+                      onClick={() => handleExportSingle(prompt)}
+                      className="text-[10px] px-2 py-1 text-codex-text-secondary hover:text-codex-text-primary"
+                    >
+                      Export
+                    </button>
                     {!prompt.is_builtin && (
                       <button
                         onClick={() => handleDelete(prompt)}
@@ -295,6 +386,50 @@ export default function PromptsLibrary({ projectId: _projectId }: PromptsLibrary
           onSave={handleEditorSave}
           onClose={() => { setShowEditor(false); setEditingPrompt(null); }}
         />
+      )}
+
+      {showImportPreview && importPreview && (
+        <ImportPreviewDialog
+          preview={importPreview}
+          onConfirm={async (action: ConflictAction) => {
+            const result = await marketplaceAPI.confirmImportPrompt(importMdContent, action);
+            await loadPrompts();
+            return result;
+          }}
+          onClose={() => {
+            setShowImportPreview(false);
+            setImportPreview(null);
+            setImportMdContent('');
+          }}
+        />
+      )}
+
+      {showBatchExport && (
+        <BatchExportDialog
+          mode="prompts"
+          items={prompts}
+          onExport={(ids) => marketplaceAPI.exportPromptsBatch(ids)}
+          onSaveFiles={handleBatchExportSave}
+          onClose={() => setShowBatchExport(false)}
+        />
+      )}
+
+      {showBatchImport && (
+        <BatchImportDialog
+          items={batchImportItems}
+          onConfirm={(mdContent, action) => marketplaceAPI.confirmImportPrompt(mdContent, action)}
+          onClose={() => setShowBatchImport(false)}
+          onDone={() => { loadPrompts(); }}
+        />
+      )}
+
+      {error && (
+        <div className="fixed bottom-4 right-4 bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 z-50">
+          <div className="flex items-center gap-2">
+            <p className="text-sm text-red-400">{error}</p>
+            <button onClick={() => setError(null)} className="text-red-300 hover:text-red-200">✕</button>
+          </div>
+        </div>
       )}
     </div>
   );
