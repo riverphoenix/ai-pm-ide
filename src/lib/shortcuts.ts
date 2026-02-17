@@ -1,0 +1,33 @@
+export interface Shortcut {
+  id: string;
+  keys: string;
+  label: string;
+  description: string;
+  category: 'navigation' | 'panel' | 'action';
+}
+
+export const SHORTCUTS: Shortcut[] = [
+  { id: 'cmd-palette', keys: 'mod+k', label: '\u2318K', description: 'Open command palette', category: 'action' },
+  { id: 'tab-chat', keys: 'mod+1', label: '\u23181', description: 'Switch to Chat', category: 'navigation' },
+  { id: 'tab-documents', keys: 'mod+2', label: '\u23182', description: 'Switch to Documents', category: 'navigation' },
+  { id: 'tab-frameworks', keys: 'mod+3', label: '\u23183', description: 'Switch to Frameworks', category: 'navigation' },
+  { id: 'tab-context', keys: 'mod+4', label: '\u23184', description: 'Switch to Context', category: 'navigation' },
+  { id: 'tab-outputs', keys: 'mod+5', label: '\u23185', description: 'Switch to Outputs', category: 'navigation' },
+  { id: 'toggle-terminal', keys: 'mod+`', label: '\u2318`', description: 'Toggle terminal panel', category: 'panel' },
+  { id: 'toggle-sidebar', keys: 'mod+b', label: '\u2318B', description: 'Toggle sidebar', category: 'panel' },
+];
+
+export function parseShortcut(keys: string): { mod: boolean; key: string } {
+  const parts = keys.split('+');
+  const mod = parts.includes('mod');
+  const key = parts[parts.length - 1];
+  return { mod, key };
+}
+
+export function matchesShortcut(e: KeyboardEvent, shortcut: Shortcut): boolean {
+  const { mod, key } = parseShortcut(shortcut.keys);
+  const modPressed = e.metaKey || e.ctrlKey;
+  if (mod && !modPressed) return false;
+  if (!mod && modPressed) return false;
+  return e.key === key || e.key === key.toUpperCase() || e.code === `Digit${key}` || e.code === `Key${key.toUpperCase()}`;
+}
