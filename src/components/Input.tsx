@@ -23,7 +23,7 @@ export default function Input({
     ? 'border-red-500 focus:ring-red-500'
     : 'border-codex-border';
 
-  const inputWithIcons = leftIcon || rightIcon;
+  void (leftIcon || rightIcon);
 
   return (
     <div className="w-full">

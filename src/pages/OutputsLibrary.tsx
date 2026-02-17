@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { ask, save } from '@tauri-apps/plugin-dialog';
 import { writeTextFile } from '@tauri-apps/plugin-fs';
-import { frameworkOutputsAPI } from '../lib/ipc';
-import { getFramework } from '../lib/frameworks';
-import { FrameworkOutput } from '../lib/types';
+import { frameworkOutputsAPI, frameworkDefsAPI } from '../lib/ipc';
+import { FrameworkOutput, FrameworkDefinition } from '../lib/types';
 import MarkdownWithMermaid from '../components/MarkdownWithMermaid';
 import ResizableDivider from '../components/ResizableDivider';
 
@@ -12,13 +11,14 @@ interface OutputsLibraryProps {
   onEdit?: (outputId: string) => void;
 }
 
-export default function OutputsLibrary({ projectId, onEdit }: OutputsLibraryProps) {
+export default function OutputsLibrary({ projectId, onEdit: _onEdit }: OutputsLibraryProps) {
   const [outputs, setOutputs] = useState<FrameworkOutput[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedOutput, setSelectedOutput] = useState<FrameworkOutput | null>(null);
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [copied, setCopied] = useState(false);
+  const [frameworksMap, setFrameworksMap] = useState<Map<string, FrameworkDefinition>>(new Map());
 
   // Panel resize state
   const [listWidth, setListWidth] = useState(384); // 384px = 96 * 4 (w-96)
@@ -34,8 +34,12 @@ export default function OutputsLibrary({ projectId, onEdit }: OutputsLibraryProp
   const loadOutputs = async () => {
     setLoading(true);
     try {
-      const data = await frameworkOutputsAPI.list(projectId);
+      const [data, allFw] = await Promise.all([
+        frameworkOutputsAPI.list(projectId),
+        frameworkDefsAPI.list(),
+      ]);
       setOutputs(data);
+      setFrameworksMap(new Map(allFw.map(fw => [fw.id, fw])));
     } catch (err) {
       console.error('Failed to load outputs:', err);
     } finally {
@@ -184,7 +188,7 @@ export default function OutputsLibrary({ projectId, onEdit }: OutputsLibraryProp
             ) : (
               <div className="p-4 space-y-2">
                 {filteredOutputs.map((output) => {
-                  const framework = getFramework(output.framework_id);
+                  const framework = frameworksMap.get(output.framework_id);
                   const isSelected = selectedOutput?.id === output.id;
 
                   return (

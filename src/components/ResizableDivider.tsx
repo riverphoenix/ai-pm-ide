@@ -10,15 +10,18 @@ export default function ResizableDivider({
   orientation = 'vertical',
 }: ResizableDividerProps) {
   const isDraggingRef = useRef(false);
-  const startXRef = useRef(0);
+  const startPosRef = useRef(0);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isDraggingRef.current) return;
 
-      const deltaX = e.clientX - startXRef.current;
-      startXRef.current = e.clientX;
-      onResize(deltaX);
+      const currentPos = orientation === 'horizontal' ? e.clientY : e.clientX;
+      const delta = orientation === 'horizontal'
+        ? startPosRef.current - currentPos
+        : currentPos - startPosRef.current;
+      startPosRef.current = currentPos;
+      onResize(delta);
     };
 
     const handleMouseUp = () => {
@@ -40,7 +43,7 @@ export default function ResizableDivider({
 
   const handleMouseDown = (e: React.MouseEvent) => {
     isDraggingRef.current = true;
-    startXRef.current = e.clientX;
+    startPosRef.current = orientation === 'horizontal' ? e.clientY : e.clientX;
     document.body.style.cursor = orientation === 'vertical' ? 'col-resize' : 'row-resize';
     document.body.style.userSelect = 'none';
     e.preventDefault();
