@@ -11,6 +11,10 @@ PM IDE enables product managers to:
 - **Use 30+ prompt templates** with `{variable}` substitution for repeatable PM workflows
 - **Upload context documents** (PDFs, URLs, Google Docs, plain text) with automatic content extraction
 - **Import/export frameworks and prompts** as .md files with YAML front matter for sharing and backup
+- **Chain multi-step workflows** that pipe output from one framework to the next
+- **Get AI-powered insights** with proactive suggestions based on project activity
+- **Track version history** with automatic git-based versioning for every output
+- **Export to Jira and Notion** directly from the outputs library
 - **Save and organize outputs** in a searchable library with visual diagrams
 - **Chat with AI** about product strategy, frameworks, and ideas
 
@@ -21,9 +25,12 @@ PM IDE enables product managers to:
 - **Python Sidecar**: FastAPI + OpenAI SDK + PyMuPDF + BeautifulSoup4
 - **LLM**: GPT-5 (OpenAI Frontier Models: gpt-5, gpt-5-mini, gpt-5-nano)
 - **Database**: SQLite with CASCADE delete patterns
+- **Version Control**: git2 (libgit2) for per-project output versioning
+- **Integrations**: Jira REST API v3, Notion API v2022-06-28
+- **Encryption**: AES-256-GCM for API keys and integration tokens
 - **Diagrams**: Mermaid for Customer Journey Maps and visual frameworks
 
-## ✅ Current Status: Phase 6 Complete (Framework Marketplace)
+## ✅ Current Status: Phase 7 Complete (Advanced Features)
 
 ### Core Features Implemented
 
@@ -101,9 +108,39 @@ PM IDE enables product managers to:
 - **Resizable Bottom Panel**: Drag-to-resize with Terminal/Output tabs
 - **Sidebar Toggle**: Show/hide sidebar with keyboard or button
 
-#### 8. **Settings** ✅
-- Secure API key storage in system keychain
+#### 8. **Workflow Builder (Phase 7)** ✅
+- **Multi-step workflows**: Chain multiple frameworks sequentially with output piping
+- **Output chaining**: `{prev_output}` placeholder passes each step's output to the next
+- **3 built-in templates**: Complete Product Brief (4 steps), Feature Validation (3 steps), Strategic Review (3 steps)
+- **Workflow Editor**: Add/remove steps, configure framework, prompt, model, and context docs per step
+- **Workflow Runner**: Real-time execution with step progress indicators and streaming output
+- **Run history**: Track all workflow executions with per-step status and output
+
+#### 9. **AI Insights (Phase 7)** ✅
+- **Proactive suggestions**: AI analyzes project activity and recommends next steps
+- **3 insight types**: Suggestions, patterns, and next-step recommendations
+- **Priority levels**: High/medium/low priority for each insight
+- **Dismissible**: Mark insights as dismissed to keep the panel focused
+- **Framework linking**: Next-step insights link directly to suggested frameworks
+
+#### 10. **Git-Based Version History (Phase 7)** ✅
+- **Auto-commit**: Every output save/update automatically commits to a per-project git repo
+- **Version history panel**: Browse all commits for any output
+- **Diff viewer**: Line-by-line diff with color-coded additions/deletions
+- **Rollback**: Restore any output to a previous version with one click
+
+#### 11. **Jira & Notion Integration (Phase 7)** ✅
+- **Jira export**: Create Jira issues from framework outputs with project/issue-type selection
+- **Notion export**: Create Notion pages from framework outputs under any parent page
+- **Settings-based config**: API tokens encrypted with AES-256-GCM
+- **Connection testing**: Validate credentials before use
+- **Conditional UI**: Export buttons only shown when integration is configured
+
+#### 12. **Settings** ✅
+- Secure API key storage with AES-256-GCM encryption
 - User profile context (name, role, company)
+- Jira integration (URL, email, API token, project key)
+- Notion integration (API token, parent page ID)
 
 ### Architecture
 
@@ -124,23 +161,31 @@ PM IDE enables product managers to:
 │  │  ├─ ImportPreviewDialog (single import preview) │ │
 │  │  ├─ BatchExportDialog (multi-item export)       │ │
 │  │  ├─ BatchImportDialog (multi-file import)       │ │
+│  │  ├─ WorkflowsPage (workflow list + editor)      │ │
+│  │  ├─ WorkflowRunner (streaming execution)        │ │
+│  │  ├─ InsightsPanel (AI project insights)         │ │
+│  │  ├─ VersionHistory (git commit browser)         │ │
+│  │  ├─ DiffViewer (line-level diff display)        │ │
+│  │  ├─ ExportToJiraDialog (Jira issue export)      │ │
+│  │  ├─ ExportToNotionDialog (Notion page export)   │ │
 │  │  ├─ ContextManager (document management)         │ │
-│  │  ├─ OutputsLibrary (saved outputs)               │ │
+│  │  ├─ OutputsLibrary (saved outputs + export)      │ │
 │  │  ├─ DocumentsExplorer (folder tree + preview)    │ │
 │  │  ├─ ChatInterface (GPT-5 chat)                   │ │
 │  │  ├─ CommandPalette (Cmd+K quick actions)         │ │
 │  │  ├─ BottomPanel (terminal + output)              │ │
-│  │  └─ Settings (API keys, preferences)             │ │
+│  │  └─ Settings (API keys, integrations)            │ │
 │  └────────────────────────────────────────────────────┘ │
 │                          ↕                              │
 │  ┌────────────────────────────────────────────────────┐ │
 │  │              Tauri Core (Rust)                     │ │
 │  │                                                    │ │
-│  │  ├─ IPC Commands (74 commands)                   │ │
-│  │  ├─ SQLite Database (projects, folders, docs,    │ │
-│  │  │   frameworks, categories, saved_prompts)      │ │
-│  │  ├─ Shell Command Execution                      │ │
-│  │  └─ Security (API key storage)                   │ │
+│  │  ├─ IPC Commands (~105 commands)                 │ │
+│  │  ├─ SQLite Database (12 tables)                  │ │
+│  │  ├─ Git Version Control (per-project repos)      │ │
+│  │  ├─ HTTP Client (Jira, Notion APIs)              │ │
+│  │  ├─ AES-256-GCM Encryption                       │ │
+│  │  └─ Shell Command Execution                       │ │
 │  └────────────────────────────────────────────────────┘ │
 │                          ↕                              │
 │  ┌────────────────────────────────────────────────────┐ │
@@ -148,6 +193,7 @@ PM IDE enables product managers to:
 │  │                                                    │ │
 │  │  ├─ OpenAI API Client (GPT-5)                    │ │
 │  │  ├─ Framework Generation Engine                   │ │
+│  │  ├─ AI Insights Engine                            │ │
 │  │  ├─ Document Parsing (PDF, URL, Google Docs)     │ │
 │  │  └─ Framework Definition Loader                   │ │
 │  └────────────────────────────────────────────────────┘ │
@@ -211,6 +257,13 @@ pm-ide/
 │   │   ├── TerminalView.tsx      # Shell command terminal
 │   │   ├── TopActionBar.tsx      # IDE action buttons
 │   │   ├── ResizableDivider.tsx  # Drag-to-resize panels
+│   │   ├── WorkflowEditor.tsx    # Workflow step builder
+│   │   ├── WorkflowRunner.tsx    # Streaming workflow executor
+│   │   ├── InsightsPanel.tsx     # AI project insights panel
+│   │   ├── VersionHistory.tsx    # Git commit history viewer
+│   │   ├── DiffViewer.tsx        # Line-level diff display
+│   │   ├── ExportToJiraDialog.tsx # Jira issue creation dialog
+│   │   ├── ExportToNotionDialog.tsx # Notion page creation dialog
 │   │   ├── MermaidRenderer.tsx   # Mermaid diagram renderer
 │   │   └── MarkdownWithMermaid.tsx # Custom markdown renderer
 │   ├── hooks/                    # Custom React hooks
@@ -227,7 +280,8 @@ pm-ide/
 │   │   ├── FrameworksHome.tsx    # Framework category browser
 │   │   ├── PromptsLibrary.tsx   # Prompt templates browser
 │   │   ├── ContextManager.tsx    # Document management
-│   │   └── OutputsLibrary.tsx    # Saved outputs viewer
+│   │   ├── OutputsLibrary.tsx    # Saved outputs + export
+│   │   └── WorkflowsPage.tsx    # Workflow list + management
 │   ├── frameworks/               # Framework JSON definitions (seed data)
 │   │   ├── categories.json       # 7 category definitions
 │   │   ├── strategy/             # 8 frameworks
@@ -248,7 +302,7 @@ pm-ide/
 ├── src-tauri/                    # Tauri / Rust backend
 │   └── src/
 │       ├── main.rs               # Entry point
-│       ├── lib.rs                # Command registration (74 commands)
+│       ├── lib.rs                # Command registration (~105 commands)
 │       └── commands.rs           # All IPC commands + SQLite schema
 ├── python-sidecar/               # Python FastAPI server
 │   ├── main.py                   # FastAPI app
@@ -368,6 +422,63 @@ CREATE TABLE saved_prompts (
 );
 ```
 
+#### Workflows (Phase 7)
+```sql
+CREATE TABLE workflows (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    steps TEXT NOT NULL DEFAULT '[]',      -- JSON array of WorkflowStepDef
+    is_template INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+);
+
+CREATE TABLE workflow_runs (
+    id TEXT PRIMARY KEY,
+    workflow_id TEXT NOT NULL,
+    project_id TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',  -- pending, running, completed, failed, cancelled
+    started_at INTEGER,
+    completed_at INTEGER,
+    created_at INTEGER NOT NULL,
+    FOREIGN KEY (workflow_id) REFERENCES workflows(id) ON DELETE CASCADE
+);
+
+CREATE TABLE workflow_run_steps (
+    id TEXT PRIMARY KEY,
+    run_id TEXT NOT NULL,
+    step_index INTEGER NOT NULL,
+    framework_id TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',  -- pending, running, completed, failed, skipped
+    input_prompt TEXT,
+    output_content TEXT,
+    output_id TEXT,
+    error TEXT,
+    started_at INTEGER,
+    completed_at INTEGER,
+    FOREIGN KEY (run_id) REFERENCES workflow_runs(id) ON DELETE CASCADE
+);
+```
+
+#### Project Insights (Phase 7)
+```sql
+CREATE TABLE project_insights (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL,
+    insight_type TEXT NOT NULL,  -- suggestion, pattern, next_step
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
+    priority TEXT NOT NULL DEFAULT 'medium',
+    framework_id TEXT,
+    is_dismissed INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL,
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+);
+```
+
 ## 🎨 Framework Definitions
 
 Each framework is defined in JSON format with:
@@ -419,6 +530,9 @@ Python sidecar runs on `http://127.0.0.1:8000` and provides:
 - `POST /chat` - GPT-5 chat (non-streaming)
 - `POST /chat/stream` - GPT-5 chat (streaming SSE)
 
+### AI Insights
+- `POST /insights/generate` - Generate project insights from metadata (SSE streaming)
+
 ### Field Suggestions
 - `POST /suggest-field` - AI suggestions for template fields
 
@@ -435,21 +549,26 @@ Python sidecar runs on `http://127.0.0.1:8000` and provides:
 ✅ **Framework Management** - Create, edit, duplicate, delete frameworks with Monaco editor
 ✅ **Prompts Library** - 30 pre-loaded templates with {variable} substitution, CRUD, usage tracking
 ✅ **Framework Marketplace** - Import/export frameworks and prompts as .md files with YAML front matter
+✅ **Workflow Builder** - Chain multi-step workflows with output piping, 3 built-in templates
+✅ **AI Insights** - Proactive suggestions based on project activity analysis
+✅ **Version History** - Git-based auto-commit, diff viewer, rollback for all outputs
+✅ **Jira Integration** - Export outputs as Jira issues with project/type selection
+✅ **Notion Integration** - Export outputs as Notion pages under any parent page
 ✅ **Visual Diagrams** - Mermaid rendering for Customer Journey Maps
-✅ **Outputs Library** - Save, search, filter, and view all outputs
+✅ **Outputs Library** - Save, search, filter, view, and export outputs
 ✅ **Document Parsing** - Automatic content extraction (PDF, HTML)
 ✅ **Chat Interface** - GPT-5 chat with streaming, history, cost tracking
 ✅ **Documents Explorer** - Folder tree, drag-and-drop, search, favorites, colors
 ✅ **Command Palette** - Cmd+K with fuzzy search and keyboard navigation
-✅ **Keyboard Shortcuts** - Cmd+1-5 tabs, Cmd+` terminal, Cmd+B sidebar
+✅ **Keyboard Shortcuts** - Cmd+1-7 tabs, Cmd+` terminal, Cmd+B sidebar
 ✅ **Terminal Panel** - Execute shell commands with history
-✅ **Settings** - Secure API key storage, user profile
+✅ **Settings** - API keys, user profile, Jira & Notion integration config
 
 ## 🔮 Roadmap: 7-Phase Transformation Plan
 
 **📋 Full Implementation Plan**: [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)
 **Timeline**: 22 weeks (~5.5 months)
-**Status**: Phase 0 (MVP) ✅ | Phase 1 (UI) ✅ | Phase 2 (Files) ✅ | Phase 3 (Console) ✅ | Phase 4 (Frameworks) ✅ | Phase 5 (Prompts) ✅ | Phase 6 (Marketplace) ✅
+**Status**: Phase 0 (MVP) ✅ | Phase 1 (UI) ✅ | Phase 2 (Files) ✅ | Phase 3 (Console) ✅ | Phase 4 (Frameworks) ✅ | Phase 5 (Prompts) ✅ | Phase 6 (Marketplace) ✅ | Phase 7 (Advanced) ✅
 
 ---
 
@@ -499,7 +618,7 @@ Added IDE-style terminal, command palette, and keyboard shortcuts.
 | Shortcut | Action |
 |----------|--------|
 | `Cmd+K` | Command palette |
-| `Cmd+1-6` | Switch tabs (Chat, Documents, Frameworks, Prompts, Context, Outputs) |
+| `Cmd+1-7` | Switch tabs (Chat, Documents, Frameworks, Prompts, Context, Outputs, Workflows) |
 | `Cmd+B` | Toggle sidebar |
 | `` Cmd+` `` | Toggle terminal |
 
@@ -600,48 +719,60 @@ export_version: 1
 
 ---
 
-### **Phase 7: Advanced Features (6-8 weeks)** - AI Orchestration 🤖
-**Status**: Not Started (Future Vision)
+### **Phase 7: Advanced Features (6-8 weeks)** - Workflows, Insights, Git, Integrations 🤖 ✅
+**Status**: Complete
 
-Add multi-agent workflows, context memory, and integrations.
+Added workflow builder, AI insights, git-based version history, and Jira/Notion integrations.
 
-**Key Features**:
-- 🔗 **Multi-Agent Orchestration**: Chain frameworks for complex workflows
-- 🧠 **Context Memory**: AI remembers project context across sessions
-- 💡 **AI-Powered Insights**: Proactive suggestions based on project data
-- 🤝 **Collaboration**: Team sharing, real-time editing, comments
-- 🔌 **Integrations**: Jira, Notion, Slack, Google Docs, GitHub, Figma
-- 📦 **Git Integration**: Version control, auto-commit, push to remote
-
-**Example Multi-Agent Workflow**:
-1. Generate user research (JTBD)
-2. Create competitive analysis
-3. Generate PRD with contexts
-4. Create go-to-market plan
-
-**Success Metrics**:
-- Multi-agent workflows complete successfully 95%+ of time
-- AI insights adopted by 40%+ of users
-- Integrations work reliably (>99% uptime)
+**Completed**:
+- 🔗 **Workflow Builder**: Chain multiple frameworks into multi-step workflows with sequential execution
+  - 3 built-in templates: Complete Product Brief (4 steps), Feature Validation (3 steps), Strategic Review (3 steps)
+  - `{prev_output}` placeholder for output chaining between steps
+  - Workflow Editor with per-step framework, prompt, model, and context doc configuration
+  - Workflow Runner with real-time progress indicators and streaming output
+  - 15 new Rust commands for workflow CRUD, run management, and step tracking
+- 💡 **AI Insights**: Proactive project analysis and recommendations
+  - Python endpoint analyzes project metadata (outputs, docs, conversations) via GPT-5-mini
+  - 3 insight types: suggestions, patterns, and next-step recommendations with priority levels
+  - Collapsible InsightsPanel in project view with dismiss and framework-linking actions
+  - 4 new Rust commands for insight CRUD
+- 📦 **Git Version History**: Automatic versioning for all framework outputs
+  - Per-project git repos (libgit2) initialized lazily on first output save
+  - Auto-commit on every `create_framework_output` and `update_framework_output`
+  - VersionHistory panel with commit browser, DiffViewer with line-level color coding
+  - Rollback to any previous version with one click
+  - 6 new Rust commands for git operations
+- 🔌 **Jira Integration**: Export framework outputs as Jira issues
+  - REST API v3 with basic auth (email + API token)
+  - Project picker, issue type selector (Story/Task/Bug), markdown-to-Jira format conversion
+  - Connection testing and encrypted token storage
+- 📓 **Notion Integration**: Export framework outputs as Notion pages
+  - API v2022-06-28 with bearer token auth
+  - Parent page selection, markdown-to-Notion blocks conversion
+  - Connection testing and encrypted token storage
+- ⚙️ **Settings Expansion**: Integrations tab with Jira URL/email/token/project + Notion token/parent page
+- 🔐 **AES-256-GCM Encryption**: All integration tokens encrypted at rest using machine-derived keys
+- 📊 **~31 new Rust commands** (total ~105), 4 new DB tables (total 12)
 
 ---
 
 ## 📊 Overall Success Metrics
 
-**Current State** (Phase 6 Complete):
+**Current State** (Phase 7 Complete):
 - ✅ 45 frameworks across 7 categories with full CRUD
 - ✅ 30 prompt templates across 7 categories with {variable} substitution
 - ✅ Import/export frameworks and prompts as .md files with YAML front matter
-- ✅ Batch export and multi-file import with conflict resolution
+- ✅ Multi-step workflow builder with output chaining and 3 built-in templates
+- ✅ AI-powered project insights with priority-based recommendations
+- ✅ Git-based version history with auto-commit, diff viewer, and rollback
+- ✅ Jira and Notion integration for output export
 - ✅ Core features complete (projects, context, generation, outputs, chat)
 - ✅ Mac desktop app with Tauri + Codex UI
 - ✅ VSCode-like folder tree with drag-and-drop
 - ✅ Command palette, keyboard shortcuts, terminal panel
 - ✅ Framework editing with Monaco editor, category management
-- ✅ 74 Rust IPC commands, SQLite with 8 tables
-
-**Target State** (Remaining Phase):
-- 🎯 Multi-agent orchestration and advanced AI features (Phase 7)
+- ✅ ~105 Rust IPC commands, SQLite with 12 tables
+- ✅ AES-256-GCM encryption for all API keys and tokens
 
 ## 📝 License
 
@@ -672,6 +803,6 @@ Built with ❤️ for Product Managers by Product Managers.
 
 ---
 
-**Status**: Phase 6 Complete | 45 Frameworks + 30 Prompts + Import/Export | Codex UI + Console + Framework Editor + Prompts Library + Marketplace | Mac Desktop App
-**Version**: 0.7.0-phase6
+**Status**: Phase 7 Complete | 45 Frameworks + 30 Prompts + Workflows + AI Insights + Git History + Jira/Notion | Mac Desktop App
+**Version**: 0.8.0-phase7
 **Last Updated**: February 2026

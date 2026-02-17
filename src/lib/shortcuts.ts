@@ -14,6 +14,7 @@ export const SHORTCUTS: Shortcut[] = [
   { id: 'tab-prompts', keys: 'mod+4', label: '\u23184', description: 'Switch to Prompts', category: 'navigation' },
   { id: 'tab-context', keys: 'mod+5', label: '\u23185', description: 'Switch to Context', category: 'navigation' },
   { id: 'tab-outputs', keys: 'mod+6', label: '\u23186', description: 'Switch to Outputs', category: 'navigation' },
+  { id: 'tab-workflows', keys: 'mod+7', label: '\u23187', description: 'Switch to Workflows', category: 'navigation' },
   { id: 'toggle-terminal', keys: 'mod+`', label: '\u2318`', description: 'Toggle terminal panel', category: 'panel' },
   { id: 'toggle-sidebar', keys: 'mod+b', label: '\u2318B', description: 'Toggle sidebar', category: 'panel' },
 ];

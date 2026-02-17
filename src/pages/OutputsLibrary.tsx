@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
 import { ask, save } from '@tauri-apps/plugin-dialog';
 import { writeTextFile } from '@tauri-apps/plugin-fs';
-import { frameworkOutputsAPI, frameworkDefsAPI } from '../lib/ipc';
-import { FrameworkOutput, FrameworkDefinition } from '../lib/types';
+import { frameworkOutputsAPI, frameworkDefsAPI, settingsAPI } from '../lib/ipc';
+import { FrameworkOutput, FrameworkDefinition, Settings } from '../lib/types';
 import MarkdownWithMermaid from '../components/MarkdownWithMermaid';
 import ResizableDivider from '../components/ResizableDivider';
+import VersionHistory from '../components/VersionHistory';
+import ExportToJiraDialog from '../components/ExportToJiraDialog';
+import ExportToNotionDialog from '../components/ExportToNotionDialog';
 
 interface OutputsLibraryProps {
   projectId: string;
@@ -19,6 +22,10 @@ export default function OutputsLibrary({ projectId, onEdit: _onEdit }: OutputsLi
   const [searchQuery, setSearchQuery] = useState('');
   const [copied, setCopied] = useState(false);
   const [frameworksMap, setFrameworksMap] = useState<Map<string, FrameworkDefinition>>(new Map());
+  const [showHistory, setShowHistory] = useState(false);
+  const [showJiraExport, setShowJiraExport] = useState(false);
+  const [showNotionExport, setShowNotionExport] = useState(false);
+  const [settings, setAppSettings] = useState<Settings | null>(null);
 
   // Panel resize state
   const [listWidth, setListWidth] = useState(384); // 384px = 96 * 4 (w-96)
@@ -34,12 +41,14 @@ export default function OutputsLibrary({ projectId, onEdit: _onEdit }: OutputsLi
   const loadOutputs = async () => {
     setLoading(true);
     try {
-      const [data, allFw] = await Promise.all([
+      const [data, allFw, sett] = await Promise.all([
         frameworkOutputsAPI.list(projectId),
         frameworkDefsAPI.list(),
+        settingsAPI.get(),
       ]);
       setOutputs(data);
       setFrameworksMap(new Map(allFw.map(fw => [fw.id, fw])));
+      setAppSettings(sett);
     } catch (err) {
       console.error('Failed to load outputs:', err);
     } finally {
@@ -250,6 +259,13 @@ export default function OutputsLibrary({ projectId, onEdit: _onEdit }: OutputsLi
                   </div>
                   <div className="flex items-center gap-2">
                     <button
+                      onClick={() => setShowHistory(true)}
+                      className="px-3 py-1 text-xs text-codex-text-secondary hover:text-codex-text-primary transition-colors"
+                      title="Version history"
+                    >
+                      History
+                    </button>
+                    <button
                       onClick={() => handleCopyToClipboard(selectedOutput.generated_content)}
                       className={`px-3 py-1 text-xs transition-colors ${
                         copied
@@ -267,6 +283,22 @@ export default function OutputsLibrary({ projectId, onEdit: _onEdit }: OutputsLi
                     >
                       ⬇️ Download
                     </button>
+                    {settings?.jira_api_token_encrypted && (
+                      <button
+                        onClick={() => setShowJiraExport(true)}
+                        className="px-3 py-1 text-xs text-codex-text-secondary hover:text-codex-text-primary transition-colors"
+                      >
+                        Jira
+                      </button>
+                    )}
+                    {settings?.notion_api_token_encrypted && (
+                      <button
+                        onClick={() => setShowNotionExport(true)}
+                        className="px-3 py-1 text-xs text-codex-text-secondary hover:text-codex-text-primary transition-colors"
+                      >
+                        Notion
+                      </button>
+                    )}
                     <button
                       onClick={() => handleDelete(selectedOutput.id)}
                       className="px-3 py-1 text-xs text-red-400 hover:text-red-300 transition-colors"
@@ -310,6 +342,37 @@ export default function OutputsLibrary({ projectId, onEdit: _onEdit }: OutputsLi
         </div>
       )}
       </div>
+
+      {showHistory && selectedOutput && (
+        <VersionHistory
+          projectId={projectId}
+          outputId={selectedOutput.id}
+          currentContent={selectedOutput.generated_content}
+          onRestore={(content) => {
+            setSelectedOutput({ ...selectedOutput, generated_content: content });
+            setShowHistory(false);
+            loadOutputs();
+          }}
+          onClose={() => setShowHistory(false)}
+        />
+      )}
+
+      {showJiraExport && selectedOutput && (
+        <ExportToJiraDialog
+          outputId={selectedOutput.id}
+          outputName={selectedOutput.name}
+          onClose={() => setShowJiraExport(false)}
+        />
+      )}
+
+      {showNotionExport && selectedOutput && (
+        <ExportToNotionDialog
+          outputId={selectedOutput.id}
+          outputName={selectedOutput.name}
+          defaultParentPageId={settings?.notion_parent_page_id || undefined}
+          onClose={() => setShowNotionExport(false)}
+        />
+      )}
     </div>
   );
 }

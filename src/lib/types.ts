@@ -70,6 +70,12 @@ export interface Settings {
   profile_pic?: string;
   about_me?: string;
   about_role?: string;
+  jira_url?: string;
+  jira_email?: string;
+  jira_api_token_encrypted?: string;
+  jira_project_key?: string;
+  notion_api_token_encrypted?: string;
+  notion_parent_page_id?: string;
   created_at: number;
   updated_at: number;
 }
@@ -85,6 +91,12 @@ export interface SettingsUpdate {
   profile_pic?: string;
   about_me?: string;
   about_role?: string;
+  jira_url?: string;
+  jira_email?: string;
+  jira_api_token?: string;
+  jira_project_key?: string;
+  notion_api_token?: string;
+  notion_parent_page_id?: string;
 }
 
 export interface TokenUsage {
@@ -275,3 +287,88 @@ export interface BatchExportResult {
 }
 
 export type ConflictAction = 'overwrite' | 'copy' | 'skip';
+
+export interface WorkflowStepDef {
+  framework_id: string;
+  label: string;
+  prompt_template: string;
+  context_doc_ids: string[];
+  model: string;
+}
+
+export interface Workflow {
+  id: string;
+  project_id: string;
+  name: string;
+  description: string;
+  steps: string;
+  is_template: boolean;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface WorkflowRun {
+  id: string;
+  workflow_id: string;
+  project_id: string;
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
+  started_at: number | null;
+  completed_at: number | null;
+  created_at: number;
+}
+
+export interface WorkflowRunStep {
+  id: string;
+  run_id: string;
+  step_index: number;
+  framework_id: string;
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'skipped';
+  input_prompt: string | null;
+  output_content: string | null;
+  output_id: string | null;
+  error: string | null;
+  started_at: number | null;
+  completed_at: number | null;
+}
+
+export interface ProjectInsight {
+  id: string;
+  project_id: string;
+  insight_type: 'suggestion' | 'pattern' | 'next_step';
+  title: string;
+  description: string;
+  priority: 'high' | 'medium' | 'low';
+  framework_id: string | null;
+  is_dismissed: boolean;
+  created_at: number;
+}
+
+export interface CommitInfo {
+  oid: string;
+  message: string;
+  author: string;
+  timestamp: number;
+}
+
+export interface JiraProject {
+  key: string;
+  name: string;
+}
+
+export interface JiraExportResult {
+  success: boolean;
+  issue_key?: string;
+  issue_url?: string;
+  error?: string;
+}
+
+export interface NotionPage {
+  id: string;
+  title: string;
+}
+
+export interface NotionExportResult {
+  success: boolean;
+  page_url?: string;
+  error?: string;
+}

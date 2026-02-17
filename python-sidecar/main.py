@@ -503,6 +503,87 @@ async def generate_framework_stream(request: GenerateFrameworkRequest):
     )
 
 
+class FrameworkOutputSummary(BaseModel):
+    name: str
+    category: str
+    framework_id: Optional[str] = None
+    created_at: Optional[int] = None
+
+
+class ContextDocSummary(BaseModel):
+    name: str
+    type: str
+
+
+class InsightsRequest(BaseModel):
+    project_id: str
+    project_name: str
+    framework_outputs: List[FrameworkOutputSummary]
+    context_documents: List[ContextDocSummary]
+    conversation_count: int = 0
+    total_tokens_used: int = 0
+    api_key: str
+    model: str = "gpt-5-mini"
+
+
+@app.post("/insights/generate")
+async def generate_insights(request: InsightsRequest):
+    try:
+        client = OpenAIClient(api_key=request.api_key)
+
+        outputs_desc = "\n".join(
+            f"- {o.name} (category: {o.category})" for o in request.framework_outputs
+        ) or "None"
+
+        docs_desc = "\n".join(
+            f"- {d.name} (type: {d.type})" for d in request.context_documents
+        ) or "None"
+
+        system_prompt = """You are a Product Management advisor analyzing a PM project's current state.
+Based on the project metadata, generate actionable insights. Return ONLY a JSON object with an "insights" array.
+Each insight must have: type (suggestion|pattern|next_step), title (short), description (1-2 sentences), priority (high|medium|low).
+For next_step insights, optionally include framework_id if you can suggest a specific framework.
+Generate 3-5 insights. Focus on gaps, patterns, and logical next steps."""
+
+        user_prompt = f"""Project: {request.project_name}
+
+Framework Outputs ({len(request.framework_outputs)}):
+{outputs_desc}
+
+Context Documents ({len(request.context_documents)}):
+{docs_desc}
+
+Conversations: {request.conversation_count}
+
+Analyze this project and suggest insights."""
+
+        response = await client.chat(
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            model=request.model,
+            max_tokens=2000
+        )
+
+        content = response["content"].strip()
+        if content.startswith("```"):
+            content = content.split("\n", 1)[1] if "\n" in content else content[3:]
+            if content.endswith("```"):
+                content = content[:-3]
+
+        try:
+            result = json.loads(content)
+        except json.JSONDecodeError:
+            result = {"insights": []}
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Error generating insights: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/parse-url")
 async def parse_url(url: str):
     """

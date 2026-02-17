@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import { Project, Conversation, Message, Settings, SettingsUpdate, TokenUsage, TokenUsageAggregate, ContextDocument, FrameworkOutput, Folder, SearchResult, CommandHistoryEntry, CommandResult, FrameworkDefinition, FrameworkCategory, SavedPrompt, PromptVariable, ImportPreview, ImportResult, BatchExportResult, ConflictAction } from './types';
+import { Project, Conversation, Message, Settings, SettingsUpdate, TokenUsage, TokenUsageAggregate, ContextDocument, FrameworkOutput, Folder, SearchResult, CommandHistoryEntry, CommandResult, FrameworkDefinition, FrameworkCategory, SavedPrompt, PromptVariable, ImportPreview, ImportResult, BatchExportResult, ConflictAction, Workflow, WorkflowRun, WorkflowRunStep, ProjectInsight, CommitInfo, JiraProject, JiraExportResult, NotionPage, NotionExportResult } from './types';
 
 interface FrameworkDefRow {
   id: string;
@@ -615,5 +615,137 @@ export const marketplaceAPI = {
 
   async confirmImportPrompt(mdContent: string, conflictAction: ConflictAction): Promise<ImportResult> {
     return await invoke('confirm_import_prompt', { mdContent, conflictAction });
+  },
+};
+
+export const workflowsAPI = {
+  async create(projectId: string, name: string, description: string, stepsJson: string): Promise<Workflow> {
+    return await invoke('create_workflow', { projectId, name, description, stepsJson });
+  },
+
+  async list(projectId: string): Promise<Workflow[]> {
+    return await invoke('list_workflows', { projectId });
+  },
+
+  async get(id: string): Promise<Workflow> {
+    return await invoke('get_workflow', { id });
+  },
+
+  async update(id: string, name: string, description: string, stepsJson: string): Promise<Workflow> {
+    return await invoke('update_workflow', { id, name, description, stepsJson });
+  },
+
+  async delete(id: string): Promise<void> {
+    return await invoke('delete_workflow', { id });
+  },
+
+  async duplicate(id: string, newName: string, projectId: string): Promise<Workflow> {
+    return await invoke('duplicate_workflow', { id, newName, projectId });
+  },
+
+  async createRun(workflowId: string, projectId: string): Promise<WorkflowRun> {
+    return await invoke('create_workflow_run', { workflowId, projectId });
+  },
+
+  async getRun(id: string): Promise<WorkflowRun> {
+    return await invoke('get_workflow_run', { id });
+  },
+
+  async listRuns(workflowId: string): Promise<WorkflowRun[]> {
+    return await invoke('list_workflow_runs', { workflowId });
+  },
+
+  async updateRunStatus(id: string, status: string, completedAt?: number): Promise<void> {
+    return await invoke('update_workflow_run_status', { id, status, completedAt });
+  },
+
+  async deleteRun(id: string): Promise<void> {
+    return await invoke('delete_workflow_run', { id });
+  },
+
+  async createRunStep(runId: string, stepIndex: number, frameworkId: string, inputPrompt?: string): Promise<WorkflowRunStep> {
+    return await invoke('create_workflow_run_step', { runId, stepIndex, frameworkId, inputPrompt });
+  },
+
+  async updateRunStep(id: string, status: string, outputContent?: string, outputId?: string, error?: string): Promise<void> {
+    return await invoke('update_workflow_run_step', { id, status, outputContent, outputId, error });
+  },
+
+  async listRunSteps(runId: string): Promise<WorkflowRunStep[]> {
+    return await invoke('list_workflow_run_steps', { runId });
+  },
+
+  async getRunStep(id: string): Promise<WorkflowRunStep> {
+    return await invoke('get_workflow_run_step', { id });
+  },
+};
+
+export const insightsAPI = {
+  async list(projectId: string): Promise<ProjectInsight[]> {
+    return await invoke('list_project_insights', { projectId });
+  },
+
+  async dismiss(id: string): Promise<void> {
+    return await invoke('dismiss_insight', { id });
+  },
+
+  async save(projectId: string, insightsJson: string): Promise<void> {
+    return await invoke('save_insights', { projectId, insightsJson });
+  },
+
+  async clear(projectId: string): Promise<void> {
+    return await invoke('clear_project_insights', { projectId });
+  },
+};
+
+export const gitAPI = {
+  async initRepo(projectId: string): Promise<void> {
+    return await invoke('init_project_repo', { projectId });
+  },
+
+  async commitOutput(projectId: string, outputId: string, name: string, content: string, message: string): Promise<void> {
+    return await invoke('commit_output', { projectId, outputId, name, content, message });
+  },
+
+  async listOutputCommits(projectId: string, outputId: string): Promise<CommitInfo[]> {
+    return await invoke('list_output_commits', { projectId, outputId });
+  },
+
+  async getCommitDiff(projectId: string, commitOid: string): Promise<string> {
+    return await invoke('get_commit_diff', { projectId, commitOid });
+  },
+
+  async getOutputAtCommit(projectId: string, outputId: string, commitOid: string): Promise<string> {
+    return await invoke('get_output_at_commit', { projectId, outputId, commitOid });
+  },
+
+  async rollbackOutput(projectId: string, outputId: string, commitOid: string): Promise<string> {
+    return await invoke('rollback_output', { projectId, outputId, commitOid });
+  },
+};
+
+export const integrationsAPI = {
+  async testJiraConnection(): Promise<boolean> {
+    return await invoke('test_jira_connection');
+  },
+
+  async listJiraProjects(): Promise<JiraProject[]> {
+    return await invoke('list_jira_projects');
+  },
+
+  async exportToJira(outputId: string, projectKey: string, issueType: string, summary: string): Promise<JiraExportResult> {
+    return await invoke('export_to_jira', { outputId, projectKey, issueType, summary });
+  },
+
+  async testNotionConnection(): Promise<boolean> {
+    return await invoke('test_notion_connection');
+  },
+
+  async searchNotionPages(query: string): Promise<NotionPage[]> {
+    return await invoke('search_notion_pages', { query });
+  },
+
+  async exportToNotion(outputId: string, parentPageId: string, title: string): Promise<NotionExportResult> {
+    return await invoke('export_to_notion', { outputId, parentPageId, title });
   },
 };

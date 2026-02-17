@@ -11,12 +11,14 @@ import ContextManager from './ContextManager';
 import OutputsLibrary from './OutputsLibrary';
 import DocumentsExplorer from './DocumentsExplorer';
 import PromptsLibrary from './PromptsLibrary';
+import WorkflowsPage from './WorkflowsPage';
+import InsightsPanel from '../components/InsightsPanel';
 
 const MIN_HISTORY_WIDTH = 180;
 const MAX_HISTORY_WIDTH = 400;
 const DEFAULT_HISTORY_WIDTH = 224;
 
-type Tab = 'documents' | 'chat' | 'frameworks' | 'prompts' | 'context' | 'outputs';
+type Tab = 'documents' | 'chat' | 'frameworks' | 'prompts' | 'context' | 'outputs' | 'workflows';
 
 interface ProjectViewProps {
   projectId: string;
@@ -36,6 +38,7 @@ export default function ProjectView({ projectId, activeTab, onTabChange, onModel
     return saved ? parseInt(saved, 10) : DEFAULT_HISTORY_WIDTH;
   });
 
+  const [showInsights, setShowInsights] = useState(false);
   const [selectedFrameworkId, setSelectedFrameworkId] = useState<string | null>(null);
   const [_selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [frameworksView, setFrameworksView] = useState<'home' | 'generator' | 'manager'>('home');
@@ -134,7 +137,7 @@ export default function ProjectView({ projectId, activeTab, onTabChange, onModel
       </div>
 
       <div style={{ flexShrink: 0 }} className="h-8 border-b border-codex-border bg-codex-surface/30 flex items-center px-4 gap-1">
-        {(['chat', 'documents', 'frameworks', 'prompts', 'context', 'outputs'] as Tab[]).map(tab => (
+        {(['chat', 'documents', 'frameworks', 'prompts', 'context', 'outputs', 'workflows'] as Tab[]).map(tab => (
           <button
             key={tab}
             onClick={() => {
@@ -153,6 +156,15 @@ export default function ProjectView({ projectId, activeTab, onTabChange, onModel
             )}
           </button>
         ))}
+        <div className="flex-1" />
+        <button
+          onClick={() => setShowInsights(!showInsights)}
+          className={`px-2 py-1 text-xs rounded transition-colors ${
+            showInsights ? 'bg-codex-accent/20 text-codex-accent' : 'text-codex-text-secondary hover:text-codex-text-primary'
+          }`}
+        >
+          Insights
+        </button>
       </div>
 
       <div style={{ flex: 1, overflow: 'hidden' }}>
@@ -231,7 +243,25 @@ export default function ProjectView({ projectId, activeTab, onTabChange, onModel
         {activeTab === 'outputs' && (
           <OutputsLibrary projectId={projectId} />
         )}
+
+        {activeTab === 'workflows' && (
+          <WorkflowsPage projectId={projectId} apiKey={apiKey} onTabChange={(tab: string) => onTabChange(tab as Tab)} />
+        )}
       </div>
+
+      {showInsights && (
+        <InsightsPanel
+          projectId={projectId}
+          apiKey={apiKey}
+          onNavigateToFramework={(frameworkId) => {
+            setSelectedFrameworkId(frameworkId);
+            setFrameworksView('generator');
+            onTabChange('frameworks');
+            setShowInsights(false);
+          }}
+          onClose={() => setShowInsights(false)}
+        />
+      )}
     </div>
   );
 }

@@ -4,12 +4,14 @@ use chrono::Utc;
 use tauri::Manager;
 use rusqlite::{Connection, params, OptionalExtension};
 use aes_gcm::{
-    aead::{Aead, KeyInit, OsRng},
+    aead::{Aead, KeyInit},
     Aes256Gcm, Nonce,
 };
 use sha2::{Sha256, Digest};
 use base64::{Engine as _, engine::general_purpose};
 use serde_yaml;
+use git2::{Repository, Signature};
+use std::path::PathBuf;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Project {
@@ -55,6 +57,12 @@ pub struct Settings {
     pub profile_pic: Option<String>,
     pub about_me: Option<String>,
     pub about_role: Option<String>,
+    pub jira_url: Option<String>,
+    pub jira_email: Option<String>,
+    pub jira_api_token_encrypted: Option<String>,
+    pub jira_project_key: Option<String>,
+    pub notion_api_token_encrypted: Option<String>,
+    pub notion_parent_page_id: Option<String>,
     pub created_at: i64,
     pub updated_at: i64,
 }
@@ -71,10 +79,16 @@ pub struct SettingsUpdate {
     pub profile_pic: Option<String>,
     pub about_me: Option<String>,
     pub about_role: Option<String>,
+    pub jira_url: Option<String>,
+    pub jira_email: Option<String>,
+    pub jira_api_token: Option<String>,
+    pub jira_project_key: Option<String>,
+    pub notion_api_token: Option<String>,
+    pub notion_parent_page_id: Option<String>,
 }
 
 // Encryption helpers
-fn get_encryption_key(app: &tauri::AppHandle) -> Result<[u8; 32], String> {
+fn get_encryption_key(_app: &tauri::AppHandle) -> Result<[u8; 32], String> {
     // Derive a key from the app's unique identifier and machine ID
     let app_id = "com.dsotiriou.ai-pm-ide";
     let machine_id = machine_uid::get().unwrap_or_else(|_| "default-machine-id".to_string());
@@ -248,7 +262,13 @@ pub fn init_db(app: &tauri::AppHandle) -> Result<(), String> {
     let _ = conn.execute(
         "ALTER TABLE settings ADD COLUMN username TEXT",
         [],
-    );  // Ignore error if column already exists
+    );
+    let _ = conn.execute("ALTER TABLE settings ADD COLUMN jira_url TEXT", []);
+    let _ = conn.execute("ALTER TABLE settings ADD COLUMN jira_email TEXT", []);
+    let _ = conn.execute("ALTER TABLE settings ADD COLUMN jira_api_token_encrypted TEXT", []);
+    let _ = conn.execute("ALTER TABLE settings ADD COLUMN jira_project_key TEXT", []);
+    let _ = conn.execute("ALTER TABLE settings ADD COLUMN notion_api_token_encrypted TEXT", []);
+    let _ = conn.execute("ALTER TABLE settings ADD COLUMN notion_parent_page_id TEXT", []);
 
     // Create token usage tracking table
     conn.execute(
@@ -457,8 +477,93 @@ pub fn init_db(app: &tauri::AppHandle) -> Result<(), String> {
         [],
     ).map_err(|e| format!("Failed to create saved_prompts framework index: {}", e))?;
 
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS project_insights (
+            id TEXT PRIMARY KEY NOT NULL,
+            project_id TEXT NOT NULL,
+            insight_type TEXT NOT NULL,
+            title TEXT NOT NULL,
+            description TEXT NOT NULL,
+            priority TEXT NOT NULL DEFAULT 'medium',
+            framework_id TEXT,
+            is_dismissed INTEGER NOT NULL DEFAULT 0,
+            created_at INTEGER NOT NULL,
+            FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+        )",
+        [],
+    ).map_err(|e| format!("Failed to create project_insights table: {}", e))?;
+
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_project_insights_project ON project_insights(project_id)",
+        [],
+    ).map_err(|e| format!("Failed to create project_insights index: {}", e))?;
+
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS workflows (
+            id TEXT PRIMARY KEY NOT NULL,
+            project_id TEXT NOT NULL,
+            name TEXT NOT NULL,
+            description TEXT NOT NULL DEFAULT '',
+            steps TEXT NOT NULL DEFAULT '[]',
+            is_template INTEGER NOT NULL DEFAULT 0,
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL,
+            FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+        )",
+        [],
+    ).map_err(|e| format!("Failed to create workflows table: {}", e))?;
+
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_workflows_project ON workflows(project_id)",
+        [],
+    ).map_err(|e| format!("Failed to create workflows index: {}", e))?;
+
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS workflow_runs (
+            id TEXT PRIMARY KEY NOT NULL,
+            workflow_id TEXT NOT NULL,
+            project_id TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'pending',
+            started_at INTEGER,
+            completed_at INTEGER,
+            created_at INTEGER NOT NULL,
+            FOREIGN KEY (workflow_id) REFERENCES workflows(id) ON DELETE CASCADE,
+            FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+        )",
+        [],
+    ).map_err(|e| format!("Failed to create workflow_runs table: {}", e))?;
+
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_workflow_runs_workflow ON workflow_runs(workflow_id)",
+        [],
+    ).map_err(|e| format!("Failed to create workflow_runs index: {}", e))?;
+
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS workflow_run_steps (
+            id TEXT PRIMARY KEY NOT NULL,
+            run_id TEXT NOT NULL,
+            step_index INTEGER NOT NULL,
+            framework_id TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'pending',
+            input_prompt TEXT,
+            output_content TEXT,
+            output_id TEXT,
+            error TEXT,
+            started_at INTEGER,
+            completed_at INTEGER,
+            FOREIGN KEY (run_id) REFERENCES workflow_runs(id) ON DELETE CASCADE
+        )",
+        [],
+    ).map_err(|e| format!("Failed to create workflow_run_steps table: {}", e))?;
+
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_wrs_run ON workflow_run_steps(run_id)",
+        [],
+    ).map_err(|e| format!("Failed to create workflow_run_steps index: {}", e))?;
+
     seed_frameworks(&conn)?;
     seed_prompts(&conn)?;
+    seed_workflows(&conn)?;
 
     // Create default settings if none exist
     let count: i64 = conn.query_row("SELECT COUNT(*) FROM settings", [], |row| row.get(0))
@@ -1503,7 +1608,9 @@ pub async fn get_settings(app: tauri::AppHandle) -> Result<Settings, String> {
 
     let mut stmt = conn.prepare(
         "SELECT id, api_key_encrypted, username, name, surname, job_title, company, company_url,
-                profile_pic, about_me, about_role, created_at, updated_at
+                profile_pic, about_me, about_role, jira_url, jira_email, jira_api_token_encrypted,
+                jira_project_key, notion_api_token_encrypted, notion_parent_page_id,
+                created_at, updated_at
          FROM settings WHERE id = ?1"
     ).map_err(|e| format!("Failed to prepare statement: {}", e))?;
 
@@ -1520,8 +1627,14 @@ pub async fn get_settings(app: tauri::AppHandle) -> Result<Settings, String> {
             profile_pic: row.get(8)?,
             about_me: row.get(9)?,
             about_role: row.get(10)?,
-            created_at: row.get(11)?,
-            updated_at: row.get(12)?,
+            jira_url: row.get(11)?,
+            jira_email: row.get(12)?,
+            jira_api_token_encrypted: row.get(13)?,
+            jira_project_key: row.get(14)?,
+            notion_api_token_encrypted: row.get(15)?,
+            notion_parent_page_id: row.get(16)?,
+            created_at: row.get(17)?,
+            updated_at: row.get(18)?,
         })
     }).map_err(|e| format!("Failed to get settings: {}", e))?;
 
@@ -1536,14 +1649,22 @@ pub async fn update_settings(
     let conn = get_db_connection(&app)?;
     let now = Utc::now().timestamp();
 
-    // Encrypt API key if provided
+    let enc_key = get_encryption_key(&app)?;
+
     let api_key_encrypted = if let Some(ref api_key) = settings.api_key {
-        if api_key.is_empty() {
-            None
-        } else {
-            let key = get_encryption_key(&app)?;
-            Some(encrypt_string(api_key, &key)?)
-        }
+        if api_key.is_empty() { None } else { Some(encrypt_string(api_key, &enc_key)?) }
+    } else {
+        None
+    };
+
+    let jira_token_encrypted = if let Some(ref token) = settings.jira_api_token {
+        if token.is_empty() { None } else { Some(encrypt_string(token, &enc_key)?) }
+    } else {
+        None
+    };
+
+    let notion_token_encrypted = if let Some(ref token) = settings.notion_api_token {
+        if token.is_empty() { None } else { Some(encrypt_string(token, &enc_key)?) }
     } else {
         None
     };
@@ -1560,8 +1681,14 @@ pub async fn update_settings(
              profile_pic = COALESCE(?8, profile_pic),
              about_me = COALESCE(?9, about_me),
              about_role = COALESCE(?10, about_role),
-             updated_at = ?11
-         WHERE id = ?12",
+             jira_url = COALESCE(?11, jira_url),
+             jira_email = COALESCE(?12, jira_email),
+             jira_api_token_encrypted = COALESCE(?13, jira_api_token_encrypted),
+             jira_project_key = COALESCE(?14, jira_project_key),
+             notion_api_token_encrypted = COALESCE(?15, notion_api_token_encrypted),
+             notion_parent_page_id = COALESCE(?16, notion_parent_page_id),
+             updated_at = ?17
+         WHERE id = ?18",
         params![
             &api_key_encrypted,
             &settings.username,
@@ -1573,6 +1700,12 @@ pub async fn update_settings(
             &settings.profile_pic,
             &settings.about_me,
             &settings.about_role,
+            &settings.jira_url,
+            &settings.jira_email,
+            &jira_token_encrypted,
+            &settings.jira_project_key,
+            &notion_token_encrypted,
+            &settings.notion_parent_page_id,
             &now,
             "default"
         ],
@@ -2109,6 +2242,8 @@ pub async fn create_framework_output(
         params![&id, &project_id, &framework_id, &category, &name, &user_prompt, &context_doc_ids, &generated_content, &format, &now, &now],
     ).map_err(|e| format!("Failed to create framework output: {}", e))?;
 
+    let _ = commit_output(project_id.clone(), id.clone(), name.clone(), generated_content.clone(), format!("Create: {}", name), app).await;
+
     Ok(output)
 }
 
@@ -2197,12 +2332,21 @@ pub async fn update_framework_output(
     let conn = get_db_connection(&app)?;
     let now = Utc::now().timestamp();
 
+    // Get project_id before update for git commit
+    let project_id: String = conn.query_row(
+        "SELECT project_id FROM framework_outputs WHERE id = ?1",
+        params![&id],
+        |row| row.get(0),
+    ).map_err(|e| format!("Output not found: {}", e))?;
+
     conn.execute(
         "UPDATE framework_outputs
          SET name = ?1, generated_content = ?2, updated_at = ?3
          WHERE id = ?4",
         params![&name, &generated_content, &now, &id],
     ).map_err(|e| format!("Failed to update framework output: {}", e))?;
+
+    let _ = commit_output(project_id, id.clone(), name.clone(), generated_content.clone(), format!("Update: {}", name), app.clone()).await;
 
     // Fetch the updated output
     get_framework_output(id, app).await?
@@ -2350,6 +2494,74 @@ pub struct ImportResult {
 pub struct BatchExportResult {
     pub filename: String,
     pub content: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct WorkflowStepDef {
+    pub framework_id: String,
+    pub label: String,
+    pub prompt_template: String,
+    pub context_doc_ids: Vec<String>,
+    pub model: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Workflow {
+    pub id: String,
+    pub project_id: String,
+    pub name: String,
+    pub description: String,
+    pub steps: String,
+    pub is_template: bool,
+    pub created_at: i64,
+    pub updated_at: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct WorkflowRun {
+    pub id: String,
+    pub workflow_id: String,
+    pub project_id: String,
+    pub status: String,
+    pub started_at: Option<i64>,
+    pub completed_at: Option<i64>,
+    pub created_at: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct WorkflowRunStep {
+    pub id: String,
+    pub run_id: String,
+    pub step_index: i32,
+    pub framework_id: String,
+    pub status: String,
+    pub input_prompt: Option<String>,
+    pub output_content: Option<String>,
+    pub output_id: Option<String>,
+    pub error: Option<String>,
+    pub started_at: Option<i64>,
+    pub completed_at: Option<i64>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ProjectInsight {
+    pub id: String,
+    pub project_id: String,
+    pub insight_type: String,
+    pub title: String,
+    pub description: String,
+    pub priority: String,
+    pub framework_id: Option<String>,
+    pub is_dismissed: bool,
+    pub created_at: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CommitInfo {
+    pub oid: String,
+    pub message: String,
+    pub author: String,
+    pub timestamp: i64,
 }
 
 #[tauri::command]
@@ -3183,4 +3395,1165 @@ pub async fn confirm_import_prompt(md_content: String, conflict_action: String, 
         action,
         error: None,
     })
+}
+
+fn seed_workflows(conn: &Connection) -> Result<(), String> {
+    let count: i64 = conn.query_row("SELECT COUNT(*) FROM workflows", [], |row| row.get(0))
+        .map_err(|e| format!("Failed to count workflows: {}", e))?;
+
+    if count > 0 {
+        return Ok(());
+    }
+
+    let now = Utc::now().timestamp();
+
+    let templates: Vec<(&str, &str, &str, Vec<WorkflowStepDef>)> = vec![
+        (
+            "complete-product-brief",
+            "Complete Product Brief",
+            "End-to-end product brief: research, competitive analysis, PRD, and go-to-market plan",
+            vec![
+                WorkflowStepDef {
+                    framework_id: "jtbd".to_string(),
+                    label: "Jobs-to-be-Done Analysis".to_string(),
+                    prompt_template: "Analyze the jobs-to-be-done for this product. Focus on the core user needs, desired outcomes, and pain points that drive adoption.".to_string(),
+                    context_doc_ids: vec![],
+                    model: "gpt-5".to_string(),
+                },
+                WorkflowStepDef {
+                    framework_id: "competitive-analysis".to_string(),
+                    label: "Competitive Analysis".to_string(),
+                    prompt_template: "Based on the following user research:\n\n{prev_output}\n\nConduct a competitive analysis identifying key competitors, their strengths and weaknesses, and market opportunities.".to_string(),
+                    context_doc_ids: vec![],
+                    model: "gpt-5".to_string(),
+                },
+                WorkflowStepDef {
+                    framework_id: "prd-template".to_string(),
+                    label: "PRD Generation".to_string(),
+                    prompt_template: "Using the research and competitive analysis below, generate a comprehensive PRD:\n\n{prev_output}".to_string(),
+                    context_doc_ids: vec![],
+                    model: "gpt-5".to_string(),
+                },
+                WorkflowStepDef {
+                    framework_id: "go-to-market".to_string(),
+                    label: "Go-to-Market Plan".to_string(),
+                    prompt_template: "Based on this PRD, create a go-to-market plan covering positioning, channels, pricing strategy, and launch timeline:\n\n{prev_output}".to_string(),
+                    context_doc_ids: vec![],
+                    model: "gpt-5".to_string(),
+                },
+            ],
+        ),
+        (
+            "feature-validation",
+            "Feature Validation",
+            "Validate and plan a feature: scoring, user stories, and sprint planning",
+            vec![
+                WorkflowStepDef {
+                    framework_id: "rice".to_string(),
+                    label: "RICE Scoring".to_string(),
+                    prompt_template: "Score this feature using the RICE framework (Reach, Impact, Confidence, Effort). Provide detailed justification for each score.".to_string(),
+                    context_doc_ids: vec![],
+                    model: "gpt-5".to_string(),
+                },
+                WorkflowStepDef {
+                    framework_id: "user-story-map".to_string(),
+                    label: "User Story Mapping".to_string(),
+                    prompt_template: "Based on this RICE analysis, create a user story map breaking down the feature into epics and stories:\n\n{prev_output}".to_string(),
+                    context_doc_ids: vec![],
+                    model: "gpt-5".to_string(),
+                },
+                WorkflowStepDef {
+                    framework_id: "sprint-planning".to_string(),
+                    label: "Sprint Planning".to_string(),
+                    prompt_template: "Using these user stories, create a sprint plan with prioritized backlog items, effort estimates, and sprint goals:\n\n{prev_output}".to_string(),
+                    context_doc_ids: vec![],
+                    model: "gpt-5".to_string(),
+                },
+            ],
+        ),
+        (
+            "strategic-review",
+            "Strategic Review",
+            "Full strategic analysis: SWOT, competitive forces, and value proposition",
+            vec![
+                WorkflowStepDef {
+                    framework_id: "swot".to_string(),
+                    label: "SWOT Analysis".to_string(),
+                    prompt_template: "Conduct a thorough SWOT analysis covering internal strengths and weaknesses, and external opportunities and threats.".to_string(),
+                    context_doc_ids: vec![],
+                    model: "gpt-5".to_string(),
+                },
+                WorkflowStepDef {
+                    framework_id: "porters-five-forces".to_string(),
+                    label: "Porter's Five Forces".to_string(),
+                    prompt_template: "Building on this SWOT analysis, analyze the competitive landscape using Porter's Five Forces:\n\n{prev_output}".to_string(),
+                    context_doc_ids: vec![],
+                    model: "gpt-5".to_string(),
+                },
+                WorkflowStepDef {
+                    framework_id: "value-proposition-canvas".to_string(),
+                    label: "Value Proposition Canvas".to_string(),
+                    prompt_template: "Using the strategic insights from SWOT and Five Forces analysis, develop a value proposition canvas:\n\n{prev_output}".to_string(),
+                    context_doc_ids: vec![],
+                    model: "gpt-5".to_string(),
+                },
+            ],
+        ),
+    ];
+
+    for (id, name, description, steps) in templates {
+        let steps_json = serde_json::to_string(&steps)
+            .map_err(|e| format!("Failed to serialize workflow steps: {}", e))?;
+        conn.execute(
+            "INSERT OR IGNORE INTO workflows (id, project_id, name, description, steps, is_template, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, 1, ?6, ?7)",
+            params![id, "__templates__", name, description, &steps_json, &now, &now],
+        ).map_err(|e| format!("Failed to seed workflow: {}", e))?;
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn create_workflow(
+    project_id: String,
+    name: String,
+    description: String,
+    steps_json: String,
+    app: tauri::AppHandle,
+) -> Result<Workflow, String> {
+    let conn = get_db_connection(&app)?;
+    let id = Uuid::new_v4().to_string();
+    let now = Utc::now().timestamp();
+
+    conn.execute(
+        "INSERT INTO workflows (id, project_id, name, description, steps, is_template, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, 0, ?6, ?7)",
+        params![&id, &project_id, &name, &description, &steps_json, &now, &now],
+    ).map_err(|e| format!("Failed to create workflow: {}", e))?;
+
+    Ok(Workflow {
+        id,
+        project_id,
+        name,
+        description,
+        steps: steps_json,
+        is_template: false,
+        created_at: now,
+        updated_at: now,
+    })
+}
+
+#[tauri::command]
+pub async fn list_workflows(
+    project_id: String,
+    app: tauri::AppHandle,
+) -> Result<Vec<Workflow>, String> {
+    let conn = get_db_connection(&app)?;
+
+    let mut stmt = conn.prepare(
+        "SELECT id, project_id, name, description, steps, is_template, created_at, updated_at FROM workflows WHERE project_id = ?1 OR is_template = 1 ORDER BY is_template DESC, updated_at DESC"
+    ).map_err(|e| format!("Failed to prepare query: {}", e))?;
+
+    let workflows = stmt.query_map(params![&project_id], |row| {
+        Ok(Workflow {
+            id: row.get(0)?,
+            project_id: row.get(1)?,
+            name: row.get(2)?,
+            description: row.get(3)?,
+            steps: row.get(4)?,
+            is_template: row.get(5)?,
+            created_at: row.get(6)?,
+            updated_at: row.get(7)?,
+        })
+    }).map_err(|e| format!("Failed to query workflows: {}", e))?;
+
+    let mut results = Vec::new();
+    for wf in workflows {
+        results.push(wf.map_err(|e| format!("Failed to read workflow: {}", e))?);
+    }
+    Ok(results)
+}
+
+#[tauri::command]
+pub async fn get_workflow(
+    id: String,
+    app: tauri::AppHandle,
+) -> Result<Workflow, String> {
+    let conn = get_db_connection(&app)?;
+
+    conn.query_row(
+        "SELECT id, project_id, name, description, steps, is_template, created_at, updated_at FROM workflows WHERE id = ?1",
+        params![&id],
+        |row| {
+            Ok(Workflow {
+                id: row.get(0)?,
+                project_id: row.get(1)?,
+                name: row.get(2)?,
+                description: row.get(3)?,
+                steps: row.get(4)?,
+                is_template: row.get(5)?,
+                created_at: row.get(6)?,
+                updated_at: row.get(7)?,
+            })
+        },
+    ).map_err(|e| format!("Workflow not found: {}", e))
+}
+
+#[tauri::command]
+pub async fn update_workflow(
+    id: String,
+    name: String,
+    description: String,
+    steps_json: String,
+    app: tauri::AppHandle,
+) -> Result<Workflow, String> {
+    let conn = get_db_connection(&app)?;
+    let now = Utc::now().timestamp();
+
+    conn.execute(
+        "UPDATE workflows SET name = ?1, description = ?2, steps = ?3, updated_at = ?4 WHERE id = ?5",
+        params![&name, &description, &steps_json, &now, &id],
+    ).map_err(|e| format!("Failed to update workflow: {}", e))?;
+
+    get_workflow(id, app).await
+}
+
+#[tauri::command]
+pub async fn delete_workflow(
+    id: String,
+    app: tauri::AppHandle,
+) -> Result<(), String> {
+    let conn = get_db_connection(&app)?;
+    conn.execute("DELETE FROM workflows WHERE id = ?1", params![&id])
+        .map_err(|e| format!("Failed to delete workflow: {}", e))?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn duplicate_workflow(
+    id: String,
+    new_name: String,
+    project_id: String,
+    app: tauri::AppHandle,
+) -> Result<Workflow, String> {
+    let conn = get_db_connection(&app)?;
+    let original = conn.query_row(
+        "SELECT steps, description FROM workflows WHERE id = ?1",
+        params![&id],
+        |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+    ).map_err(|e| format!("Workflow not found: {}", e))?;
+
+    let new_id = Uuid::new_v4().to_string();
+    let now = Utc::now().timestamp();
+
+    conn.execute(
+        "INSERT INTO workflows (id, project_id, name, description, steps, is_template, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, 0, ?6, ?7)",
+        params![&new_id, &project_id, &new_name, &original.1, &original.0, &now, &now],
+    ).map_err(|e| format!("Failed to duplicate workflow: {}", e))?;
+
+    Ok(Workflow {
+        id: new_id,
+        project_id,
+        name: new_name,
+        description: original.1,
+        steps: original.0,
+        is_template: false,
+        created_at: now,
+        updated_at: now,
+    })
+}
+
+#[tauri::command]
+pub async fn create_workflow_run(
+    workflow_id: String,
+    project_id: String,
+    app: tauri::AppHandle,
+) -> Result<WorkflowRun, String> {
+    let conn = get_db_connection(&app)?;
+    let id = Uuid::new_v4().to_string();
+    let now = Utc::now().timestamp();
+
+    conn.execute(
+        "INSERT INTO workflow_runs (id, workflow_id, project_id, status, created_at) VALUES (?1, ?2, ?3, 'pending', ?4)",
+        params![&id, &workflow_id, &project_id, &now],
+    ).map_err(|e| format!("Failed to create workflow run: {}", e))?;
+
+    Ok(WorkflowRun {
+        id,
+        workflow_id,
+        project_id,
+        status: "pending".to_string(),
+        started_at: None,
+        completed_at: None,
+        created_at: now,
+    })
+}
+
+#[tauri::command]
+pub async fn get_workflow_run(
+    id: String,
+    app: tauri::AppHandle,
+) -> Result<WorkflowRun, String> {
+    let conn = get_db_connection(&app)?;
+
+    conn.query_row(
+        "SELECT id, workflow_id, project_id, status, started_at, completed_at, created_at FROM workflow_runs WHERE id = ?1",
+        params![&id],
+        |row| {
+            Ok(WorkflowRun {
+                id: row.get(0)?,
+                workflow_id: row.get(1)?,
+                project_id: row.get(2)?,
+                status: row.get(3)?,
+                started_at: row.get(4)?,
+                completed_at: row.get(5)?,
+                created_at: row.get(6)?,
+            })
+        },
+    ).map_err(|e| format!("Workflow run not found: {}", e))
+}
+
+#[tauri::command]
+pub async fn list_workflow_runs(
+    workflow_id: String,
+    app: tauri::AppHandle,
+) -> Result<Vec<WorkflowRun>, String> {
+    let conn = get_db_connection(&app)?;
+
+    let mut stmt = conn.prepare(
+        "SELECT id, workflow_id, project_id, status, started_at, completed_at, created_at FROM workflow_runs WHERE workflow_id = ?1 ORDER BY created_at DESC"
+    ).map_err(|e| format!("Failed to prepare query: {}", e))?;
+
+    let runs = stmt.query_map(params![&workflow_id], |row| {
+        Ok(WorkflowRun {
+            id: row.get(0)?,
+            workflow_id: row.get(1)?,
+            project_id: row.get(2)?,
+            status: row.get(3)?,
+            started_at: row.get(4)?,
+            completed_at: row.get(5)?,
+            created_at: row.get(6)?,
+        })
+    }).map_err(|e| format!("Failed to query runs: {}", e))?;
+
+    let mut results = Vec::new();
+    for run in runs {
+        results.push(run.map_err(|e| format!("Failed to read run: {}", e))?);
+    }
+    Ok(results)
+}
+
+#[tauri::command]
+pub async fn update_workflow_run_status(
+    id: String,
+    status: String,
+    completed_at: Option<i64>,
+    app: tauri::AppHandle,
+) -> Result<(), String> {
+    let conn = get_db_connection(&app)?;
+    let now = Utc::now().timestamp();
+
+    if status == "running" {
+        conn.execute(
+            "UPDATE workflow_runs SET status = ?1, started_at = ?2 WHERE id = ?3",
+            params![&status, &now, &id],
+        ).map_err(|e| format!("Failed to update run status: {}", e))?;
+    } else {
+        let end_time = completed_at.unwrap_or(now);
+        conn.execute(
+            "UPDATE workflow_runs SET status = ?1, completed_at = ?2 WHERE id = ?3",
+            params![&status, &end_time, &id],
+        ).map_err(|e| format!("Failed to update run status: {}", e))?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn delete_workflow_run(
+    id: String,
+    app: tauri::AppHandle,
+) -> Result<(), String> {
+    let conn = get_db_connection(&app)?;
+    conn.execute("DELETE FROM workflow_runs WHERE id = ?1", params![&id])
+        .map_err(|e| format!("Failed to delete workflow run: {}", e))?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn create_workflow_run_step(
+    run_id: String,
+    step_index: i32,
+    framework_id: String,
+    input_prompt: Option<String>,
+    app: tauri::AppHandle,
+) -> Result<WorkflowRunStep, String> {
+    let conn = get_db_connection(&app)?;
+    let id = Uuid::new_v4().to_string();
+
+    conn.execute(
+        "INSERT INTO workflow_run_steps (id, run_id, step_index, framework_id, status, input_prompt) VALUES (?1, ?2, ?3, ?4, 'pending', ?5)",
+        params![&id, &run_id, &step_index, &framework_id, &input_prompt],
+    ).map_err(|e| format!("Failed to create run step: {}", e))?;
+
+    Ok(WorkflowRunStep {
+        id,
+        run_id,
+        step_index,
+        framework_id,
+        status: "pending".to_string(),
+        input_prompt,
+        output_content: None,
+        output_id: None,
+        error: None,
+        started_at: None,
+        completed_at: None,
+    })
+}
+
+#[tauri::command]
+pub async fn update_workflow_run_step(
+    id: String,
+    status: String,
+    output_content: Option<String>,
+    output_id: Option<String>,
+    error: Option<String>,
+    app: tauri::AppHandle,
+) -> Result<(), String> {
+    let conn = get_db_connection(&app)?;
+    let now = Utc::now().timestamp();
+
+    if status == "running" {
+        conn.execute(
+            "UPDATE workflow_run_steps SET status = ?1, started_at = ?2 WHERE id = ?3",
+            params![&status, &now, &id],
+        ).map_err(|e| format!("Failed to update step: {}", e))?;
+    } else {
+        conn.execute(
+            "UPDATE workflow_run_steps SET status = ?1, output_content = ?2, output_id = ?3, error = ?4, completed_at = ?5 WHERE id = ?6",
+            params![&status, &output_content, &output_id, &error, &now, &id],
+        ).map_err(|e| format!("Failed to update step: {}", e))?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn list_workflow_run_steps(
+    run_id: String,
+    app: tauri::AppHandle,
+) -> Result<Vec<WorkflowRunStep>, String> {
+    let conn = get_db_connection(&app)?;
+
+    let mut stmt = conn.prepare(
+        "SELECT id, run_id, step_index, framework_id, status, input_prompt, output_content, output_id, error, started_at, completed_at FROM workflow_run_steps WHERE run_id = ?1 ORDER BY step_index ASC"
+    ).map_err(|e| format!("Failed to prepare query: {}", e))?;
+
+    let steps = stmt.query_map(params![&run_id], |row| {
+        Ok(WorkflowRunStep {
+            id: row.get(0)?,
+            run_id: row.get(1)?,
+            step_index: row.get(2)?,
+            framework_id: row.get(3)?,
+            status: row.get(4)?,
+            input_prompt: row.get(5)?,
+            output_content: row.get(6)?,
+            output_id: row.get(7)?,
+            error: row.get(8)?,
+            started_at: row.get(9)?,
+            completed_at: row.get(10)?,
+        })
+    }).map_err(|e| format!("Failed to query steps: {}", e))?;
+
+    let mut results = Vec::new();
+    for step in steps {
+        results.push(step.map_err(|e| format!("Failed to read step: {}", e))?);
+    }
+    Ok(results)
+}
+
+#[tauri::command]
+pub async fn get_workflow_run_step(
+    id: String,
+    app: tauri::AppHandle,
+) -> Result<WorkflowRunStep, String> {
+    let conn = get_db_connection(&app)?;
+
+    conn.query_row(
+        "SELECT id, run_id, step_index, framework_id, status, input_prompt, output_content, output_id, error, started_at, completed_at FROM workflow_run_steps WHERE id = ?1",
+        params![&id],
+        |row| {
+            Ok(WorkflowRunStep {
+                id: row.get(0)?,
+                run_id: row.get(1)?,
+                step_index: row.get(2)?,
+                framework_id: row.get(3)?,
+                status: row.get(4)?,
+                input_prompt: row.get(5)?,
+                output_content: row.get(6)?,
+                output_id: row.get(7)?,
+                error: row.get(8)?,
+                started_at: row.get(9)?,
+                completed_at: row.get(10)?,
+            })
+        },
+    ).map_err(|e| format!("Run step not found: {}", e))
+}
+
+// --- AI Insights Commands ---
+
+#[tauri::command]
+pub async fn list_project_insights(
+    project_id: String,
+    app: tauri::AppHandle,
+) -> Result<Vec<ProjectInsight>, String> {
+    let conn = get_db_connection(&app)?;
+
+    let mut stmt = conn.prepare(
+        "SELECT id, project_id, insight_type, title, description, priority, framework_id, is_dismissed, created_at FROM project_insights WHERE project_id = ?1 AND is_dismissed = 0 ORDER BY CASE priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END, created_at DESC"
+    ).map_err(|e| format!("Failed to prepare query: {}", e))?;
+
+    let insights = stmt.query_map(params![&project_id], |row| {
+        Ok(ProjectInsight {
+            id: row.get(0)?,
+            project_id: row.get(1)?,
+            insight_type: row.get(2)?,
+            title: row.get(3)?,
+            description: row.get(4)?,
+            priority: row.get(5)?,
+            framework_id: row.get(6)?,
+            is_dismissed: row.get(7)?,
+            created_at: row.get(8)?,
+        })
+    }).map_err(|e| format!("Failed to query insights: {}", e))?;
+
+    let mut results = Vec::new();
+    for insight in insights {
+        results.push(insight.map_err(|e| format!("Failed to read insight: {}", e))?);
+    }
+    Ok(results)
+}
+
+#[tauri::command]
+pub async fn dismiss_insight(
+    id: String,
+    app: tauri::AppHandle,
+) -> Result<(), String> {
+    let conn = get_db_connection(&app)?;
+    conn.execute("UPDATE project_insights SET is_dismissed = 1 WHERE id = ?1", params![&id])
+        .map_err(|e| format!("Failed to dismiss insight: {}", e))?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn save_insights(
+    project_id: String,
+    insights_json: String,
+    app: tauri::AppHandle,
+) -> Result<(), String> {
+    let conn = get_db_connection(&app)?;
+    let now = Utc::now().timestamp();
+
+    let insights: Vec<serde_json::Value> = serde_json::from_str(&insights_json)
+        .map_err(|e| format!("Invalid insights JSON: {}", e))?;
+
+    for insight in insights {
+        let id = Uuid::new_v4().to_string();
+        conn.execute(
+            "INSERT INTO project_insights (id, project_id, insight_type, title, description, priority, framework_id, is_dismissed, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 0, ?8)",
+            params![
+                &id,
+                &project_id,
+                insight["type"].as_str().unwrap_or("suggestion"),
+                insight["title"].as_str().unwrap_or(""),
+                insight["description"].as_str().unwrap_or(""),
+                insight["priority"].as_str().unwrap_or("medium"),
+                insight.get("framework_id").and_then(|v| v.as_str()),
+                &now,
+            ],
+        ).map_err(|e| format!("Failed to save insight: {}", e))?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn clear_project_insights(
+    project_id: String,
+    app: tauri::AppHandle,
+) -> Result<(), String> {
+    let conn = get_db_connection(&app)?;
+    conn.execute("DELETE FROM project_insights WHERE project_id = ?1", params![&project_id])
+        .map_err(|e| format!("Failed to clear insights: {}", e))?;
+    Ok(())
+}
+
+// --- Git Integration Commands ---
+
+fn get_project_repo_path(app: &tauri::AppHandle, project_id: &str) -> Result<PathBuf, String> {
+    let app_dir = app.path().app_data_dir()
+        .map_err(|e| format!("Failed to get app directory: {}", e))?;
+    let repo_path = app_dir.join("git").join(project_id);
+    Ok(repo_path)
+}
+
+fn ensure_repo(app: &tauri::AppHandle, project_id: &str) -> Result<Repository, String> {
+    let repo_path = get_project_repo_path(app, project_id)?;
+    if repo_path.exists() {
+        Repository::open(&repo_path).map_err(|e| format!("Failed to open repo: {}", e))
+    } else {
+        std::fs::create_dir_all(&repo_path)
+            .map_err(|e| format!("Failed to create repo dir: {}", e))?;
+        let repo = Repository::init(&repo_path)
+            .map_err(|e| format!("Failed to init repo: {}", e))?;
+        {
+            let sig = Signature::now("PM IDE", "pm-ide@local").map_err(|e| format!("Sig error: {}", e))?;
+            let tree_id = {
+                let mut index = repo.index().map_err(|e| format!("Index error: {}", e))?;
+                index.write_tree().map_err(|e| format!("Tree error: {}", e))?
+            };
+            let tree = repo.find_tree(tree_id).map_err(|e| format!("Tree find error: {}", e))?;
+            repo.commit(Some("HEAD"), &sig, &sig, "Initial commit", &tree, &[])
+                .map_err(|e| format!("Initial commit error: {}", e))?;
+        }
+        Ok(repo)
+    }
+}
+
+fn output_filename(output_id: &str) -> String {
+    format!("outputs/{}.md", output_id)
+}
+
+#[tauri::command]
+pub async fn init_project_repo(
+    project_id: String,
+    app: tauri::AppHandle,
+) -> Result<(), String> {
+    ensure_repo(&app, &project_id)?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn commit_output(
+    project_id: String,
+    output_id: String,
+    _name: String,
+    content: String,
+    message: String,
+    app: tauri::AppHandle,
+) -> Result<(), String> {
+    let repo = ensure_repo(&app, &project_id)?;
+    let repo_path = get_project_repo_path(&app, &project_id)?;
+
+    let outputs_dir = repo_path.join("outputs");
+    std::fs::create_dir_all(&outputs_dir)
+        .map_err(|e| format!("Failed to create outputs dir: {}", e))?;
+
+    let file_path = repo_path.join(output_filename(&output_id));
+    std::fs::write(&file_path, &content)
+        .map_err(|e| format!("Failed to write output file: {}", e))?;
+
+    let mut index = repo.index().map_err(|e| format!("Index error: {}", e))?;
+    index.add_path(std::path::Path::new(&output_filename(&output_id)))
+        .map_err(|e| format!("Add error: {}", e))?;
+    index.write().map_err(|e| format!("Write index error: {}", e))?;
+    let tree_id = index.write_tree().map_err(|e| format!("Tree error: {}", e))?;
+    let tree = repo.find_tree(tree_id).map_err(|e| format!("Tree find error: {}", e))?;
+
+    let sig = Signature::now("PM IDE", "pm-ide@local").map_err(|e| format!("Sig error: {}", e))?;
+    let head = repo.head().map_err(|e| format!("HEAD error: {}", e))?;
+    let parent = head.peel_to_commit().map_err(|e| format!("Parent error: {}", e))?;
+
+    repo.commit(Some("HEAD"), &sig, &sig, &message, &tree, &[&parent])
+        .map_err(|e| format!("Commit error: {}", e))?;
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn list_output_commits(
+    project_id: String,
+    output_id: String,
+    app: tauri::AppHandle,
+) -> Result<Vec<CommitInfo>, String> {
+    let repo = ensure_repo(&app, &project_id)?;
+    let filename = output_filename(&output_id);
+
+    let mut revwalk = repo.revwalk().map_err(|e| format!("Revwalk error: {}", e))?;
+    revwalk.push_head().map_err(|e| format!("Push head error: {}", e))?;
+    revwalk.set_sorting(git2::Sort::TIME).map_err(|e| format!("Sort error: {}", e))?;
+
+    let mut commits = Vec::new();
+    for oid in revwalk {
+        let oid = oid.map_err(|e| format!("OID error: {}", e))?;
+        let commit = repo.find_commit(oid).map_err(|e| format!("Commit error: {}", e))?;
+        let tree = commit.tree().map_err(|e| format!("Tree error: {}", e))?;
+
+        if tree.get_path(std::path::Path::new(&filename)).is_ok() {
+            let dominated = if commit.parent_count() > 0 {
+                let parent = commit.parent(0).map_err(|e| format!("Parent error: {}", e))?;
+                let parent_tree = parent.tree().map_err(|e| format!("Parent tree error: {}", e))?;
+                let diff = repo.diff_tree_to_tree(Some(&parent_tree), Some(&tree), None)
+                    .map_err(|e| format!("Diff error: {}", e))?;
+                diff.deltas().any(|d| {
+                    d.new_file().path().map(|p| p.to_str() == Some(&filename)).unwrap_or(false)
+                })
+            } else {
+                true
+            };
+
+            if dominated {
+                commits.push(CommitInfo {
+                    oid: oid.to_string(),
+                    message: commit.message().unwrap_or("").to_string(),
+                    author: commit.author().name().unwrap_or("PM IDE").to_string(),
+                    timestamp: commit.time().seconds(),
+                });
+            }
+        }
+    }
+
+    Ok(commits)
+}
+
+#[tauri::command]
+pub async fn get_commit_diff(
+    project_id: String,
+    commit_oid: String,
+    app: tauri::AppHandle,
+) -> Result<String, String> {
+    let repo = ensure_repo(&app, &project_id)?;
+    let oid = git2::Oid::from_str(&commit_oid).map_err(|e| format!("Invalid OID: {}", e))?;
+    let commit = repo.find_commit(oid).map_err(|e| format!("Commit not found: {}", e))?;
+    let tree = commit.tree().map_err(|e| format!("Tree error: {}", e))?;
+
+    let parent_tree = if commit.parent_count() > 0 {
+        Some(commit.parent(0).map_err(|e| format!("Parent error: {}", e))?
+            .tree().map_err(|e| format!("Parent tree error: {}", e))?)
+    } else {
+        None
+    };
+
+    let diff = repo.diff_tree_to_tree(parent_tree.as_ref(), Some(&tree), None)
+        .map_err(|e| format!("Diff error: {}", e))?;
+
+    let mut diff_text = String::new();
+    diff.print(git2::DiffFormat::Patch, |_delta, _hunk, line| {
+        let prefix = match line.origin() {
+            '+' => "+",
+            '-' => "-",
+            ' ' => " ",
+            _ => "",
+        };
+        diff_text.push_str(prefix);
+        diff_text.push_str(std::str::from_utf8(line.content()).unwrap_or(""));
+        true
+    }).map_err(|e| format!("Diff print error: {}", e))?;
+
+    Ok(diff_text)
+}
+
+#[tauri::command]
+pub async fn get_output_at_commit(
+    project_id: String,
+    output_id: String,
+    commit_oid: String,
+    app: tauri::AppHandle,
+) -> Result<String, String> {
+    let repo = ensure_repo(&app, &project_id)?;
+    let oid = git2::Oid::from_str(&commit_oid).map_err(|e| format!("Invalid OID: {}", e))?;
+    let commit = repo.find_commit(oid).map_err(|e| format!("Commit not found: {}", e))?;
+    let tree = commit.tree().map_err(|e| format!("Tree error: {}", e))?;
+
+    let filename = output_filename(&output_id);
+    let entry = tree.get_path(std::path::Path::new(&filename))
+        .map_err(|e| format!("File not found at commit: {}", e))?;
+
+    let blob = repo.find_blob(entry.id())
+        .map_err(|e| format!("Blob error: {}", e))?;
+
+    let content = std::str::from_utf8(blob.content())
+        .map_err(|e| format!("UTF-8 error: {}", e))?;
+
+    Ok(content.to_string())
+}
+
+#[tauri::command]
+pub async fn rollback_output(
+    project_id: String,
+    output_id: String,
+    commit_oid: String,
+    app: tauri::AppHandle,
+) -> Result<String, String> {
+    let content = get_output_at_commit(project_id.clone(), output_id.clone(), commit_oid, app.clone()).await?;
+
+    // Update the DB
+    let conn = get_db_connection(&app)?;
+    let now = Utc::now().timestamp();
+    conn.execute(
+        "UPDATE framework_outputs SET generated_content = ?1, updated_at = ?2 WHERE id = ?3",
+        params![&content, &now, &output_id],
+    ).map_err(|e| format!("Failed to update output: {}", e))?;
+
+    // Commit the rollback
+    commit_output(project_id, output_id, "Rollback".to_string(), content.clone(), "Rollback to previous version".to_string(), app).await?;
+
+    Ok(content)
+}
+
+// --- Integration Commands (Jira / Notion) ---
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct JiraProject {
+    pub key: String,
+    pub name: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct JiraExportResult {
+    pub success: bool,
+    pub issue_key: Option<String>,
+    pub issue_url: Option<String>,
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct NotionPage {
+    pub id: String,
+    pub title: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct NotionExportResult {
+    pub success: bool,
+    pub page_url: Option<String>,
+    pub error: Option<String>,
+}
+
+fn get_decrypted_token(encrypted: &Option<String>, app: &tauri::AppHandle) -> Result<Option<String>, String> {
+    if let Some(ref enc) = encrypted {
+        let key = get_encryption_key(app)?;
+        Ok(Some(decrypt_string(enc, &key)?))
+    } else {
+        Ok(None)
+    }
+}
+
+fn markdown_to_jira(md: &str) -> String {
+    let mut result = String::new();
+    for line in md.lines() {
+        if line.starts_with("### ") {
+            result.push_str(&format!("h3. {}\n", &line[4..]));
+        } else if line.starts_with("## ") {
+            result.push_str(&format!("h2. {}\n", &line[3..]));
+        } else if line.starts_with("# ") {
+            result.push_str(&format!("h1. {}\n", &line[2..]));
+        } else if line.starts_with("- ") {
+            result.push_str(&format!("* {}\n", &line[2..]));
+        } else if line.starts_with("**") && line.ends_with("**") {
+            result.push_str(&format!("*{}*\n", &line[2..line.len()-2]));
+        } else {
+            result.push_str(line);
+            result.push('\n');
+        }
+    }
+    result
+}
+
+#[tauri::command]
+pub async fn test_jira_connection(app: tauri::AppHandle) -> Result<bool, String> {
+    let settings = get_settings(app.clone()).await?;
+    let url = settings.jira_url.ok_or("Jira URL not configured")?;
+    let email = settings.jira_email.ok_or("Jira email not configured")?;
+    let token = get_decrypted_token(&settings.jira_api_token_encrypted, &app)?
+        .ok_or("Jira API token not configured")?;
+
+    let client = reqwest::Client::new();
+    let resp = client
+        .get(format!("{}/rest/api/3/myself", url.trim_end_matches('/')))
+        .basic_auth(&email, Some(&token))
+        .header("Accept", "application/json")
+        .send()
+        .await
+        .map_err(|e| format!("Connection failed: {}", e))?;
+
+    Ok(resp.status().is_success())
+}
+
+#[tauri::command]
+pub async fn list_jira_projects(app: tauri::AppHandle) -> Result<Vec<JiraProject>, String> {
+    let settings = get_settings(app.clone()).await?;
+    let url = settings.jira_url.ok_or("Jira URL not configured")?;
+    let email = settings.jira_email.ok_or("Jira email not configured")?;
+    let token = get_decrypted_token(&settings.jira_api_token_encrypted, &app)?
+        .ok_or("Jira API token not configured")?;
+
+    let client = reqwest::Client::new();
+    let resp = client
+        .get(format!("{}/rest/api/3/project", url.trim_end_matches('/')))
+        .basic_auth(&email, Some(&token))
+        .header("Accept", "application/json")
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {}", e))?;
+
+    let body: serde_json::Value = resp.json().await
+        .map_err(|e| format!("Parse error: {}", e))?;
+
+    let projects = body.as_array()
+        .map(|arr| {
+            arr.iter().filter_map(|p| {
+                Some(JiraProject {
+                    key: p.get("key")?.as_str()?.to_string(),
+                    name: p.get("name")?.as_str()?.to_string(),
+                })
+            }).collect()
+        })
+        .unwrap_or_default();
+
+    Ok(projects)
+}
+
+#[tauri::command]
+pub async fn export_to_jira(
+    output_id: String,
+    project_key: String,
+    issue_type: String,
+    summary: String,
+    app: tauri::AppHandle,
+) -> Result<JiraExportResult, String> {
+    let settings = get_settings(app.clone()).await?;
+    let url = settings.jira_url.ok_or("Jira URL not configured")?;
+    let email = settings.jira_email.ok_or("Jira email not configured")?;
+    let token = get_decrypted_token(&settings.jira_api_token_encrypted, &app)?
+        .ok_or("Jira API token not configured")?;
+
+    let conn = get_db_connection(&app)?;
+    let content: String = conn.query_row(
+        "SELECT generated_content FROM framework_outputs WHERE id = ?1",
+        params![&output_id],
+        |row| row.get(0),
+    ).map_err(|e| format!("Output not found: {}", e))?;
+
+    let jira_content = markdown_to_jira(&content);
+
+    let payload = serde_json::json!({
+        "fields": {
+            "project": { "key": project_key },
+            "summary": summary,
+            "description": {
+                "type": "doc",
+                "version": 1,
+                "content": [{
+                    "type": "codeBlock",
+                    "attrs": { "language": "none" },
+                    "content": [{ "type": "text", "text": jira_content }]
+                }]
+            },
+            "issuetype": { "name": issue_type }
+        }
+    });
+
+    let client = reqwest::Client::new();
+    let resp = client
+        .post(format!("{}/rest/api/3/issue", url.trim_end_matches('/')))
+        .basic_auth(&email, Some(&token))
+        .header("Accept", "application/json")
+        .header("Content-Type", "application/json")
+        .json(&payload)
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {}", e))?;
+
+    if resp.status().is_success() {
+        let body: serde_json::Value = resp.json().await
+            .map_err(|e| format!("Parse error: {}", e))?;
+        let issue_key = body.get("key").and_then(|k| k.as_str()).unwrap_or("").to_string();
+        let issue_url = format!("{}/browse/{}", url.trim_end_matches('/'), issue_key);
+        Ok(JiraExportResult {
+            success: true,
+            issue_key: Some(issue_key),
+            issue_url: Some(issue_url),
+            error: None,
+        })
+    } else {
+        let err_text = resp.text().await.unwrap_or_default();
+        Ok(JiraExportResult {
+            success: false,
+            issue_key: None,
+            issue_url: None,
+            error: Some(err_text),
+        })
+    }
+}
+
+#[tauri::command]
+pub async fn test_notion_connection(app: tauri::AppHandle) -> Result<bool, String> {
+    let settings = get_settings(app.clone()).await?;
+    let token = get_decrypted_token(&settings.notion_api_token_encrypted, &app)?
+        .ok_or("Notion API token not configured")?;
+
+    let client = reqwest::Client::new();
+    let resp = client
+        .get("https://api.notion.com/v1/users/me")
+        .header("Authorization", format!("Bearer {}", token))
+        .header("Notion-Version", "2022-06-28")
+        .send()
+        .await
+        .map_err(|e| format!("Connection failed: {}", e))?;
+
+    Ok(resp.status().is_success())
+}
+
+#[tauri::command]
+pub async fn search_notion_pages(
+    query: String,
+    app: tauri::AppHandle,
+) -> Result<Vec<NotionPage>, String> {
+    let settings = get_settings(app.clone()).await?;
+    let token = get_decrypted_token(&settings.notion_api_token_encrypted, &app)?
+        .ok_or("Notion API token not configured")?;
+
+    let client = reqwest::Client::new();
+    let resp = client
+        .post("https://api.notion.com/v1/search")
+        .header("Authorization", format!("Bearer {}", token))
+        .header("Notion-Version", "2022-06-28")
+        .header("Content-Type", "application/json")
+        .json(&serde_json::json!({
+            "query": query,
+            "filter": { "value": "page", "property": "object" },
+            "page_size": 20
+        }))
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {}", e))?;
+
+    let body: serde_json::Value = resp.json().await
+        .map_err(|e| format!("Parse error: {}", e))?;
+
+    let pages = body.get("results")
+        .and_then(|r| r.as_array())
+        .map(|arr| {
+            arr.iter().filter_map(|p| {
+                let id = p.get("id")?.as_str()?.to_string();
+                let title = p.get("properties")
+                    .and_then(|props| props.get("title"))
+                    .and_then(|t| t.get("title"))
+                    .and_then(|arr| arr.as_array())
+                    .and_then(|arr| arr.first())
+                    .and_then(|item| item.get("plain_text"))
+                    .and_then(|t| t.as_str())
+                    .unwrap_or("Untitled")
+                    .to_string();
+                Some(NotionPage { id, title })
+            }).collect()
+        })
+        .unwrap_or_default();
+
+    Ok(pages)
+}
+
+#[tauri::command]
+pub async fn export_to_notion(
+    output_id: String,
+    parent_page_id: String,
+    title: String,
+    app: tauri::AppHandle,
+) -> Result<NotionExportResult, String> {
+    let settings = get_settings(app.clone()).await?;
+    let token = get_decrypted_token(&settings.notion_api_token_encrypted, &app)?
+        .ok_or("Notion API token not configured")?;
+
+    let conn = get_db_connection(&app)?;
+    let content: String = conn.query_row(
+        "SELECT generated_content FROM framework_outputs WHERE id = ?1",
+        params![&output_id],
+        |row| row.get(0),
+    ).map_err(|e| format!("Output not found: {}", e))?;
+
+    let mut blocks: Vec<serde_json::Value> = Vec::new();
+    for line in content.lines() {
+        if line.starts_with("### ") {
+            blocks.push(serde_json::json!({
+                "object": "block",
+                "type": "heading_3",
+                "heading_3": {
+                    "rich_text": [{ "type": "text", "text": { "content": &line[4..] } }]
+                }
+            }));
+        } else if line.starts_with("## ") {
+            blocks.push(serde_json::json!({
+                "object": "block",
+                "type": "heading_2",
+                "heading_2": {
+                    "rich_text": [{ "type": "text", "text": { "content": &line[3..] } }]
+                }
+            }));
+        } else if line.starts_with("# ") {
+            blocks.push(serde_json::json!({
+                "object": "block",
+                "type": "heading_1",
+                "heading_1": {
+                    "rich_text": [{ "type": "text", "text": { "content": &line[2..] } }]
+                }
+            }));
+        } else if line.starts_with("- ") || line.starts_with("* ") {
+            blocks.push(serde_json::json!({
+                "object": "block",
+                "type": "bulleted_list_item",
+                "bulleted_list_item": {
+                    "rich_text": [{ "type": "text", "text": { "content": &line[2..] } }]
+                }
+            }));
+        } else if !line.trim().is_empty() {
+            blocks.push(serde_json::json!({
+                "object": "block",
+                "type": "paragraph",
+                "paragraph": {
+                    "rich_text": [{ "type": "text", "text": { "content": line } }]
+                }
+            }));
+        }
+    }
+
+    // Notion API limits to 100 blocks per request
+    if blocks.len() > 100 {
+        blocks.truncate(100);
+    }
+
+    let payload = serde_json::json!({
+        "parent": { "page_id": parent_page_id },
+        "properties": {
+            "title": {
+                "title": [{ "type": "text", "text": { "content": title } }]
+            }
+        },
+        "children": blocks
+    });
+
+    let client = reqwest::Client::new();
+    let resp = client
+        .post("https://api.notion.com/v1/pages")
+        .header("Authorization", format!("Bearer {}", token))
+        .header("Notion-Version", "2022-06-28")
+        .header("Content-Type", "application/json")
+        .json(&payload)
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {}", e))?;
+
+    if resp.status().is_success() {
+        let body: serde_json::Value = resp.json().await
+            .map_err(|e| format!("Parse error: {}", e))?;
+        let page_url = body.get("url").and_then(|u| u.as_str()).unwrap_or("").to_string();
+        Ok(NotionExportResult {
+            success: true,
+            page_url: Some(page_url),
+            error: None,
+        })
+    } else {
+        let err_text = resp.text().await.unwrap_or_default();
+        Ok(NotionExportResult {
+            success: false,
+            page_url: None,
+            error: Some(err_text),
+        })
+    }
 }

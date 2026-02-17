@@ -11,7 +11,7 @@ import BottomPanel from './components/BottomPanel';
 import { Command } from './lib/commandRegistry';
 
 type View = 'welcome' | 'project' | 'settings';
-type Tab = 'documents' | 'chat' | 'frameworks' | 'prompts' | 'context' | 'outputs';
+type Tab = 'documents' | 'chat' | 'frameworks' | 'prompts' | 'context' | 'outputs' | 'workflows';
 
 const MIN_SIDEBAR_WIDTH = 180;
 const MAX_SIDEBAR_WIDTH = 400;
@@ -99,6 +99,7 @@ function App() {
     'tab-prompts': () => { if (currentProjectId) { setActiveTab('prompts'); setCurrentView('project'); } },
     'tab-context': () => { if (currentProjectId) { setActiveTab('context'); setCurrentView('project'); } },
     'tab-outputs': () => { if (currentProjectId) { setActiveTab('outputs'); setCurrentView('project'); } },
+    'tab-workflows': () => { if (currentProjectId) { setActiveTab('workflows'); setCurrentView('project'); } },
     'toggle-terminal': () => setBottomPanelVisible(v => !v),
     'toggle-sidebar': () => setSidebarVisible(v => !v),
   }), [currentProjectId]);
@@ -111,6 +112,7 @@ function App() {
     { id: 'nav-frameworks', label: 'Frameworks', category: 'Navigation', shortcut: '\u23183', keywords: ['rice', 'prd', 'jtbd'], action: () => { if (currentProjectId) { setActiveTab('frameworks'); setCurrentView('project'); } } },
     { id: 'nav-context', label: 'Context', category: 'Navigation', shortcut: '\u23184', keywords: ['docs', 'upload'], action: () => { if (currentProjectId) { setActiveTab('context'); setCurrentView('project'); } } },
     { id: 'nav-outputs', label: 'Outputs', category: 'Navigation', shortcut: '\u23185', keywords: ['generated', 'library'], action: () => { if (currentProjectId) { setActiveTab('outputs'); setCurrentView('project'); } } },
+    { id: 'nav-workflows', label: 'Workflows', category: 'Navigation', shortcut: '\u23186', keywords: ['chain', 'automate', 'pipeline'], action: () => { if (currentProjectId) { setActiveTab('workflows'); setCurrentView('project'); } } },
     { id: 'panel-terminal', label: 'Toggle Terminal', category: 'Panels', shortcut: '\u2318`', action: () => setBottomPanelVisible(v => !v) },
     { id: 'panel-sidebar', label: 'Toggle Sidebar', category: 'Panels', shortcut: '\u2318B', action: () => setSidebarVisible(v => !v) },
     { id: 'action-settings', label: 'Settings', category: 'Actions', keywords: ['preferences', 'api key'], action: handleSettingsClick },
@@ -236,14 +238,31 @@ function App() {
                 </button>
                 <button
                   onClick={() => {
-                    alert('Workflows feature coming in Phase 4!');
+                    const createAndNavigate = async () => {
+                      try {
+                        let projects = await projectsAPI.list();
+                        if (!projects || projects.length === 0) {
+                          const newProject = await projectsAPI.create('My First Project');
+                          if (!newProject || !newProject.id) {
+                            alert('Failed to create project. Please check that the app is running correctly.');
+                            return;
+                          }
+                          handleProjectSelect(newProject.id, 'workflows');
+                        } else {
+                          handleProjectSelect(projects[0].id, 'workflows');
+                        }
+                      } catch (e) {
+                        console.error('Failed to navigate:', e);
+                      }
+                    };
+                    createAndNavigate();
                   }}
-                  className="p-4 bg-codex-surface/40 rounded-lg border border-codex-border hover:bg-codex-surface-hover hover:border-codex-accent/50 transition-all duration-200 cursor-pointer text-left opacity-50"
+                  className="p-4 bg-codex-surface/40 rounded-lg border border-codex-border hover:bg-codex-surface-hover hover:border-codex-accent/50 transition-all duration-200 cursor-pointer text-left"
                 >
                   <div className="text-xl mb-2">⚡</div>
                   <div className="text-xs font-semibold text-codex-text-primary mb-1">Workflows</div>
                   <div className="text-[10px] text-codex-text-muted leading-relaxed">
-                    Automate repetitive PM tasks (Coming Soon)
+                    Chain frameworks into automated multi-step pipelines
                   </div>
                 </button>
               </div>
