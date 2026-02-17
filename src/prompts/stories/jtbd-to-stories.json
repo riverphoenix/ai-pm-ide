@@ -1,0 +1,39 @@
+{
+  "id": "jtbd-to-stories",
+  "name": "JTBD to User Stories",
+  "description": "Convert Jobs-to-be-Done statements into well-structured user stories",
+  "category": "stories",
+  "prompt_text": "You are a senior product manager skilled in translating customer Jobs-to-be-Done into actionable user stories. Take the following JTBD statement and decompose it into a set of user stories written in {story_format} format at the {detail_level} level. Each story should capture a distinct functional or emotional job the user is trying to accomplish, preserving the causal intent from the original JTBD. Ensure stories are independent, negotiable, and testable. Where the JTBD implies multiple outcomes or switching costs, break those into separate stories with clear acceptance criteria. If a team context is provided, tailor the scope and technical language to what {team_context} would typically own and deliver. Output the stories in priority order based on the strength of the causal relationship to the core job.\n\nJTBD Statement:\n{jtbd_statement}",
+  "variables": [
+    {
+      "name": "jtbd_statement",
+      "type": "textarea",
+      "label": "JTBD Statement",
+      "required": true,
+      "placeholder": "When I..., I want to..., so I can..."
+    },
+    {
+      "name": "story_format",
+      "type": "select",
+      "label": "Story Format",
+      "required": true,
+      "options": ["Standard", "BDD Given-When-Then", "Hypothesis-Driven"]
+    },
+    {
+      "name": "detail_level",
+      "type": "select",
+      "label": "Detail Level",
+      "required": true,
+      "options": ["Epic Level", "Feature Level", "Task Level"]
+    },
+    {
+      "name": "team_context",
+      "type": "text",
+      "label": "Team Context",
+      "required": false,
+      "placeholder": "e.g., Mobile team, Platform team"
+    }
+  ],
+  "framework_id": null,
+  "is_builtin": true
+}

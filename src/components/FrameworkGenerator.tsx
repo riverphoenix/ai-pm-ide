@@ -2,11 +2,12 @@ import { useState, useEffect, useRef } from 'react';
 import { save } from '@tauri-apps/plugin-dialog';
 import { writeTextFile } from '@tauri-apps/plugin-fs';
 import { getFramework } from '../lib/frameworks';
-import { contextDocumentsAPI, frameworkOutputsAPI, settingsAPI } from '../lib/ipc';
+import { contextDocumentsAPI, frameworkOutputsAPI, settingsAPI, savedPromptsAPI } from '../lib/ipc';
 import { FrameworkDefinition, ContextDocument } from '../lib/types';
 import MarkdownWithMermaid from './MarkdownWithMermaid';
 import ResizableDivider from './ResizableDivider';
 import FrameworkCustomizer from './FrameworkCustomizer';
+import PromptPickerModal from './PromptPickerModal';
 
 interface FrameworkGeneratorProps {
   projectId: string;
@@ -50,6 +51,9 @@ export default function FrameworkGenerator({
 
   // Customizer state
   const [showCustomizer, setShowCustomizer] = useState(false);
+
+  // Prompt picker state
+  const [showPromptPicker, setShowPromptPicker] = useState(false);
 
   // Panel resize state
   const [leftPanelWidth, setLeftPanelWidth] = useState(50); // percentage
@@ -571,9 +575,17 @@ export default function FrameworkGenerator({
           <div className="flex-1 p-6 space-y-6 overflow-y-auto">
             {/* User Prompt */}
             <div>
-              <label className="block text-xs font-medium text-codex-text-secondary mb-2">
-                What do you want to generate?
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-medium text-codex-text-secondary">
+                  What do you want to generate?
+                </label>
+                <button
+                  onClick={() => setShowPromptPicker(true)}
+                  className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+                >
+                  Use Saved Prompt
+                </button>
+              </div>
               <textarea
                 value={userPrompt}
                 onChange={(e) => setUserPrompt(e.target.value)}
@@ -970,6 +982,17 @@ export default function FrameworkGenerator({
             setFramework(updated);
             setShowCustomizer(false);
           }}
+        />
+      )}
+
+      {showPromptPicker && (
+        <PromptPickerModal
+          onSelect={(resolvedPrompt, promptId) => {
+            setUserPrompt(resolvedPrompt);
+            savedPromptsAPI.incrementUsage(promptId);
+            setShowPromptPicker(false);
+          }}
+          onClose={() => setShowPromptPicker(false)}
         />
       )}
     </div>

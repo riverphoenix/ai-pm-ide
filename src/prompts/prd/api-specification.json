@@ -1,0 +1,15 @@
+{
+  "id": "api-specification",
+  "name": "API Specification",
+  "description": "Generate an API specification with endpoints, request/response schemas, error handling, and integration guidance",
+  "category": "prd",
+  "prompt_text": "Write a complete API Specification for the \"{api_name}\" API using the {api_style} style. The core resource this API manages is described as follows: \"{resource_description}\". The authentication method is {auth_method}, so include the relevant auth flow details, required headers or parameters, and token lifecycle considerations in the specification. Structure the document with these sections: API Overview and purpose, Authentication and Authorization details, Resource Model with field definitions and types, Endpoint Definitions (for each: method, path, description, request schema with required/optional fields, response schema for success and error cases, and example payloads), a standardized Error Handling strategy with error codes and messages, Rate Limiting and pagination approach, Versioning Strategy, and a Getting Started guide with a sample integration workflow. Write this so that both internal engineers and external developers can use it as the single source of truth for building against this API.",
+  "variables": [
+    {"name": "api_name", "type": "text", "label": "API Name", "required": true, "placeholder": "e.g., Customer Segmentation API"},
+    {"name": "api_style", "type": "select", "label": "API Style", "required": true, "options": ["REST", "GraphQL", "gRPC", "WebSocket"]},
+    {"name": "resource_description", "type": "textarea", "label": "Resource Description", "required": true, "placeholder": "Describe the core resource(s) this API manages, their key attributes, relationships, and primary operations"},
+    {"name": "auth_method", "type": "select", "label": "Authentication Method", "required": true, "options": ["API Key", "OAuth 2.0", "JWT", "Session Token"]}
+  ],
+  "framework_id": null,
+  "is_builtin": true
+}

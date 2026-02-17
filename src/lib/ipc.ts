@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import { Project, Conversation, Message, Settings, SettingsUpdate, TokenUsage, TokenUsageAggregate, ContextDocument, FrameworkOutput, Folder, SearchResult, CommandHistoryEntry, CommandResult, FrameworkDefinition, FrameworkCategory } from './types';
+import { Project, Conversation, Message, Settings, SettingsUpdate, TokenUsage, TokenUsageAggregate, ContextDocument, FrameworkOutput, Folder, SearchResult, CommandHistoryEntry, CommandResult, FrameworkDefinition, FrameworkCategory, SavedPrompt, PromptVariable } from './types';
 
 interface FrameworkDefRow {
   id: string;
@@ -395,6 +395,104 @@ export const frameworkDefsAPI = {
   async duplicate(id: string, newName: string): Promise<FrameworkDefinition> {
     const row: FrameworkDefRow = await invoke('duplicate_framework_def', { id, newName });
     return parseFrameworkDef(row);
+  },
+};
+
+interface SavedPromptRow {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  prompt_text: string;
+  variables: string;
+  framework_id: string | null;
+  is_builtin: boolean;
+  is_favorite: boolean;
+  usage_count: number;
+  sort_order: number;
+  created_at: number;
+  updated_at: number;
+}
+
+function parseSavedPrompt(row: SavedPromptRow): SavedPrompt {
+  return {
+    ...row,
+    variables: JSON.parse(row.variables || '[]') as PromptVariable[],
+    framework_id: row.framework_id || undefined,
+  };
+}
+
+export const savedPromptsAPI = {
+  async list(category?: string, frameworkId?: string): Promise<SavedPrompt[]> {
+    const rows: SavedPromptRow[] = await invoke('list_saved_prompts', {
+      category: category || null,
+      frameworkId: frameworkId || null,
+    });
+    return rows.map(parseSavedPrompt);
+  },
+
+  async get(id: string): Promise<SavedPrompt | null> {
+    const row: SavedPromptRow | null = await invoke('get_saved_prompt', { id });
+    return row ? parseSavedPrompt(row) : null;
+  },
+
+  async create(params: {
+    name: string;
+    description: string;
+    category: string;
+    promptText: string;
+    variables: PromptVariable[];
+    frameworkId?: string;
+  }): Promise<SavedPrompt> {
+    const row: SavedPromptRow = await invoke('create_saved_prompt', {
+      name: params.name,
+      description: params.description,
+      category: params.category,
+      promptText: params.promptText,
+      variables: JSON.stringify(params.variables),
+      frameworkId: params.frameworkId || null,
+    });
+    return parseSavedPrompt(row);
+  },
+
+  async update(id: string, params: {
+    name?: string;
+    description?: string;
+    category?: string;
+    promptText?: string;
+    variables?: PromptVariable[];
+    frameworkId?: string | null;
+    isFavorite?: boolean;
+  }): Promise<SavedPrompt> {
+    const row: SavedPromptRow = await invoke('update_saved_prompt', {
+      id,
+      name: params.name,
+      description: params.description,
+      category: params.category,
+      promptText: params.promptText,
+      variables: params.variables ? JSON.stringify(params.variables) : undefined,
+      frameworkId: params.frameworkId !== undefined ? params.frameworkId : undefined,
+      isFavorite: params.isFavorite,
+    });
+    return parseSavedPrompt(row);
+  },
+
+  async delete(id: string): Promise<void> {
+    return await invoke('delete_saved_prompt', { id });
+  },
+
+  async search(query: string): Promise<SavedPrompt[]> {
+    const rows: SavedPromptRow[] = await invoke('search_saved_prompts', { query });
+    return rows.map(parseSavedPrompt);
+  },
+
+  async duplicate(id: string, newName: string): Promise<SavedPrompt> {
+    const row: SavedPromptRow = await invoke('duplicate_saved_prompt', { id, newName });
+    return parseSavedPrompt(row);
+  },
+
+  async incrementUsage(id: string): Promise<void> {
+    return await invoke('increment_prompt_usage', { id });
   },
 };
 

@@ -1,0 +1,39 @@
+{
+  "id": "acceptance-criteria",
+  "name": "Acceptance Criteria Generator",
+  "description": "Generate detailed acceptance criteria for user stories",
+  "category": "stories",
+  "prompt_text": "You are a senior product manager writing acceptance criteria that will serve as the contract between product, design, and engineering. For the provided user story, generate a thorough set of acceptance criteria in {criteria_format} format. Each criterion should be unambiguous, testable, and focused on observable behavior rather than implementation details. Cover the primary user flow first, then systematically address boundary conditions, error states, and permission scenarios. {edge_cases} in your criteria. If technical context is provided, incorporate those constraints as non-functional acceptance criteria covering performance, security, or integration boundaries. The criteria should be specific enough that any team member can independently verify whether the story is complete, while remaining flexible enough to allow engineering discretion on implementation approach.\n\nUser Story:\n{user_story}\n\nTechnical Context:\n{technical_context}",
+  "variables": [
+    {
+      "name": "user_story",
+      "type": "textarea",
+      "label": "User Story",
+      "required": true,
+      "placeholder": "As a [user], I want to [action], so that [benefit]"
+    },
+    {
+      "name": "criteria_format",
+      "type": "select",
+      "label": "Criteria Format",
+      "required": true,
+      "options": ["Given-When-Then", "Checklist", "Scenario-Based"]
+    },
+    {
+      "name": "edge_cases",
+      "type": "select",
+      "label": "Edge Case Coverage",
+      "required": true,
+      "options": ["Include Edge Cases", "Happy Path Only"]
+    },
+    {
+      "name": "technical_context",
+      "type": "textarea",
+      "label": "Technical Context",
+      "required": false,
+      "placeholder": "Any technical constraints or context"
+    }
+  ],
+  "framework_id": null,
+  "is_builtin": true
+}

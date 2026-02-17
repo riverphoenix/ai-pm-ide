@@ -1,0 +1,39 @@
+{
+  "id": "kpi-review",
+  "name": "KPI Review",
+  "description": "Review KPIs and generate insights for a product area",
+  "category": "data",
+  "prompt_text": "Perform a {review_period} KPI review for the {product_area} product area. Evaluate each of the following KPIs against their targets, trend direction, and rate of change: {kpi_list}. For each KPI, determine whether it is on track, at risk, or off track, and provide root cause analysis for any that are underperforming. Identify correlations between KPIs that suggest systemic issues or compounding wins, and surface any leading indicators that predict future performance shifts. Conclude with a prioritized set of recommendations the team should act on in the next cycle. {performance_context}",
+  "variables": [
+    {
+      "name": "product_area",
+      "type": "text",
+      "label": "Product Area",
+      "required": true,
+      "placeholder": "e.g., Growth, Retention, Monetization"
+    },
+    {
+      "name": "review_period",
+      "type": "select",
+      "label": "Review Period",
+      "required": true,
+      "options": ["Monthly", "Quarterly", "Semi-Annual", "Annual"]
+    },
+    {
+      "name": "kpi_list",
+      "type": "textarea",
+      "label": "KPI List",
+      "required": true,
+      "placeholder": "List your KPIs"
+    },
+    {
+      "name": "performance_context",
+      "type": "textarea",
+      "label": "Performance Context",
+      "required": false,
+      "placeholder": "Any context about performance trends"
+    }
+  ],
+  "framework_id": null,
+  "is_builtin": true
+}

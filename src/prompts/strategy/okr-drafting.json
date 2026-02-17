@@ -1,0 +1,46 @@
+{
+  "id": "okr-drafting",
+  "name": "OKR Drafting",
+  "description": "Draft OKRs for a team or initiative",
+  "category": "strategy",
+  "prompt_text": "Draft a set of {num_objectives} OKRs for {team_or_initiative} covering the {time_period} period. These OKRs must ladder up to the following strategic context: {strategic_context}. Each objective should be ambitious yet achievable, and each key result should follow the {measurement_preference} measurement approach with clear thresholds for what constitutes on-track, at-risk, and off-track progress. For each OKR, explain the rationale for why it was chosen over alternatives, identify the leading indicators the team should monitor weekly, and note any cross-team dependencies that could block achievement. Ensure the full set of OKRs tells a coherent story about what the team will accomplish and why it matters.",
+  "variables": [
+    {
+      "name": "team_or_initiative",
+      "type": "text",
+      "label": "Team or Initiative",
+      "required": true,
+      "placeholder": "e.g., Platform Team, AI-Powered Search Initiative"
+    },
+    {
+      "name": "time_period",
+      "type": "select",
+      "label": "Time Period",
+      "required": true,
+      "options": ["Quarterly", "Semi-Annual", "Annual"]
+    },
+    {
+      "name": "strategic_context",
+      "type": "textarea",
+      "label": "Strategic Context",
+      "required": true,
+      "placeholder": "Company/org-level goals this should align to"
+    },
+    {
+      "name": "num_objectives",
+      "type": "select",
+      "label": "Number of Objectives",
+      "required": true,
+      "options": ["1-2 Focused", "3-4 Balanced", "5+ Broad"]
+    },
+    {
+      "name": "measurement_preference",
+      "type": "select",
+      "label": "Measurement Preference",
+      "required": true,
+      "options": ["Quantitative Only", "Mix of Qual and Quant"]
+    }
+  ],
+  "framework_id": null,
+  "is_builtin": true
+}

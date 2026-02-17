@@ -1,0 +1,46 @@
+{
+  "id": "strategic-initiative",
+  "name": "Strategic Initiative",
+  "description": "Define a strategic initiative with goals, milestones, and success criteria",
+  "category": "strategy",
+  "prompt_text": "Define a strategic initiative for '{initiative_name}' with a {time_horizon} time horizon and a {investment_level} level of investment. The core problem this initiative addresses is: {problem_statement}. The target outcome we are pursuing is: {target_outcome}. Structure the initiative as a phased plan with clear milestones, decision gates, and success criteria at each phase. Articulate the key assumptions that must hold true for this initiative to succeed, the biggest risks and their mitigations, and the metrics that will serve as leading and lagging indicators of progress. Include a recommendation for how to staff the initiative, what organizational support is needed, and what the exit criteria are if results do not materialize as expected.",
+  "variables": [
+    {
+      "name": "initiative_name",
+      "type": "text",
+      "label": "Initiative Name",
+      "required": true,
+      "placeholder": "e.g., Self-Serve Onboarding Redesign"
+    },
+    {
+      "name": "problem_statement",
+      "type": "textarea",
+      "label": "Problem Statement",
+      "required": true,
+      "placeholder": "What problem does this initiative solve?"
+    },
+    {
+      "name": "target_outcome",
+      "type": "textarea",
+      "label": "Target Outcome",
+      "required": true,
+      "placeholder": "What does success look like?"
+    },
+    {
+      "name": "time_horizon",
+      "type": "select",
+      "label": "Time Horizon",
+      "required": true,
+      "options": ["3 Months", "6 Months", "1 Year", "Multi-Year"]
+    },
+    {
+      "name": "investment_level",
+      "type": "select",
+      "label": "Investment Level",
+      "required": true,
+      "options": ["Low", "Medium", "High", "Transformational"]
+    }
+  ],
+  "framework_id": null,
+  "is_builtin": true
+}

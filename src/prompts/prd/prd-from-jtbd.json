@@ -1,0 +1,15 @@
+{
+  "id": "prd-from-jtbd",
+  "name": "PRD from Jobs-to-be-Done",
+  "description": "Generate a complete PRD starting from a Jobs-to-be-Done statement, covering user needs, success criteria, scope, and release planning",
+  "category": "prd",
+  "prompt_text": "Write a complete Product Requirements Document for the feature \"{feature_name}\" targeting the {user_persona} persona. The core Jobs-to-be-Done statement driving this feature is: \"{jtbd_statement}\". Structure the PRD around this JTBD by first decomposing it into functional, emotional, and social dimensions, then deriving requirements that address each dimension. The primary priority area for this feature is {priority_area}, so weight your non-functional requirements and acceptance criteria accordingly. Include sections for Problem Context, User Stories mapped to the JTBD, Detailed Requirements (must-have vs. nice-to-have), Success Metrics tied directly to the job outcome, and a phased Release Plan that delivers value incrementally while validating the JTBD hypothesis at each stage.",
+  "variables": [
+    {"name": "feature_name", "type": "text", "label": "Feature Name", "required": true, "placeholder": "e.g., Smart Inbox Prioritization"},
+    {"name": "user_persona", "type": "select", "label": "User Persona", "required": true, "options": ["Power User", "Casual User", "Enterprise Admin", "Developer"]},
+    {"name": "jtbd_statement", "type": "textarea", "label": "Jobs-to-be-Done Statement", "required": true, "placeholder": "When I [situation], I want to [motivation], so I can [expected outcome]"},
+    {"name": "priority_area", "type": "select", "label": "Priority Area", "required": true, "options": ["User Experience", "Performance", "Security", "Scalability", "Revenue"]}
+  ],
+  "framework_id": null,
+  "is_builtin": true
+}

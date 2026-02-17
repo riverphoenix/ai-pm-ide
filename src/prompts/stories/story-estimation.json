@@ -1,0 +1,39 @@
+{
+  "id": "story-estimation",
+  "name": "Story Point Estimation",
+  "description": "Estimate story points and identify complexity factors for user stories",
+  "category": "stories",
+  "prompt_text": "You are a senior product manager facilitating a story estimation session. Analyze the provided user stories and estimate each one using the {estimation_scale} scale. For every story, break down the complexity into three dimensions: implementation effort, uncertainty or ambiguity, and integration risk with existing systems. Identify specific complexity drivers such as new technology, cross-service dependencies, data migration needs, or UI/UX complexity that justify the estimate. If team velocity is provided ({team_velocity}), calculate how many sprints the full set of stories would require and flag any single story that exceeds one-third of the sprint capacity as a candidate for further decomposition. {include_risks} a risk register noting stories with high variance in potential effort and recommend mitigation strategies such as timeboxed spikes or proof-of-concept work.\n\nUser Stories to Estimate:\n{user_stories}",
+  "variables": [
+    {
+      "name": "user_stories",
+      "type": "textarea",
+      "label": "User Stories",
+      "required": true,
+      "placeholder": "Paste your user stories to estimate"
+    },
+    {
+      "name": "estimation_scale",
+      "type": "select",
+      "label": "Estimation Scale",
+      "required": true,
+      "options": ["Fibonacci (1-13)", "T-Shirt (XS-XL)", "Linear (1-5)"]
+    },
+    {
+      "name": "team_velocity",
+      "type": "text",
+      "label": "Team Velocity",
+      "required": false,
+      "placeholder": "e.g., 30 points per sprint"
+    },
+    {
+      "name": "include_risks",
+      "type": "select",
+      "label": "Include Risk Analysis",
+      "required": true,
+      "options": ["Yes", "No"]
+    }
+  ],
+  "framework_id": null,
+  "is_builtin": true
+}

@@ -1,0 +1,15 @@
+{
+  "id": "technical-prd",
+  "name": "Technical PRD",
+  "description": "Generate a technical PRD with architecture decisions, API contracts, and implementation details for engineering-focused planning",
+  "category": "prd",
+  "prompt_text": "Write a Technical Product Requirements Document for \"{feature_name}\" that bridges product intent and engineering execution. The current system context is as follows: \"{system_context}\". Given this baseline, define the target architecture, key technical decisions (with rationale and alternatives considered), API contracts with request/response schemas, data model changes, and migration strategy. The target timeline is {target_timeline}, so scope the implementation plan accordingly with clear milestones and dependencies. Technical constraints to factor into every decision: \"{technical_constraints}\". Include sections for Architecture Overview with a component diagram description, API Specifications, Data Model Changes, Infrastructure Requirements, Performance Benchmarks, Rollback Strategy, and a detailed Implementation Plan broken into workstreams with effort estimates.",
+  "variables": [
+    {"name": "feature_name", "type": "text", "label": "Feature Name", "required": true, "placeholder": "e.g., Real-time Event Processing Pipeline"},
+    {"name": "system_context", "type": "textarea", "label": "Current System Context", "required": true, "placeholder": "Describe the existing system architecture, key services, data flows, and relevant technical landscape"},
+    {"name": "technical_constraints", "type": "textarea", "label": "Technical Constraints", "required": false, "placeholder": "e.g., Must maintain backward compatibility with v2 API, latency budget of 200ms p99"},
+    {"name": "target_timeline", "type": "select", "label": "Target Timeline", "required": true, "options": ["1 Sprint", "2 Sprints", "1 Quarter", "2 Quarters"]}
+  ],
+  "framework_id": null,
+  "is_builtin": true
+}

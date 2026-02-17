@@ -223,3 +223,29 @@ export interface FrameworkCategory {
   updated_at: number;
   frameworks: FrameworkDefinition[];
 }
+
+export interface PromptVariable {
+  name: string;
+  type: 'text' | 'select' | 'textarea';
+  label?: string;
+  placeholder?: string;
+  options?: string[];
+  required: boolean;
+  default_value?: string;
+}
+
+export interface SavedPrompt {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  prompt_text: string;
+  variables: PromptVariable[];
+  framework_id?: string;
+  is_builtin: boolean;
+  is_favorite: boolean;
+  usage_count: number;
+  sort_order: number;
+  created_at: number;
+  updated_at: number;
+}

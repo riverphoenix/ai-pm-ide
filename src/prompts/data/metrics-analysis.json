@@ -1,0 +1,39 @@
+{
+  "id": "metrics-analysis",
+  "name": "Metrics Analysis",
+  "description": "Analyze product metrics and identify trends",
+  "category": "data",
+  "prompt_text": "Conduct a thorough analysis of the {metric_name} metric for the {product_area} product area over the {time_range} period. Identify statistically meaningful trends, anomalies, and inflection points in the data, and correlate them with known product changes or external factors. Provide a breakdown of contributing factors, segment-level variations, and leading indicators that may explain the observed patterns. Recommend specific actions the product team should take based on the findings, prioritized by expected impact. {context}",
+  "variables": [
+    {
+      "name": "metric_name",
+      "type": "text",
+      "label": "Metric Name",
+      "required": true,
+      "placeholder": "e.g., Activation Rate, DAU, Revenue per User"
+    },
+    {
+      "name": "time_range",
+      "type": "select",
+      "label": "Time Range",
+      "required": true,
+      "options": ["Last 7 Days", "Last 30 Days", "Last Quarter", "Year over Year"]
+    },
+    {
+      "name": "product_area",
+      "type": "text",
+      "label": "Product Area",
+      "required": true,
+      "placeholder": "e.g., Onboarding, Checkout, Dashboard"
+    },
+    {
+      "name": "context",
+      "type": "textarea",
+      "label": "Additional Context",
+      "required": false,
+      "placeholder": "Any context about recent changes"
+    }
+  ],
+  "framework_id": null,
+  "is_builtin": true
+}

@@ -1,0 +1,39 @@
+{
+  "id": "resource-allocation",
+  "name": "Resource Allocation",
+  "description": "Plan resource allocation across initiatives",
+  "category": "prioritization",
+  "prompt_text": "Create a resource allocation plan for the following initiatives over a {time_horizon} time horizon using a {allocation_strategy} allocation strategy: {initiatives}. The total available capacity is {total_capacity}. For each initiative, recommend a specific headcount and skill-mix allocation, identify roles that are critical-path bottlenecks, and flag any initiatives that are under-resourced relative to their stated ambitions. Model two alternative allocation scenarios and compare their expected outcomes, trade-offs, and risk profiles so the leadership team can make an informed decision on how to invest.",
+  "variables": [
+    {
+      "name": "initiatives",
+      "type": "textarea",
+      "label": "Initiatives",
+      "required": true,
+      "placeholder": "List initiatives and their requirements"
+    },
+    {
+      "name": "total_capacity",
+      "type": "text",
+      "label": "Total Capacity",
+      "required": true,
+      "placeholder": "e.g., 20 engineers, 3 designers"
+    },
+    {
+      "name": "time_horizon",
+      "type": "select",
+      "label": "Time Horizon",
+      "required": true,
+      "options": ["1 Sprint", "1 Month", "1 Quarter", "1 Half"]
+    },
+    {
+      "name": "allocation_strategy",
+      "type": "select",
+      "label": "Allocation Strategy",
+      "required": true,
+      "options": ["Balanced", "Focus on Top Priority", "Split Evenly", "70-20-10"]
+    }
+  ],
+  "framework_id": null,
+  "is_builtin": true
+}

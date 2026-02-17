@@ -1,0 +1,39 @@
+{
+  "id": "feedback-synthesis",
+  "name": "Customer Feedback Synthesis",
+  "description": "Synthesize customer feedback from various sources into structured, actionable product insights.",
+  "category": "analysis",
+  "prompt_text": "Synthesize customer feedback for the {product_area} area, drawing from {feedback_source} collected over {time_period}. Identify the top recurring themes, categorize them by severity and frequency, and distinguish between symptoms customers describe and the underlying root causes. For each theme, assess the business impact -- considering factors like revenue at risk, expansion potential, and competitive vulnerability. Where applicable, incorporate these known themes as a starting lens for the analysis:\n\n{key_themes}\n\nPrioritize the findings into a tiered action plan: quick wins that can be addressed within a sprint cycle, medium-term investments requiring roadmap commitment, and strategic bets that would require cross-functional alignment. For each recommendation, articulate the customer outcome we are solving for, not just the feature request.",
+  "variables": [
+    {
+      "name": "feedback_source",
+      "type": "select",
+      "label": "Feedback Source",
+      "required": true,
+      "options": ["NPS Surveys", "Support Tickets", "User Interviews", "Beta Feedback", "App Reviews"]
+    },
+    {
+      "name": "time_period",
+      "type": "select",
+      "label": "Time Period",
+      "required": true,
+      "options": ["Last 30 Days", "Last Quarter", "Last 6 Months", "Last Year"]
+    },
+    {
+      "name": "product_area",
+      "type": "text",
+      "label": "Product Area",
+      "required": true,
+      "placeholder": "e.g., Onboarding Experience"
+    },
+    {
+      "name": "key_themes",
+      "type": "textarea",
+      "label": "Key Themes",
+      "required": false,
+      "placeholder": "Optional: known themes to focus on"
+    }
+  ],
+  "framework_id": null,
+  "is_builtin": true
+}

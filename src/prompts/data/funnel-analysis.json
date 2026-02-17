@@ -1,0 +1,39 @@
+{
+  "id": "funnel-analysis",
+  "name": "Funnel Analysis",
+  "description": "Analyze conversion funnel performance and identify drop-off points",
+  "category": "data",
+  "prompt_text": "Analyze the '{funnel_name}' conversion funnel for the {segment} segment with the goal to {optimization_goal}. The funnel consists of the following stages: {funnel_stages}. For each stage transition, calculate the conversion rate, identify the magnitude and velocity of drop-offs, and hypothesize the most likely causes based on common UX and behavioral patterns. Compare stage performance against industry benchmarks where applicable, and flag any stages where small improvements would yield disproportionate impact on overall funnel throughput. Deliver a prioritized action plan with quick wins and longer-term structural improvements.",
+  "variables": [
+    {
+      "name": "funnel_name",
+      "type": "text",
+      "label": "Funnel Name",
+      "required": true,
+      "placeholder": "e.g., Trial-to-Paid, Signup Flow, Feature Adoption"
+    },
+    {
+      "name": "funnel_stages",
+      "type": "textarea",
+      "label": "Funnel Stages",
+      "required": true,
+      "placeholder": "List funnel stages in order"
+    },
+    {
+      "name": "optimization_goal",
+      "type": "select",
+      "label": "Optimization Goal",
+      "required": true,
+      "options": ["Increase Conversion", "Reduce Drop-off", "Improve Time-to-Convert", "Identify Bottlenecks"]
+    },
+    {
+      "name": "segment",
+      "type": "select",
+      "label": "User Segment",
+      "required": true,
+      "options": ["All Users", "New Users", "Returning Users", "Enterprise", "SMB"]
+    }
+  ],
+  "framework_id": null,
+  "is_builtin": true
+}

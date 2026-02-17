@@ -1,0 +1,39 @@
+{
+  "id": "epic-breakdown",
+  "name": "Epic Breakdown",
+  "description": "Break an epic into implementable user stories sized for sprint delivery",
+  "category": "stories",
+  "prompt_text": "You are a senior product manager responsible for breaking down a high-level epic into a set of implementable user stories that a development team can deliver incrementally. Analyze the epic \"{epic_name}\" and decompose it into vertical slices that each deliver demonstrable user value. Size the stories so they can realistically be completed within a sprint by a {team_size} team, targeting delivery across {num_sprints}. For each story, include a clear user narrative, acceptance criteria, and any dependencies on other stories in the set. Sequence the stories to front-load risk and learning, ensuring the first sprint delivers a walking skeleton or minimum viable slice that validates the core assumption. Flag any stories that require cross-team coordination or carry technical uncertainty that may affect estimates.\n\nEpic Description:\n{epic_description}",
+  "variables": [
+    {
+      "name": "epic_name",
+      "type": "text",
+      "label": "Epic Name",
+      "required": true,
+      "placeholder": "Name of the epic"
+    },
+    {
+      "name": "epic_description",
+      "type": "textarea",
+      "label": "Epic Description",
+      "required": true,
+      "placeholder": "Describe the epic, its goals, and intended outcomes"
+    },
+    {
+      "name": "num_sprints",
+      "type": "select",
+      "label": "Number of Sprints",
+      "required": true,
+      "options": ["1 Sprint", "2 Sprints", "3 Sprints", "4+ Sprints"]
+    },
+    {
+      "name": "team_size",
+      "type": "select",
+      "label": "Team Size",
+      "required": true,
+      "options": ["Small (2-3)", "Medium (4-6)", "Large (7+)"]
+    }
+  ],
+  "framework_id": null,
+  "is_builtin": true
+}

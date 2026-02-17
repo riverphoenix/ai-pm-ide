@@ -1,0 +1,16 @@
+{
+  "id": "one-pager",
+  "name": "One-Page Product Brief",
+  "description": "Generate a concise one-page product brief for stakeholder alignment, executive reviews, and investment decisions",
+  "category": "prd",
+  "prompt_text": "Write a concise, compelling One-Page Product Brief for the initiative \"{initiative_name}\" designed to align stakeholders and secure buy-in quickly. The core problem we are solving: \"{problem_statement}\". The target audience for this initiative is \"{target_audience}\" -- ground every claim and recommendation in their specific needs and pain points. The primary business impact we expect to drive is {business_impact}, so frame the value proposition and ROI narrative around that axis. Key success metrics to include: \"{success_metrics}\". Structure the brief with these sections, each no longer than a short paragraph: Problem Statement, Proposed Solution, Target Audience, Value Proposition, Key Success Metrics, High-Level Timeline, Risks and Mitigations, and a clear Ask or Next Steps. Write it in a tone suitable for executive and cross-functional review -- persuasive, evidence-oriented, and free of jargon.",
+  "variables": [
+    {"name": "initiative_name", "type": "text", "label": "Initiative Name", "required": true, "placeholder": "e.g., Self-Serve Onboarding Redesign"},
+    {"name": "problem_statement", "type": "textarea", "label": "Problem Statement", "required": true, "placeholder": "What problem are we solving? Who is affected? What is the cost of inaction?"},
+    {"name": "target_audience", "type": "text", "label": "Target Audience", "required": true, "placeholder": "e.g., Mid-market SaaS companies with 50-200 employees"},
+    {"name": "success_metrics", "type": "textarea", "label": "Success Metrics", "required": false, "placeholder": "e.g., Reduce onboarding time by 40%, increase activation rate to 65%"},
+    {"name": "business_impact", "type": "select", "label": "Business Impact", "required": true, "options": ["Revenue Growth", "Cost Reduction", "User Retention", "Market Expansion", "Operational Efficiency"]}
+  ],
+  "framework_id": null,
+  "is_builtin": true
+}

@@ -1,0 +1,39 @@
+{
+  "id": "churn-analysis",
+  "name": "Churn Analysis",
+  "description": "Analyze churn patterns across customer segments and develop targeted retention strategies.",
+  "category": "analysis",
+  "prompt_text": "Analyze churn patterns for {product_name} across the {churn_segment} segment on a {time_period} basis. Structure the analysis around three pillars: pattern identification, root cause diagnosis, and retention strategy. First, identify the key churn signals and behavioral patterns that precede customer departure -- including usage drop-offs, support escalation trends, and engagement decay curves. Then diagnose the underlying drivers, factoring in these known contributors if provided:\n\n{known_factors}\n\nQuantify the revenue impact of each churn driver where possible, and segment the analysis by customer lifecycle stage (early churn vs. mature churn). Finally, recommend a set of targeted retention interventions -- spanning product improvements, customer success playbooks, and pricing or packaging adjustments -- prioritized by expected impact on net revenue retention. For each intervention, specify the leading indicators we should track to measure effectiveness within the first 30-60 days of implementation.",
+  "variables": [
+    {
+      "name": "product_name",
+      "type": "text",
+      "label": "Product Name",
+      "required": true,
+      "placeholder": "e.g., HubSpot Operations Hub"
+    },
+    {
+      "name": "churn_segment",
+      "type": "select",
+      "label": "Churn Segment",
+      "required": true,
+      "options": ["Enterprise", "Mid-Market", "SMB", "Free Tier", "All Segments"]
+    },
+    {
+      "name": "time_period",
+      "type": "select",
+      "label": "Time Period",
+      "required": true,
+      "options": ["Monthly", "Quarterly", "Annual"]
+    },
+    {
+      "name": "known_factors",
+      "type": "textarea",
+      "label": "Known Churn Factors",
+      "required": false,
+      "placeholder": "Any known churn drivers"
+    }
+  ],
+  "framework_id": null,
+  "is_builtin": true
+}

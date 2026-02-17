@@ -1,0 +1,46 @@
+{
+  "id": "quarterly-priorities",
+  "name": "Quarterly Priorities",
+  "description": "Define quarterly priorities and resource allocation",
+  "category": "prioritization",
+  "prompt_text": "Define the {quarter} priorities for the {team_name} team given an available capacity level of {available_capacity}. The team's strategic goals for this quarter are: {strategic_goals}. Produce a ranked list of priorities that maximizes strategic impact within the stated capacity constraints, clearly distinguishing between must-haves, should-haves, and stretch goals. For each priority, specify the expected outcome, key milestones, dependencies on other teams, and the primary risk if it is deprioritized. Account for the following constraints and dependencies when making trade-off recommendations: {constraints}",
+  "variables": [
+    {
+      "name": "quarter",
+      "type": "select",
+      "label": "Quarter",
+      "required": true,
+      "options": ["Q1", "Q2", "Q3", "Q4"]
+    },
+    {
+      "name": "team_name",
+      "type": "text",
+      "label": "Team Name",
+      "required": true,
+      "placeholder": "e.g., Growth Engineering, Platform"
+    },
+    {
+      "name": "strategic_goals",
+      "type": "textarea",
+      "label": "Strategic Goals",
+      "required": true,
+      "placeholder": "Top-level goals for the quarter"
+    },
+    {
+      "name": "available_capacity",
+      "type": "select",
+      "label": "Available Capacity",
+      "required": true,
+      "options": ["Low", "Medium", "High", "Full"]
+    },
+    {
+      "name": "constraints",
+      "type": "textarea",
+      "label": "Constraints & Dependencies",
+      "required": false,
+      "placeholder": "Any constraints or dependencies"
+    }
+  ],
+  "framework_id": null,
+  "is_builtin": true
+}

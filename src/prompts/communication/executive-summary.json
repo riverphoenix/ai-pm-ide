@@ -1,0 +1,51 @@
+{
+  "id": "executive-summary",
+  "name": "Executive Summary",
+  "description": "Write an executive summary for leadership review",
+  "category": "communication",
+  "prompt_text": "Write an executive summary for the {initiative_name} initiative, formatted as a {summary_type}. This summary will be reviewed by senior leadership, so it must be concise, data-informed, and action-oriented. Begin with a one-paragraph overview that captures the current state and strategic importance of the initiative.\n\nHighlight the following key achievements:\n{key_achievements}\n\nAddress any blockers or risks that require leadership attention:\n{blockers_or_risks}\n\nConclude with clearly defined next steps and owners:\n{next_steps}\n\nThe summary should follow a pyramid structure where the most critical information appears first, enabling executives to get the full picture from the opening paragraph alone. Use bullet points for scannability and quantify impact wherever possible.",
+  "variables": [
+    {
+      "name": "initiative_name",
+      "type": "text",
+      "label": "Initiative Name",
+      "required": true,
+      "placeholder": "e.g., Customer Portal Redesign, AI-Powered Routing"
+    },
+    {
+      "name": "summary_type",
+      "type": "select",
+      "label": "Summary Type",
+      "required": true,
+      "options": [
+        "Status Update",
+        "Decision Request",
+        "Risk Escalation",
+        "Quarterly Review"
+      ]
+    },
+    {
+      "name": "key_achievements",
+      "type": "textarea",
+      "label": "Key Achievements",
+      "required": true,
+      "placeholder": "List accomplishments, milestones hit, metrics improved"
+    },
+    {
+      "name": "blockers_or_risks",
+      "type": "textarea",
+      "label": "Blockers or Risks",
+      "required": false,
+      "placeholder": "Any blockers, risks, or dependencies to escalate"
+    },
+    {
+      "name": "next_steps",
+      "type": "textarea",
+      "label": "Next Steps",
+      "required": false,
+      "placeholder": "Planned actions, owners, and timelines"
+    }
+  ],
+  "framework_id": null,
+  "is_builtin": true
+}

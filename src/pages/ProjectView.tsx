@@ -10,12 +10,13 @@ import FrameworkManager from '../components/FrameworkManager';
 import ContextManager from './ContextManager';
 import OutputsLibrary from './OutputsLibrary';
 import DocumentsExplorer from './DocumentsExplorer';
+import PromptsLibrary from './PromptsLibrary';
 
 const MIN_HISTORY_WIDTH = 180;
 const MAX_HISTORY_WIDTH = 400;
 const DEFAULT_HISTORY_WIDTH = 224;
 
-type Tab = 'documents' | 'chat' | 'frameworks' | 'context' | 'outputs';
+type Tab = 'documents' | 'chat' | 'frameworks' | 'prompts' | 'context' | 'outputs';
 
 interface ProjectViewProps {
   projectId: string;
@@ -133,7 +134,7 @@ export default function ProjectView({ projectId, activeTab, onTabChange, onModel
       </div>
 
       <div style={{ flexShrink: 0 }} className="h-8 border-b border-codex-border bg-codex-surface/30 flex items-center px-4 gap-1">
-        {(['chat', 'documents', 'frameworks', 'context', 'outputs'] as Tab[]).map(tab => (
+        {(['chat', 'documents', 'frameworks', 'prompts', 'context', 'outputs'] as Tab[]).map(tab => (
           <button
             key={tab}
             onClick={() => {
@@ -217,6 +218,10 @@ export default function ProjectView({ projectId, activeTab, onTabChange, onModel
 
         {activeTab === 'documents' && (
           <DocumentsExplorer projectId={projectId} />
+        )}
+
+        {activeTab === 'prompts' && (
+          <PromptsLibrary projectId={projectId} />
         )}
 
         {activeTab === 'context' && (

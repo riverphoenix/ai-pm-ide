@@ -1,0 +1,51 @@
+{
+  "id": "team-update",
+  "name": "Team / Project Status Update",
+  "description": "Write a team or project status update for regular reporting cadences",
+  "category": "communication",
+  "prompt_text": "Write a clear and actionable {update_period} status update for the {project_name} project. The update should give stakeholders and team members a quick, honest snapshot of where things stand without requiring them to dig into details. Lead with a one-line overall status assessment (on track, at risk, or off track) before diving into specifics.\n\nSummarize the following accomplishments from this period:\n{accomplishments}\n\nOutline the upcoming planned work:\n{upcoming_work}\n\nCall out any blockers or dependencies that need attention:\n{blockers}\n\nFormat the update for easy scanning with bullet points and section headers. Highlight items that require action or decisions from others, and be transparent about risks rather than burying them. The goal is to build trust through consistent, honest communication that helps the broader team stay aligned and unblock each other proactively.",
+  "variables": [
+    {
+      "name": "project_name",
+      "type": "text",
+      "label": "Project Name",
+      "required": true,
+      "placeholder": "e.g., Partner Portal v2, Lead Scoring Revamp"
+    },
+    {
+      "name": "update_period",
+      "type": "select",
+      "label": "Update Period",
+      "required": true,
+      "options": [
+        "Weekly",
+        "Bi-Weekly",
+        "Monthly",
+        "Sprint"
+      ]
+    },
+    {
+      "name": "accomplishments",
+      "type": "textarea",
+      "label": "Accomplishments",
+      "required": true,
+      "placeholder": "What was completed or progressed this period"
+    },
+    {
+      "name": "upcoming_work",
+      "type": "textarea",
+      "label": "Upcoming Work",
+      "required": true,
+      "placeholder": "What is planned for the next period"
+    },
+    {
+      "name": "blockers",
+      "type": "textarea",
+      "label": "Blockers",
+      "required": false,
+      "placeholder": "Any blockers or dependencies"
+    }
+  ],
+  "framework_id": null,
+  "is_builtin": true
+}

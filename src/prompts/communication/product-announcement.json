@@ -1,0 +1,49 @@
+{
+  "id": "product-announcement",
+  "name": "Product Announcement",
+  "description": "Create a product announcement for internal or external audiences",
+  "category": "communication",
+  "prompt_text": "Create a compelling product announcement for {feature_name}, formatted as a {announcement_type} targeting {target_audience}. The announcement should open with a strong hook that immediately communicates the value proposition and why this matters now. Frame the narrative around the customer problem being solved rather than the technical implementation.\n\nIncorporate the following key benefits prominently:\n{key_benefits}\n\nStructure the announcement with a headline, a brief context-setting paragraph, a benefits-focused body, and a clear call to action appropriate for the audience. If this is an internal announcement, include enablement guidance so customer-facing teams know how to position and discuss this with customers. For external announcements, keep the language accessible and outcome-driven, avoiding internal jargon.",
+  "variables": [
+    {
+      "name": "feature_name",
+      "type": "text",
+      "label": "Feature Name",
+      "required": true,
+      "placeholder": "e.g., Smart Inbox, AI Meeting Scheduler"
+    },
+    {
+      "name": "announcement_type",
+      "type": "select",
+      "label": "Announcement Type",
+      "required": true,
+      "options": [
+        "Internal Launch",
+        "External Launch",
+        "Beta Announcement",
+        "Deprecation Notice"
+      ]
+    },
+    {
+      "name": "target_audience",
+      "type": "select",
+      "label": "Target Audience",
+      "required": true,
+      "options": [
+        "All Customers",
+        "Enterprise Only",
+        "Internal Teams",
+        "Partners"
+      ]
+    },
+    {
+      "name": "key_benefits",
+      "type": "textarea",
+      "label": "Key Benefits",
+      "required": true,
+      "placeholder": "List the primary benefits and value this delivers"
+    }
+  ],
+  "framework_id": null,
+  "is_builtin": true
+}

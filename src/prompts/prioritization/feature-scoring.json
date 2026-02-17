@@ -1,0 +1,39 @@
+{
+  "id": "feature-scoring",
+  "name": "Feature Scoring",
+  "description": "Score and rank features using a structured framework",
+  "category": "prioritization",
+  "prompt_text": "Evaluate and rank the following features using the {scoring_framework} scoring framework: {features_list}. For each feature, assign scores across all dimensions of the chosen framework with clear justification for each score, drawing on the strategic objectives provided: {strategic_alignment}. Factor in any stakeholder input or mandates that may adjust relative priority: {stakeholder_input}. Produce a final stack-ranked list with composite scores, highlight any features where scores are close enough that ordering is debatable, and call out features that score poorly on impact but may carry hidden strategic or platform value worth discussing.",
+  "variables": [
+    {
+      "name": "features_list",
+      "type": "textarea",
+      "label": "Features List",
+      "required": true,
+      "placeholder": "List features to evaluate, one per line"
+    },
+    {
+      "name": "scoring_framework",
+      "type": "select",
+      "label": "Scoring Framework",
+      "required": true,
+      "options": ["RICE", "ICE", "WSJF", "MoSCoW", "Custom"]
+    },
+    {
+      "name": "stakeholder_input",
+      "type": "textarea",
+      "label": "Stakeholder Input",
+      "required": false,
+      "placeholder": "Any stakeholder preferences or mandates"
+    },
+    {
+      "name": "strategic_alignment",
+      "type": "textarea",
+      "label": "Strategic Alignment",
+      "required": true,
+      "placeholder": "What are the strategic objectives these should align to?"
+    }
+  ],
+  "framework_id": null,
+  "is_builtin": true
+}

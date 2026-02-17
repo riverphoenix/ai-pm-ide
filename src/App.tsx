@@ -11,7 +11,7 @@ import BottomPanel from './components/BottomPanel';
 import { Command } from './lib/commandRegistry';
 
 type View = 'welcome' | 'project' | 'settings';
-type Tab = 'documents' | 'chat' | 'frameworks' | 'context' | 'outputs';
+type Tab = 'documents' | 'chat' | 'frameworks' | 'prompts' | 'context' | 'outputs';
 
 const MIN_SIDEBAR_WIDTH = 180;
 const MAX_SIDEBAR_WIDTH = 400;
@@ -96,6 +96,7 @@ function App() {
     'tab-chat': () => { if (currentProjectId) { setActiveTab('chat'); setCurrentView('project'); } },
     'tab-documents': () => { if (currentProjectId) { setActiveTab('documents'); setCurrentView('project'); } },
     'tab-frameworks': () => { if (currentProjectId) { setActiveTab('frameworks'); setCurrentView('project'); } },
+    'tab-prompts': () => { if (currentProjectId) { setActiveTab('prompts'); setCurrentView('project'); } },
     'tab-context': () => { if (currentProjectId) { setActiveTab('context'); setCurrentView('project'); } },
     'tab-outputs': () => { if (currentProjectId) { setActiveTab('outputs'); setCurrentView('project'); } },
     'toggle-terminal': () => setBottomPanelVisible(v => !v),

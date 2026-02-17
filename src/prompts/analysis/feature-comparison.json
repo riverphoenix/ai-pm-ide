@@ -1,0 +1,39 @@
+{
+  "id": "feature-comparison",
+  "name": "Feature Comparison",
+  "description": "Compare feature implementations across multiple products to inform roadmap and positioning decisions.",
+  "category": "analysis",
+  "prompt_text": "Perform a detailed feature comparison in the area of {feature_area} across the following products:\n\n{products_to_compare}\n\nEvaluate each product through the lens of {comparison_criteria}, and structure the analysis for a {audience} audience. For each product, break down the specific capabilities offered, the maturity and depth of implementation, and any notable gaps or limitations. Where possible, note differentiating approaches -- for example, whether a product takes a platform-native vs. integration-based approach. Provide a comparison matrix summarizing the findings, followed by a narrative analysis that calls out the most significant takeaways and their implications for our product strategy.",
+  "variables": [
+    {
+      "name": "feature_area",
+      "type": "text",
+      "label": "Feature Area",
+      "required": true,
+      "placeholder": "e.g., Workflow Automation"
+    },
+    {
+      "name": "products_to_compare",
+      "type": "textarea",
+      "label": "Products to Compare",
+      "required": true,
+      "placeholder": "List products to compare, one per line"
+    },
+    {
+      "name": "comparison_criteria",
+      "type": "select",
+      "label": "Comparison Criteria",
+      "required": true,
+      "options": ["Functionality", "UX", "Performance", "Integration", "Completeness"]
+    },
+    {
+      "name": "audience",
+      "type": "select",
+      "label": "Target Audience",
+      "required": true,
+      "options": ["Engineering", "Leadership", "Customers", "Partners"]
+    }
+  ],
+  "framework_id": null,
+  "is_builtin": true
+}

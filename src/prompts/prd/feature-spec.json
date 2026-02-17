@@ -1,0 +1,15 @@
+{
+  "id": "feature-spec",
+  "name": "Feature Specification",
+  "description": "Generate a detailed feature specification with user flows, acceptance criteria, and edge cases for development handoff",
+  "category": "prd",
+  "prompt_text": "Write a detailed Feature Specification for \"{feature_name}\" that is ready for engineering handoff and QA planning. The primary user type for this feature is the {user_type}. Here is what currently happens today: \"{current_behavior}\". The desired outcome we need to achieve is: \"{desired_outcome}\". Working from the gap between current behavior and desired outcome, define the complete feature scope including: a step-by-step User Flow for the primary path, Alternative Flows for secondary scenarios, Edge Cases and how the system should handle each one, detailed Acceptance Criteria written in Given/When/Then format, UI/UX Considerations describing key interaction patterns, Error States with user-facing messaging, and Dependencies or prerequisites. Be explicit about what is in scope and out of scope, and flag any open questions that need product or design input before development begins.",
+  "variables": [
+    {"name": "feature_name", "type": "text", "label": "Feature Name", "required": true, "placeholder": "e.g., Bulk Contact Import with Deduplication"},
+    {"name": "user_type", "type": "select", "label": "User Type", "required": true, "options": ["End User", "Admin", "API Consumer", "Partner"]},
+    {"name": "current_behavior", "type": "textarea", "label": "Current Behavior", "required": false, "placeholder": "Describe what happens today -- the workflow, pain points, and workarounds users rely on"},
+    {"name": "desired_outcome", "type": "textarea", "label": "Desired Outcome", "required": true, "placeholder": "Describe the ideal end state from the user's perspective"}
+  ],
+  "framework_id": null,
+  "is_builtin": true
+}

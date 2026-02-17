@@ -1,0 +1,46 @@
+{
+  "id": "ab-test-analysis",
+  "name": "A/B Test Analysis",
+  "description": "Analyze A/B test results and make recommendations",
+  "category": "data",
+  "prompt_text": "Analyze the results of the A/B test '{test_name}' which was designed to validate the following hypothesis: {hypothesis}. The primary metric under evaluation is {primary_metric}, with a sample size classified as {sample_size} and a test duration of {test_duration}. Assess statistical significance, evaluate practical significance beyond p-values, and identify any novelty effects or Simpson's paradox risks across segments. Provide a clear ship/no-ship recommendation with supporting rationale, outline any follow-up experiments that could deepen understanding, and flag any methodological concerns that could affect the validity of the results.",
+  "variables": [
+    {
+      "name": "test_name",
+      "type": "text",
+      "label": "Test Name",
+      "required": true,
+      "placeholder": "e.g., New Checkout Flow v2"
+    },
+    {
+      "name": "hypothesis",
+      "type": "textarea",
+      "label": "Hypothesis",
+      "required": true,
+      "placeholder": "e.g., Simplifying the checkout to 2 steps will increase conversion by 5%"
+    },
+    {
+      "name": "primary_metric",
+      "type": "text",
+      "label": "Primary Metric",
+      "required": true,
+      "placeholder": "e.g., Checkout Completion Rate"
+    },
+    {
+      "name": "sample_size",
+      "type": "select",
+      "label": "Sample Size",
+      "required": true,
+      "options": ["Small (<1K)", "Medium (1K-10K)", "Large (10K-100K)", "Very Large (100K+)"]
+    },
+    {
+      "name": "test_duration",
+      "type": "select",
+      "label": "Test Duration",
+      "required": true,
+      "options": ["1 Week", "2 Weeks", "4 Weeks", "8+ Weeks"]
+    }
+  ],
+  "framework_id": null,
+  "is_builtin": true
+}

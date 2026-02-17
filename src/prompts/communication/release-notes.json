@@ -1,0 +1,48 @@
+{
+  "id": "release-notes",
+  "name": "Release Notes",
+  "description": "Generate release notes for a product update",
+  "category": "communication",
+  "prompt_text": "Generate clear and well-structured release notes for version {release_version}, classified as a {release_type}. The release notes should be written for a {audience} audience, adjusting the level of technical detail accordingly. Open with a brief summary of what this release delivers and why it matters to users.\n\nInclude the following changes:\n{changes_summary}\n\nOrganize the notes into logical sections such as New Features, Improvements, Bug Fixes, and Breaking Changes (if applicable). Each entry should describe the change, the user-facing impact, and any action required by the user. For technical audiences, include relevant API changes or migration notes. For non-technical audiences, focus on outcomes and benefits rather than implementation details. End with any known issues or limitations.",
+  "variables": [
+    {
+      "name": "release_version",
+      "type": "text",
+      "label": "Release Version",
+      "required": true,
+      "placeholder": "e.g., 3.2.0, 2026.02"
+    },
+    {
+      "name": "release_type",
+      "type": "select",
+      "label": "Release Type",
+      "required": true,
+      "options": [
+        "Major Release",
+        "Minor Update",
+        "Patch",
+        "Hotfix"
+      ]
+    },
+    {
+      "name": "changes_summary",
+      "type": "textarea",
+      "label": "Changes Summary",
+      "required": true,
+      "placeholder": "List the changes in this release"
+    },
+    {
+      "name": "audience",
+      "type": "select",
+      "label": "Audience",
+      "required": true,
+      "options": [
+        "Technical",
+        "Non-Technical",
+        "Mixed"
+      ]
+    }
+  ],
+  "framework_id": null,
+  "is_builtin": true
+}

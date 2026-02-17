@@ -1,0 +1,50 @@
+{
+  "id": "stakeholder-email",
+  "name": "Stakeholder Communication Email",
+  "description": "Draft a stakeholder communication email tailored to your audience and tone",
+  "category": "communication",
+  "prompt_text": "Draft a professional stakeholder communication email about {subject_matter} for the {audience}. The tone should be {tone}. Structure the email with a clear subject line, a concise opening that establishes context and urgency, and a body that covers the following key points:\n\n{key_points}\n\nEnsure the email leads with the most critical information first, provides enough context for the audience to understand the implications without excessive detail, and closes with a clear call to action or next steps. Keep the language appropriate for senior stakeholders who are time-constrained and need to quickly grasp the 'so what' of this communication.",
+  "variables": [
+    {
+      "name": "subject_matter",
+      "type": "text",
+      "label": "Subject Matter",
+      "required": true,
+      "placeholder": "e.g., Q2 roadmap changes, new partnership initiative"
+    },
+    {
+      "name": "audience",
+      "type": "select",
+      "label": "Audience",
+      "required": true,
+      "options": [
+        "Executive Team",
+        "Engineering Leadership",
+        "Cross-Functional Partners",
+        "Customer Success",
+        "Sales Team"
+      ]
+    },
+    {
+      "name": "tone",
+      "type": "select",
+      "label": "Tone",
+      "required": true,
+      "options": [
+        "Formal",
+        "Conversational",
+        "Urgent",
+        "Celebratory"
+      ]
+    },
+    {
+      "name": "key_points",
+      "type": "textarea",
+      "label": "Key Points",
+      "required": true,
+      "placeholder": "Main points to communicate"
+    }
+  ],
+  "framework_id": null,
+  "is_builtin": true
+}

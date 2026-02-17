@@ -426,7 +426,38 @@ pub fn init_db(app: &tauri::AppHandle) -> Result<(), String> {
         [],
     ).map_err(|e| format!("Failed to create framework_definitions index: {}", e))?;
 
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS saved_prompts (
+            id TEXT PRIMARY KEY NOT NULL,
+            name TEXT NOT NULL,
+            description TEXT NOT NULL DEFAULT '',
+            category TEXT NOT NULL DEFAULT 'general',
+            prompt_text TEXT NOT NULL,
+            variables TEXT NOT NULL DEFAULT '[]',
+            framework_id TEXT,
+            is_builtin INTEGER NOT NULL DEFAULT 0,
+            is_favorite INTEGER NOT NULL DEFAULT 0,
+            usage_count INTEGER NOT NULL DEFAULT 0,
+            sort_order INTEGER NOT NULL DEFAULT 0,
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL,
+            FOREIGN KEY (framework_id) REFERENCES framework_definitions(id) ON DELETE SET NULL
+        )",
+        [],
+    ).map_err(|e| format!("Failed to create saved_prompts table: {}", e))?;
+
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_saved_prompts_category ON saved_prompts(category)",
+        [],
+    ).map_err(|e| format!("Failed to create saved_prompts index: {}", e))?;
+
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_saved_prompts_framework ON saved_prompts(framework_id)",
+        [],
+    ).map_err(|e| format!("Failed to create saved_prompts framework index: {}", e))?;
+
     seed_frameworks(&conn)?;
+    seed_prompts(&conn)?;
 
     // Create default settings if none exist
     let count: i64 = conn.query_row("SELECT COUNT(*) FROM settings", [], |row| row.get(0))
@@ -556,6 +587,100 @@ fn seed_frameworks(conn: &Connection) -> Result<(), String> {
     }
 
     Ok(())
+}
+
+fn seed_prompts(conn: &Connection) -> Result<(), String> {
+    let count: i64 = conn.query_row("SELECT COUNT(*) FROM saved_prompts", [], |row| row.get(0))
+        .map_err(|e| format!("Failed to count saved_prompts: {}", e))?;
+
+    if count > 0 {
+        return Ok(());
+    }
+
+    let now = Utc::now().timestamp();
+    let prompt_files: &[&str] = &[
+        // PRD (5)
+        include_str!("../../src/prompts/prd/prd-from-jtbd.json"),
+        include_str!("../../src/prompts/prd/technical-prd.json"),
+        include_str!("../../src/prompts/prd/one-pager.json"),
+        include_str!("../../src/prompts/prd/feature-spec.json"),
+        include_str!("../../src/prompts/prd/api-specification.json"),
+        // Analysis (5)
+        include_str!("../../src/prompts/analysis/competitive-analysis.json"),
+        include_str!("../../src/prompts/analysis/feature-comparison.json"),
+        include_str!("../../src/prompts/analysis/market-positioning.json"),
+        include_str!("../../src/prompts/analysis/feedback-synthesis.json"),
+        include_str!("../../src/prompts/analysis/churn-analysis.json"),
+        // Stories (5)
+        include_str!("../../src/prompts/stories/jtbd-to-stories.json"),
+        include_str!("../../src/prompts/stories/epic-breakdown.json"),
+        include_str!("../../src/prompts/stories/invest-criteria.json"),
+        include_str!("../../src/prompts/stories/acceptance-criteria.json"),
+        include_str!("../../src/prompts/stories/story-estimation.json"),
+        // Communication (5)
+        include_str!("../../src/prompts/communication/stakeholder-email.json"),
+        include_str!("../../src/prompts/communication/executive-summary.json"),
+        include_str!("../../src/prompts/communication/product-announcement.json"),
+        include_str!("../../src/prompts/communication/release-notes.json"),
+        include_str!("../../src/prompts/communication/team-update.json"),
+        // Data (4)
+        include_str!("../../src/prompts/data/metrics-analysis.json"),
+        include_str!("../../src/prompts/data/ab-test-analysis.json"),
+        include_str!("../../src/prompts/data/kpi-review.json"),
+        include_str!("../../src/prompts/data/funnel-analysis.json"),
+        // Prioritization (3)
+        include_str!("../../src/prompts/prioritization/quarterly-priorities.json"),
+        include_str!("../../src/prompts/prioritization/feature-scoring.json"),
+        include_str!("../../src/prompts/prioritization/resource-allocation.json"),
+        // Strategy (3)
+        include_str!("../../src/prompts/strategy/okr-drafting.json"),
+        include_str!("../../src/prompts/strategy/strategic-initiative.json"),
+        include_str!("../../src/prompts/strategy/vision-alignment.json"),
+    ];
+
+    for (i, prompt_json) in prompt_files.iter().enumerate() {
+        let p: serde_json::Value = serde_json::from_str(prompt_json)
+            .map_err(|e| format!("Failed to parse seed prompt: {}", e))?;
+
+        let variables = p["variables"].to_string();
+
+        conn.execute(
+            "INSERT OR IGNORE INTO saved_prompts (id, name, description, category, prompt_text, variables, framework_id, is_builtin, is_favorite, usage_count, sort_order, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 1, 0, 0, ?8, ?9, ?10)",
+            params![
+                p["id"].as_str().unwrap_or(""),
+                p["name"].as_str().unwrap_or(""),
+                p["description"].as_str().unwrap_or(""),
+                p["category"].as_str().unwrap_or("general"),
+                p["prompt_text"].as_str().unwrap_or(""),
+                &variables,
+                p["framework_id"].as_str(),
+                i as i32,
+                &now,
+                &now,
+            ],
+        ).map_err(|e| format!("Failed to seed prompt: {}", e))?;
+    }
+
+    Ok(())
+}
+
+fn row_to_saved_prompt(row: &rusqlite::Row) -> rusqlite::Result<SavedPromptRow> {
+    Ok(SavedPromptRow {
+        id: row.get(0)?,
+        name: row.get(1)?,
+        description: row.get(2)?,
+        category: row.get(3)?,
+        prompt_text: row.get(4)?,
+        variables: row.get(5)?,
+        framework_id: row.get(6)?,
+        is_builtin: row.get::<_, i32>(7)? != 0,
+        is_favorite: row.get::<_, i32>(8)? != 0,
+        usage_count: row.get(9)?,
+        sort_order: row.get(10)?,
+        created_at: row.get(11)?,
+        updated_at: row.get(12)?,
+    })
 }
 
 fn row_to_category(row: &rusqlite::Row) -> rusqlite::Result<FrameworkCategoryRow> {
@@ -2144,6 +2269,23 @@ pub struct FrameworkDefRow {
     pub updated_at: i64,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SavedPromptRow {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    pub category: String,
+    pub prompt_text: String,
+    pub variables: String,
+    pub framework_id: Option<String>,
+    pub is_builtin: bool,
+    pub is_favorite: bool,
+    pub usage_count: i32,
+    pub sort_order: i32,
+    pub created_at: i64,
+    pub updated_at: i64,
+}
+
 #[tauri::command]
 pub async fn execute_shell_command(
     project_id: String,
@@ -2220,4 +2362,195 @@ pub async fn get_command_history(
 
     results.reverse();
     Ok(results)
+}
+
+// === Saved Prompts CRUD ===
+
+const SAVED_PROMPT_COLUMNS: &str = "id, name, description, category, prompt_text, variables, framework_id, is_builtin, is_favorite, usage_count, sort_order, created_at, updated_at";
+
+#[tauri::command]
+pub async fn list_saved_prompts(
+    category: Option<String>,
+    framework_id: Option<String>,
+    app: tauri::AppHandle,
+) -> Result<Vec<SavedPromptRow>, String> {
+    let conn = get_db_connection(&app)?;
+
+    let (sql, param_values): (String, Vec<Box<dyn rusqlite::types::ToSql>>) = match (&category, &framework_id) {
+        (Some(cat), Some(fid)) => (
+            format!("SELECT {} FROM saved_prompts WHERE category = ?1 AND framework_id = ?2 ORDER BY sort_order, name", SAVED_PROMPT_COLUMNS),
+            vec![Box::new(cat.clone()) as Box<dyn rusqlite::types::ToSql>, Box::new(fid.clone())],
+        ),
+        (Some(cat), None) => (
+            format!("SELECT {} FROM saved_prompts WHERE category = ?1 ORDER BY sort_order, name", SAVED_PROMPT_COLUMNS),
+            vec![Box::new(cat.clone()) as Box<dyn rusqlite::types::ToSql>],
+        ),
+        (None, Some(fid)) => (
+            format!("SELECT {} FROM saved_prompts WHERE framework_id = ?1 ORDER BY sort_order, name", SAVED_PROMPT_COLUMNS),
+            vec![Box::new(fid.clone()) as Box<dyn rusqlite::types::ToSql>],
+        ),
+        (None, None) => (
+            format!("SELECT {} FROM saved_prompts ORDER BY sort_order, name", SAVED_PROMPT_COLUMNS),
+            vec![],
+        ),
+    };
+
+    let params_ref: Vec<&dyn rusqlite::types::ToSql> = param_values.iter().map(|p| p.as_ref()).collect();
+    let mut stmt = conn.prepare(&sql).map_err(|e| format!("Failed to prepare query: {}", e))?;
+    let rows = stmt.query_map(params_ref.as_slice(), row_to_saved_prompt)
+        .map_err(|e| format!("Failed to list saved prompts: {}", e))?;
+
+    let mut results = Vec::new();
+    for row in rows {
+        results.push(row.map_err(|e| format!("Failed to read saved prompt: {}", e))?);
+    }
+    Ok(results)
+}
+
+#[tauri::command]
+pub async fn get_saved_prompt(id: String, app: tauri::AppHandle) -> Result<Option<SavedPromptRow>, String> {
+    let conn = get_db_connection(&app)?;
+    let result = conn.query_row(
+        &format!("SELECT {} FROM saved_prompts WHERE id = ?1", SAVED_PROMPT_COLUMNS),
+        params![&id],
+        row_to_saved_prompt,
+    ).optional().map_err(|e| format!("Failed to get saved prompt: {}", e))?;
+    Ok(result)
+}
+
+#[tauri::command]
+pub async fn create_saved_prompt(
+    name: String,
+    description: String,
+    category: String,
+    prompt_text: String,
+    variables: String,
+    framework_id: Option<String>,
+    app: tauri::AppHandle,
+) -> Result<SavedPromptRow, String> {
+    let conn = get_db_connection(&app)?;
+    let id = Uuid::new_v4().to_string();
+    let now = Utc::now().timestamp();
+
+    let max_sort: i32 = conn.query_row(
+        "SELECT COALESCE(MAX(sort_order), -1) FROM saved_prompts WHERE category = ?1",
+        params![&category],
+        |row| row.get(0),
+    ).unwrap_or(-1);
+
+    conn.execute(
+        "INSERT INTO saved_prompts (id, name, description, category, prompt_text, variables, framework_id, is_builtin, is_favorite, usage_count, sort_order, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 0, 0, 0, ?8, ?9, ?10)",
+        params![&id, &name, &description, &category, &prompt_text, &variables, &framework_id, max_sort + 1, &now, &now],
+    ).map_err(|e| format!("Failed to create saved prompt: {}", e))?;
+
+    get_saved_prompt(id, app).await?.ok_or_else(|| "Failed to retrieve created prompt".to_string())
+}
+
+#[tauri::command]
+pub async fn update_saved_prompt(
+    id: String,
+    name: Option<String>,
+    description: Option<String>,
+    category: Option<String>,
+    prompt_text: Option<String>,
+    variables: Option<String>,
+    framework_id: Option<Option<String>>,
+    is_favorite: Option<bool>,
+    app: tauri::AppHandle,
+) -> Result<SavedPromptRow, String> {
+    let conn = get_db_connection(&app)?;
+    let now = Utc::now().timestamp();
+
+    conn.execute(
+        "UPDATE saved_prompts SET
+            name = COALESCE(?1, name),
+            description = COALESCE(?2, description),
+            category = COALESCE(?3, category),
+            prompt_text = COALESCE(?4, prompt_text),
+            variables = COALESCE(?5, variables),
+            updated_at = ?6
+         WHERE id = ?7",
+        params![&name, &description, &category, &prompt_text, &variables, &now, &id],
+    ).map_err(|e| format!("Failed to update saved prompt: {}", e))?;
+
+    if let Some(fid) = framework_id {
+        conn.execute(
+            "UPDATE saved_prompts SET framework_id = ?1 WHERE id = ?2",
+            params![&fid, &id],
+        ).map_err(|e| format!("Failed to update prompt framework_id: {}", e))?;
+    }
+
+    if let Some(fav) = is_favorite {
+        conn.execute(
+            "UPDATE saved_prompts SET is_favorite = ?1 WHERE id = ?2",
+            params![fav as i32, &id],
+        ).map_err(|e| format!("Failed to update prompt favorite: {}", e))?;
+    }
+
+    get_saved_prompt(id, app).await?.ok_or_else(|| "Prompt not found after update".to_string())
+}
+
+#[tauri::command]
+pub async fn delete_saved_prompt(id: String, app: tauri::AppHandle) -> Result<(), String> {
+    let conn = get_db_connection(&app)?;
+
+    let is_builtin: i32 = conn.query_row(
+        "SELECT is_builtin FROM saved_prompts WHERE id = ?1", params![&id], |row| row.get(0)
+    ).map_err(|e| format!("Prompt not found: {}", e))?;
+
+    if is_builtin != 0 {
+        return Err("Cannot delete built-in prompts".to_string());
+    }
+
+    conn.execute("DELETE FROM saved_prompts WHERE id = ?1", params![&id])
+        .map_err(|e| format!("Failed to delete saved prompt: {}", e))?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn search_saved_prompts(query: String, app: tauri::AppHandle) -> Result<Vec<SavedPromptRow>, String> {
+    let conn = get_db_connection(&app)?;
+    let search = format!("%{}%", query);
+
+    let mut stmt = conn.prepare(
+        &format!("SELECT {} FROM saved_prompts WHERE name LIKE ?1 OR description LIKE ?1 OR prompt_text LIKE ?1 ORDER BY usage_count DESC, name", SAVED_PROMPT_COLUMNS)
+    ).map_err(|e| format!("Failed to prepare search: {}", e))?;
+
+    let rows = stmt.query_map(params![&search], row_to_saved_prompt)
+        .map_err(|e| format!("Failed to search saved prompts: {}", e))?;
+
+    let mut results = Vec::new();
+    for row in rows {
+        results.push(row.map_err(|e| format!("Failed to read prompt: {}", e))?);
+    }
+    Ok(results)
+}
+
+#[tauri::command]
+pub async fn duplicate_saved_prompt(id: String, new_name: String, app: tauri::AppHandle) -> Result<SavedPromptRow, String> {
+    let original = get_saved_prompt(id, app.clone()).await?
+        .ok_or_else(|| "Prompt not found".to_string())?;
+
+    create_saved_prompt(
+        new_name,
+        original.description,
+        original.category,
+        original.prompt_text,
+        original.variables,
+        original.framework_id,
+        app,
+    ).await
+}
+
+#[tauri::command]
+pub async fn increment_prompt_usage(id: String, app: tauri::AppHandle) -> Result<(), String> {
+    let conn = get_db_connection(&app)?;
+    let now = Utc::now().timestamp();
+
+    conn.execute(
+        "UPDATE saved_prompts SET usage_count = usage_count + 1, updated_at = ?1 WHERE id = ?2",
+        params![&now, &id],
+    ).map_err(|e| format!("Failed to increment prompt usage: {}", e))?;
+    Ok(())
 }

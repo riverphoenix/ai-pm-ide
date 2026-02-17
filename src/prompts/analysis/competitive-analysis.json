@@ -1,0 +1,39 @@
+{
+  "id": "competitive-analysis",
+  "name": "Competitive Analysis",
+  "description": "Analyze competitors in a specific market segment to identify strengths, weaknesses, and strategic opportunities.",
+  "category": "analysis",
+  "prompt_text": "Conduct a thorough competitive analysis of {product_name} against the following competitors in the {market_segment} market segment:\n\n{competitor_names}\n\nFocus the analysis on: {analysis_dimensions}. For each competitor, identify their core value proposition, key differentiators, and areas where they outperform or underperform relative to {product_name}. Highlight any emerging trends or shifts in competitive dynamics that could impact our positioning over the next 12-18 months. Conclude with a strategic summary that maps out where we have defensible advantages, where we face the greatest competitive pressure, and where untapped whitespace opportunities exist.",
+  "variables": [
+    {
+      "name": "product_name",
+      "type": "text",
+      "label": "Product Name",
+      "required": true,
+      "placeholder": "e.g., HubSpot Marketing Hub"
+    },
+    {
+      "name": "competitor_names",
+      "type": "textarea",
+      "label": "Competitors",
+      "required": true,
+      "placeholder": "List competitors, one per line"
+    },
+    {
+      "name": "analysis_dimensions",
+      "type": "select",
+      "label": "Analysis Dimensions",
+      "required": true,
+      "options": ["Features", "Pricing", "Market Position", "Technology", "All"]
+    },
+    {
+      "name": "market_segment",
+      "type": "text",
+      "label": "Market Segment",
+      "required": true,
+      "placeholder": "e.g., CRM for mid-market SaaS"
+    }
+  ],
+  "framework_id": null,
+  "is_builtin": true
+}

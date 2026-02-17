@@ -68,6 +68,14 @@ pub fn run() {
             reset_framework_def,
             search_framework_defs,
             duplicate_framework_def,
+            list_saved_prompts,
+            get_saved_prompt,
+            create_saved_prompt,
+            update_saved_prompt,
+            delete_saved_prompt,
+            search_saved_prompts,
+            duplicate_saved_prompt,
+            increment_prompt_usage,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

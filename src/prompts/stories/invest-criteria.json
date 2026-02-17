@@ -1,0 +1,32 @@
+{
+  "id": "invest-criteria",
+  "name": "INVEST Criteria Evaluation",
+  "description": "Evaluate and improve user stories against the INVEST quality framework",
+  "category": "stories",
+  "prompt_text": "You are a senior product manager and agile coach evaluating user stories against the INVEST criteria: Independent, Negotiable, Valuable, Estimable, Small, and Testable. Review each of the provided user stories with {strictness} strictness, scoring each criterion and providing an overall quality assessment. For each story, identify which INVEST criteria are met, partially met, or violated, and explain why with specific references to the story text. Stories that fail on Value or Testability should be flagged as high priority for rework. When stories are tightly coupled, recommend how to refactor them for independence without losing coherence. {include_suggestions} suggested rewrites that address the identified gaps while preserving the original intent.\n\nUser Stories to Evaluate:\n{user_stories}",
+  "variables": [
+    {
+      "name": "user_stories",
+      "type": "textarea",
+      "label": "User Stories",
+      "required": true,
+      "placeholder": "Paste your user stories here"
+    },
+    {
+      "name": "strictness",
+      "type": "select",
+      "label": "Evaluation Strictness",
+      "required": true,
+      "options": ["Lenient", "Moderate", "Strict"]
+    },
+    {
+      "name": "include_suggestions",
+      "type": "select",
+      "label": "Include Improvement Suggestions",
+      "required": true,
+      "options": ["Yes", "No"]
+    }
+  ],
+  "framework_id": null,
+  "is_builtin": true
+}

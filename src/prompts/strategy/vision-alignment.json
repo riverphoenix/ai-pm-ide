@@ -1,0 +1,39 @@
+{
+  "id": "vision-alignment",
+  "name": "Vision Alignment",
+  "description": "Align team roadmap with product vision and company strategy",
+  "category": "strategy",
+  "prompt_text": "Evaluate how well the {team_name} team's current roadmap aligns with the stated product vision and company-level priorities. The product vision is: {product_vision}. The company priorities are: {company_priorities}. The current roadmap includes: {current_roadmap}. For each roadmap item, assess its degree of alignment to both the vision and the company priorities, and categorize it as strongly aligned, partially aligned, or misaligned. Identify gaps where the vision or company priorities are not adequately represented on the roadmap, and recommend specific additions or reprioritizations. Provide a narrative that the team lead can use to communicate the roadmap's strategic rationale to leadership, including how trade-offs were made and what was intentionally deferred.",
+  "variables": [
+    {
+      "name": "team_name",
+      "type": "text",
+      "label": "Team Name",
+      "required": true,
+      "placeholder": "e.g., Engage Team, Platform Team"
+    },
+    {
+      "name": "product_vision",
+      "type": "textarea",
+      "label": "Product Vision",
+      "required": true,
+      "placeholder": "The product vision statement"
+    },
+    {
+      "name": "company_priorities",
+      "type": "textarea",
+      "label": "Company Priorities",
+      "required": true,
+      "placeholder": "Key company-level priorities"
+    },
+    {
+      "name": "current_roadmap",
+      "type": "textarea",
+      "label": "Current Roadmap",
+      "required": false,
+      "placeholder": "Summary of current roadmap items"
+    }
+  ],
+  "framework_id": null,
+  "is_builtin": true
+}

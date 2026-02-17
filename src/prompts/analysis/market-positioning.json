@@ -1,0 +1,39 @@
+{
+  "id": "market-positioning",
+  "name": "Market Positioning Analysis",
+  "description": "Analyze current market positioning and identify strategic opportunities for differentiation and growth.",
+  "category": "analysis",
+  "prompt_text": "Analyze the market positioning of {product_name} within the {target_market} market. Begin by evaluating our current positioning:\n\n{current_positioning}\n\nThen assess how this positioning holds up against the competitive landscape:\n\n{competitive_landscape}\n\nIdentify gaps between how we position ourselves and how the market actually perceives us. Evaluate whether our current positioning is defensible, differentiated, and aligned with where the market is heading over the next 2-3 years. Surface specific repositioning opportunities -- whether through messaging shifts, capability investments, or segment focus -- that could strengthen our competitive moat. Provide a clear recommendation on the highest-leverage positioning move we should consider, along with the risks and trade-offs involved.",
+  "variables": [
+    {
+      "name": "product_name",
+      "type": "text",
+      "label": "Product Name",
+      "required": true,
+      "placeholder": "e.g., HubSpot Service Hub"
+    },
+    {
+      "name": "target_market",
+      "type": "text",
+      "label": "Target Market",
+      "required": true,
+      "placeholder": "e.g., B2B SaaS customer success platforms"
+    },
+    {
+      "name": "current_positioning",
+      "type": "textarea",
+      "label": "Current Positioning",
+      "required": false,
+      "placeholder": "Describe your current market positioning and value proposition"
+    },
+    {
+      "name": "competitive_landscape",
+      "type": "textarea",
+      "label": "Competitive Landscape",
+      "required": true,
+      "placeholder": "Describe key competitors and their positioning"
+    }
+  ],
+  "framework_id": null,
+  "is_builtin": true
+}

@@ -8,6 +8,7 @@ PM IDE enables product managers to:
 - **Manage persistent context** across projects (PRDs, memos, research, strategy docs)
 - **Generate PM frameworks** using AI with context-driven prompts (not form-based)
 - **Apply 45+ PM frameworks** across Strategy, Prioritization, Discovery, Development, Execution, Decision, and Communication
+- **Use 30+ prompt templates** with `{variable}` substitution for repeatable PM workflows
 - **Upload context documents** (PDFs, URLs, Google Docs, plain text) with automatic content extraction
 - **Save and organize outputs** in a searchable library with visual diagrams
 - **Chat with AI** about product strategy, frameworks, and ideas
@@ -21,7 +22,7 @@ PM IDE enables product managers to:
 - **Database**: SQLite with CASCADE delete patterns
 - **Diagrams**: Mermaid for Customer Journey Maps and visual frameworks
 
-## ✅ Current Status: Phase 4 Complete (Framework Expansion + Editing)
+## ✅ Current Status: Phase 5 Complete (Prompts Library)
 
 ### Core Features Implemented
 
@@ -51,6 +52,16 @@ PM IDE enables product managers to:
 - **Category Manager**: Create custom categories, edit existing ones
 - **Reset to Default**: Restore built-in frameworks from seed data
 - **Search**: Full-text search across framework names and descriptions
+
+#### 3c. **Prompts Library (Phase 5)** ✅
+- **30 pre-loaded prompt templates** across 7 categories (PRD, Analysis, Stories, Communication, Data, Prioritization, Strategy)
+- **Variable system**: Dynamic `{variable}` placeholders with text, textarea, and select input types
+- **Auto-detection**: Variables extracted automatically from prompt text as you type
+- **Prompt Picker**: Select saved prompts in FrameworkGenerator, fill variables, preview resolved text
+- **CRUD management**: Create, edit, duplicate, delete custom prompts (built-in prompts protected)
+- **Usage tracking**: Track how often each prompt is used, sort by most-used
+- **Favorites**: Star prompts for quick access
+- **Search & filter**: Full-text search + category filtering
 
 #### 4. **Outputs Library** ✅
 - View all saved framework outputs
@@ -97,6 +108,9 @@ PM IDE enables product managers to:
 │  │  ├─ FrameworkManager (CRUD + editing)            │ │
 │  │  ├─ FrameworkCustomizer (prompt editor)          │ │
 │  │  ├─ CategoryManager (category CRUD)              │ │
+│  │  ├─ PromptsLibrary (browse/manage prompts)      │ │
+│  │  ├─ PromptEditorModal (create/edit prompts)     │ │
+│  │  ├─ PromptPickerModal (use prompts in gen)      │ │
 │  │  ├─ ContextManager (document management)         │ │
 │  │  ├─ OutputsLibrary (saved outputs)               │ │
 │  │  ├─ DocumentsExplorer (folder tree + preview)    │ │
@@ -109,9 +123,9 @@ PM IDE enables product managers to:
 │  ┌────────────────────────────────────────────────────┐ │
 │  │              Tauri Core (Rust)                     │ │
 │  │                                                    │ │
-│  │  ├─ IPC Commands (51 commands)                   │ │
+│  │  ├─ IPC Commands (64 commands)                   │ │
 │  │  ├─ SQLite Database (projects, folders, docs,    │ │
-│  │  │   frameworks, categories)                     │ │
+│  │  │   frameworks, categories, saved_prompts)      │ │
 │  │  ├─ Shell Command Execution                      │ │
 │  │  └─ Security (API key storage)                   │ │
 │  └────────────────────────────────────────────────────┘ │
@@ -172,6 +186,8 @@ pm-ide/
 │   │   ├── FrameworkCustomizer.tsx # Prompt editor slide-over
 │   │   ├── CategoryManager.tsx   # Category CRUD modal
 │   │   ├── PromptEditor.tsx      # Monaco editor wrapper
+│   │   ├── PromptEditorModal.tsx # Create/edit saved prompts
+│   │   ├── PromptPickerModal.tsx # Select prompt + fill variables
 │   │   ├── FolderTree.tsx        # Drag-and-drop folder tree
 │   │   ├── TreeItem.tsx          # Individual tree node
 │   │   ├── CommandPalette.tsx    # Cmd+K command palette
@@ -193,21 +209,30 @@ pm-ide/
 │   │   ├── ProjectView.tsx       # Main project workspace
 │   │   ├── DocumentsExplorer.tsx # Folder tree + preview panel
 │   │   ├── FrameworksHome.tsx    # Framework category browser
+│   │   ├── PromptsLibrary.tsx   # Prompt templates browser
 │   │   ├── ContextManager.tsx    # Document management
 │   │   └── OutputsLibrary.tsx    # Saved outputs viewer
-│   └── frameworks/               # Framework JSON definitions (seed data)
-│       ├── categories.json       # 7 category definitions
-│       ├── strategy/             # 8 frameworks
-│       ├── prioritization/       # 6 frameworks
-│       ├── discovery/            # 8 frameworks
-│       ├── development/          # 5 frameworks
-│       ├── execution/            # 6 frameworks
-│       ├── decision/             # 5 frameworks
-│       └── communication/        # 7 frameworks
+│   ├── frameworks/               # Framework JSON definitions (seed data)
+│   │   ├── categories.json       # 7 category definitions
+│   │   ├── strategy/             # 8 frameworks
+│   │   ├── prioritization/       # 6 frameworks
+│   │   ├── discovery/            # 8 frameworks
+│   │   ├── development/          # 5 frameworks
+│   │   ├── execution/            # 6 frameworks
+│   │   ├── decision/             # 5 frameworks
+│   │   └── communication/        # 7 frameworks
+│   └── prompts/                  # Prompt template seed data (30 prompts)
+│       ├── prd/                  # 5 prompts
+│       ├── analysis/             # 5 prompts
+│       ├── stories/              # 5 prompts
+│       ├── communication/        # 5 prompts
+│       ├── data/                 # 4 prompts
+│       ├── prioritization/       # 3 prompts
+│       └── strategy/             # 3 prompts
 ├── src-tauri/                    # Tauri / Rust backend
 │   └── src/
 │       ├── main.rs               # Entry point
-│       ├── lib.rs                # Command registration (51 commands)
+│       ├── lib.rs                # Command registration (64 commands)
 │       └── commands.rs           # All IPC commands + SQLite schema
 ├── python-sidecar/               # Python FastAPI server
 │   ├── main.py                   # FastAPI app
@@ -307,6 +332,26 @@ CREATE TABLE framework_definitions (
 );
 ```
 
+#### Saved Prompts (Phase 5)
+```sql
+CREATE TABLE saved_prompts (
+    id TEXT PRIMARY KEY NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    category TEXT NOT NULL DEFAULT 'general',
+    prompt_text TEXT NOT NULL,
+    variables TEXT NOT NULL DEFAULT '[]',   -- JSON array of variable definitions
+    framework_id TEXT,
+    is_builtin INTEGER NOT NULL DEFAULT 0,
+    is_favorite INTEGER NOT NULL DEFAULT 0,
+    usage_count INTEGER NOT NULL DEFAULT 0,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    FOREIGN KEY (framework_id) REFERENCES framework_definitions(id) ON DELETE SET NULL
+);
+```
+
 ## 🎨 Framework Definitions
 
 Each framework is defined in JSON format with:
@@ -372,6 +417,7 @@ Python sidecar runs on `http://127.0.0.1:8000` and provides:
 ✅ **Context Documents** - Upload PDFs, fetch URLs, import Google Docs
 ✅ **AI Framework Generation** - 45 frameworks with context-driven prompts
 ✅ **Framework Management** - Create, edit, duplicate, delete frameworks with Monaco editor
+✅ **Prompts Library** - 30 pre-loaded templates with {variable} substitution, CRUD, usage tracking
 ✅ **Visual Diagrams** - Mermaid rendering for Customer Journey Maps
 ✅ **Outputs Library** - Save, search, filter, and view all outputs
 ✅ **Document Parsing** - Automatic content extraction (PDF, HTML)
@@ -386,7 +432,7 @@ Python sidecar runs on `http://127.0.0.1:8000` and provides:
 
 **📋 Full Implementation Plan**: [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)
 **Timeline**: 22 weeks (~5.5 months)
-**Status**: Phase 0 (MVP) ✅ | Phase 1 (UI) ✅ | Phase 2 (Files) ✅ | Phase 3 (Console) ✅ | Phase 4 (Frameworks) ✅
+**Status**: Phase 0 (MVP) ✅ | Phase 1 (UI) ✅ | Phase 2 (Files) ✅ | Phase 3 (Console) ✅ | Phase 4 (Frameworks) ✅ | Phase 5 (Prompts) ✅
 
 ---
 
@@ -436,7 +482,7 @@ Added IDE-style terminal, command palette, and keyboard shortcuts.
 | Shortcut | Action |
 |----------|--------|
 | `Cmd+K` | Command palette |
-| `Cmd+1-5` | Switch tabs (Chat, Documents, Frameworks, Context, Outputs) |
+| `Cmd+1-6` | Switch tabs (Chat, Documents, Frameworks, Prompts, Context, Outputs) |
 | `Cmd+B` | Toggle sidebar |
 | `` Cmd+` `` | Toggle terminal |
 
@@ -468,27 +514,29 @@ Expanded from 8 to 45 frameworks, migrated to SQLite, added full editing and man
 
 ---
 
-### **Phase 5: Prompts Library (2-3 weeks)** - Reusable Templates 📝
-**Status**: Not Started
+### **Phase 5: Prompts Library (2-3 weeks)** - Reusable Templates 📝 ✅
+**Status**: Complete
 
-Add saved prompts with variables for common PM workflows.
+Added saved prompts with `{variable}` template system for repeatable PM workflows.
 
-**Key Features**:
-- 💾 **30+ Pre-loaded Prompts**: PRD generation, competitive analysis, user stories, stakeholder communication
-- 🔤 **Variable System**: Dynamic prompts with placeholders (e.g., `{feature_name}`, `{user_persona}`)
-- 🔧 **Prompt Editor**: Monaco editor with variable panel, preview, and testing
-- 📂 **Categories**: Organized by PRD, Analysis, Stories, Communication, Data, Prioritization
-- 🔗 **Framework Integration**: Use saved prompts in Framework Generator
+**Completed**:
+- 📝 **30 Pre-loaded Prompt Templates** across 7 categories with rich, senior-PM-quality prompt text
+- 🔤 **Variable System**: Dynamic `{variable_name}` placeholders with 3 input types (text, textarea, select)
+- 🔧 **Prompt Editor**: Monaco editor with auto-variable detection, type config, required toggle, preview panel
+- 📂 **PromptsLibrary Page**: Browse, search, filter by category, sort (most-used, recent, alpha, favorites)
+- 🎯 **PromptPickerModal**: Select prompt in FrameworkGenerator, fill variables, preview resolved text
+- 📊 **Usage Tracking**: Increment usage count on each use, sort by most-used
+- ⭐ **Favorites & CRUD**: Star prompts, create/edit/duplicate/delete custom prompts (built-in protected)
+- 🗃️ **8 New Rust Commands**: Full CRUD + search + duplicate + increment usage (64 total)
 
-**Example Prompts**:
-- "Generate a PRD for `{feature_name}` targeting `{user_persona}`"
-- "Analyze competitors `{competitor_names}` for `{product_category}`"
-- "Convert JTBD statement '`{jtbd}`' into user stories with acceptance criteria"
-
-**Success Metrics**:
-- Users create avg 5 custom prompts per project
-- Saved prompts used in 60%+ of generations
-- 30+ pre-loaded prompts available
+**Prompts by Category (30 total)**:
+- **PRD** (5): PRD from JTBD, Technical PRD, One-Pager, Feature Spec, API Specification
+- **Analysis** (5): Competitive Analysis, Feature Comparison, Market Positioning, Feedback Synthesis, Churn Analysis
+- **Stories** (5): JTBD to Stories, Epic Breakdown, INVEST Criteria, Acceptance Criteria, Story Estimation
+- **Communication** (5): Stakeholder Email, Executive Summary, Product Announcement, Release Notes, Team Update
+- **Data** (4): Metrics Analysis, A/B Test Analysis, KPI Review, Funnel Analysis
+- **Prioritization** (3): Quarterly Priorities, Feature Scoring, Resource Allocation
+- **Strategy** (3): OKR Drafting, Strategic Initiative, Vision Alignment
 
 ---
 
@@ -559,17 +607,17 @@ Add multi-agent workflows, context memory, and integrations.
 
 ## 📊 Overall Success Metrics
 
-**Current State** (Phase 4 Complete):
+**Current State** (Phase 5 Complete):
 - ✅ 45 frameworks across 7 categories with full CRUD
+- ✅ 30 prompt templates across 7 categories with {variable} substitution
 - ✅ Core features complete (projects, context, generation, outputs, chat)
 - ✅ Mac desktop app with Tauri + Codex UI
 - ✅ VSCode-like folder tree with drag-and-drop
 - ✅ Command palette, keyboard shortcuts, terminal panel
 - ✅ Framework editing with Monaco editor, category management
-- ✅ 51 Rust IPC commands, SQLite with 7 tables
+- ✅ 64 Rust IPC commands, SQLite with 8 tables
 
 **Target State** (Remaining Phases):
-- 🎯 Prompts library with 30+ reusable templates (Phase 5)
 - 🎯 Framework marketplace for community sharing (Phase 6)
 - 🎯 Multi-agent orchestration and advanced AI features (Phase 7)
 
@@ -602,6 +650,6 @@ Built with ❤️ for Product Managers by Product Managers.
 
 ---
 
-**Status**: Phase 4 Complete | 45/45 Frameworks | Codex UI + Console + Framework Editor | Mac Desktop App
-**Version**: 0.5.0-phase4
+**Status**: Phase 5 Complete | 45 Frameworks + 30 Prompts | Codex UI + Console + Framework Editor + Prompts Library | Mac Desktop App
+**Version**: 0.6.0-phase5
 **Last Updated**: February 2026
