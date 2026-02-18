@@ -507,8 +507,7 @@ pub fn init_db(app: &tauri::AppHandle) -> Result<(), String> {
             steps TEXT NOT NULL DEFAULT '[]',
             is_template INTEGER NOT NULL DEFAULT 0,
             created_at INTEGER NOT NULL,
-            updated_at INTEGER NOT NULL,
-            FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+            updated_at INTEGER NOT NULL
         )",
         [],
     ).map_err(|e| format!("Failed to create workflows table: {}", e))?;
@@ -560,6 +559,33 @@ pub fn init_db(app: &tauri::AppHandle) -> Result<(), String> {
         "CREATE INDEX IF NOT EXISTS idx_wrs_run ON workflow_run_steps(run_id)",
         [],
     ).map_err(|e| format!("Failed to create workflow_run_steps index: {}", e))?;
+
+    // Migration: Recreate workflows table without FK constraint (needed for template seeding)
+    let has_fk: bool = conn.query_row(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='workflows'",
+        [],
+        |row| { let sql: String = row.get(0)?; Ok(sql.contains("FOREIGN KEY")) },
+    ).unwrap_or(false);
+    if has_fk {
+        conn.execute_batch(
+            "BEGIN;
+             CREATE TABLE workflows_new (
+                 id TEXT PRIMARY KEY NOT NULL,
+                 project_id TEXT NOT NULL,
+                 name TEXT NOT NULL,
+                 description TEXT NOT NULL DEFAULT '',
+                 steps TEXT NOT NULL DEFAULT '[]',
+                 is_template INTEGER NOT NULL DEFAULT 0,
+                 created_at INTEGER NOT NULL,
+                 updated_at INTEGER NOT NULL
+             );
+             INSERT INTO workflows_new SELECT * FROM workflows;
+             DROP TABLE workflows;
+             ALTER TABLE workflows_new RENAME TO workflows;
+             CREATE INDEX IF NOT EXISTS idx_workflows_project ON workflows(project_id);
+             COMMIT;"
+        ).map_err(|e| format!("Failed to migrate workflows table: {}", e))?;
+    }
 
     seed_frameworks(&conn)?;
     seed_prompts(&conn)?;
