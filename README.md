@@ -564,11 +564,11 @@ Python sidecar runs on `http://127.0.0.1:8000` and provides:
 ✅ **Terminal Panel** - Execute shell commands with history
 ✅ **Settings** - API keys, user profile, Jira & Notion integration config
 
-## 🔮 Roadmap: 7-Phase Transformation Plan
+## 🔮 Roadmap: 9-Phase Transformation Plan
 
 **📋 Full Implementation Plan**: [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)
-**Timeline**: 22 weeks (~5.5 months)
-**Status**: Phase 0 (MVP) ✅ | Phase 1 (UI) ✅ | Phase 2 (Files) ✅ | Phase 3 (Console) ✅ | Phase 4 (Frameworks) ✅ | Phase 5 (Prompts) ✅ | Phase 6 (Marketplace) ✅ | Phase 7 (Advanced) ✅
+**Timeline**: 34 weeks (~8.5 months)
+**Status**: Phase 0 (MVP) ✅ | Phase 1 (UI) ✅ | Phase 2 (Files) ✅ | Phase 3 (Console) ✅ | Phase 4 (Frameworks) ✅ | Phase 5 (Prompts) ✅ | Phase 6 (Marketplace) ✅ | Phase 7 (Advanced) ✅ | Phase 8 (Polish) 🔜 | Phase 9 (Scale) 🔜
 
 ---
 
@@ -756,6 +756,240 @@ Added workflow builder, AI insights, git-based version history, and Jira/Notion 
 
 ---
 
+### **Phase 8: Polish & Power (4-6 weeks)** - Daily Driver 🔧
+**Status**: Planned
+
+Transform PM IDE from a feature-complete tool into a daily driver with output refinement, multi-model AI support, enhanced analytics, and UX polish.
+
+**Sprint 1: Output Refinement**
+
+Add inline editing and section-level regeneration for framework outputs.
+
+- ✏️ **Inline Markdown Editor**: Toggle between read-only preview and editable markdown (CodeMirror or textarea with live preview)
+- 📑 **Section Detection**: Parse markdown headers (H1/H2/H3) into selectable, individually addressable blocks
+- 🔄 **Section Regeneration**: Right-click or button on any section → re-run AI generation for just that section with full document context
+- 💬 **Refinement Chat**: Conversational editing — "make the competitive analysis section more detailed" applies changes to the specific section
+- 📝 **Edit History**: All inline edits auto-committed via existing git integration, showing both AI and manual changes
+- 🔀 **Split View Editing**: Side-by-side markdown source + rendered preview with synced scrolling
+
+**Implementation Details**:
+- New component: `OutputEditor.tsx` — wraps markdown editing with section selection UI
+- New component: `SectionActions.tsx` — floating toolbar per section (regenerate, edit, copy, delete)
+- New Python endpoint: `POST /refine-section/stream` — regenerate one section given full document context + user instruction
+- Modify `OutputsLibrary.tsx` — add edit mode toggle, wire to OutputEditor
+- ~4 new Rust commands for section metadata tracking
+- Update `frameworkOutputsAPI.update()` to handle partial section updates
+
+**Sprint 2: Multi-Model Support**
+
+Support Claude, Gemini, and local Ollama models alongside GPT-5.
+
+- 🤖 **Provider Abstraction**: Python sidecar adapter pattern — `OpenAIClient`, `AnthropicClient`, `GeminiClient`, `OllamaClient` all implementing a common `LLMClient` interface
+- 🔑 **Multi-Key Settings**: Settings UI extended with API keys per provider (OpenAI, Anthropic, Google AI, Ollama base URL)
+- 🎛️ **Provider + Model Selector**: Two-level dropdown in FrameworkGenerator and ChatInterface — select provider first, then model
+- 💰 **Per-Provider Costs**: Cost calculation updated per provider's pricing (Claude, Gemini, GPT-5, free for Ollama)
+- 🔄 **Fallback Logic**: If primary provider fails, suggest switching to an available alternative
+- ✅ **Connection Validation**: "Test Connection" button per provider in Settings
+
+**Models Supported**:
+| Provider | Models |
+|----------|--------|
+| OpenAI | gpt-5, gpt-5-mini, gpt-5-nano |
+| Anthropic | claude-sonnet-4-5, claude-haiku-4-5 |
+| Google | gemini-2.5-pro, gemini-2.5-flash |
+| Ollama (local) | llama3, mistral, codellama, custom |
+
+**Implementation Details**:
+- New Python module: `providers/` — base `LLMClient` class + 4 provider implementations
+- New Python module: `providers/cost_calculator.py` — unified cost calculation across providers
+- Modify `main.py` — route to correct provider based on model prefix or explicit provider param
+- Modify `Settings.tsx` — add API key fields for Claude, Gemini, Ollama under Integrations tab
+- Modify `FrameworkGenerator.tsx` + `ChatInterface.tsx` — replace hardcoded model list with dynamic provider/model selector
+- Update `Settings` + `SettingsUpdate` Rust structs with 4 new encrypted key fields
+- ~3 new Rust commands for provider management
+- ~5 new IPC methods
+
+**Sprint 3: Analytics Dashboard**
+
+Enhanced usage analytics with trends, breakdowns, and exportable reports.
+
+- 📊 **Usage Dashboard**: Dedicated analytics tab or enhanced Usage section in Settings
+- 📈 **Token Trends**: Daily/weekly/monthly token usage line charts (lightweight chart lib or SVG-based)
+- 🏷️ **Breakdown Views**: Cost by provider, model, framework category, and project
+- 📋 **Generation History Log**: Searchable table of all generations — output name, model used, tokens, cost, timestamp
+- 🎯 **Project Metrics**: Per-project stats — total outputs, most-used frameworks, total tokens, cost over time
+- 📥 **Export Reports**: Download usage data as CSV for expense tracking or team reporting
+- ⚡ **Cost Alerts**: Optional threshold warnings (e.g., "You've spent $X this month")
+
+**Implementation Details**:
+- New DB table: `generation_log` — records every generation with provider, model, tokens, cost, duration
+- New component: `AnalyticsDashboard.tsx` — charts + tables + filters
+- New component: `UsageChart.tsx` — lightweight SVG line/bar chart (no external chart lib dependency)
+- ~6 new Rust commands for analytics queries (aggregate by date, provider, category, project)
+- Modify `create_framework_output` to also insert into `generation_log`
+- Modify `record_token_usage` to include provider and framework_id fields
+
+**Sprint 4: Onboarding & UX Polish**
+
+First-run experience and quality-of-life improvements.
+
+- 🚀 **First-Run Wizard**: Step-by-step setup on first launch — API key entry, user profile, create first project
+- 💀 **Loading Skeletons**: Animated placeholder UI for all data-loading views (outputs, frameworks, workflows)
+- 📭 **Enhanced Empty States**: Actionable CTAs in empty views (e.g., "No outputs yet → Generate your first framework")
+- ⌨️ **Shortcut Cheat Sheet**: `Cmd+/` overlay showing all keyboard shortcuts
+- 🔔 **Toast Notifications**: Non-blocking success/error feedback for async operations (export complete, save success, connection failed)
+- 🎨 **Theme Refinements**: Improved contrast ratios, focus indicators, consistent hover states across all components
+- 📱 **Responsive Panels**: Minimum/maximum width constraints on all resizable panels with graceful collapse
+
+**Implementation Details**:
+- New component: `SetupWizard.tsx` — 4-step onboarding flow (Welcome → API Key → Profile → First Project)
+- New component: `Skeleton.tsx` — reusable skeleton loader matching Codex theme
+- New component: `Toast.tsx` + `ToastProvider.tsx` — notification system with auto-dismiss
+- New component: `ShortcutOverlay.tsx` — keyboard shortcut reference (reads from `shortcuts.ts`)
+- Modify `App.tsx` — detect first-run (no settings/projects), show SetupWizard
+- Modify all list views — add skeleton loading states and improved empty states
+- ~2 new Rust commands (first-run detection, onboarding completion flag)
+
+**Phase 8 Totals**:
+- ~8 new components, ~15 new Rust commands, 1 new DB table, ~2 new Python endpoints
+- ~10 modified files across frontend, backend, and sidecar
+- Total commands after Phase 8: ~120
+
+---
+
+### **Phase 9: Scale & Extend (6-8 weeks)** - Team & Ecosystem 🌐
+**Status**: Planned
+
+Expand PM IDE beyond single-user desktop use with additional integrations, backup/sync, collaboration features, and an extensible plugin system.
+
+**Sprint 1: Additional Integrations**
+
+Export to and sync with more tools PMs use daily.
+
+- 💬 **Slack Integration**: Send output summaries to Slack channels via Incoming Webhooks
+  - Settings: Slack webhook URL per project (encrypted)
+  - "Share to Slack" button on any output — posts formatted summary with link to full content
+  - Workflow completion notifications — auto-post when a multi-step workflow finishes
+- 📋 **Linear Integration**: Create Linear issues from framework outputs
+  - OAuth2 auth flow or API key
+  - Issue creation with title, description (markdown), project, team, and label mapping
+  - Bi-directional status display — show Linear issue status badge on exported outputs
+- 📝 **Confluence Integration**: Export outputs as Confluence wiki pages
+  - Atlassian API with OAuth2 or API token (reuse Jira credentials if same Atlassian account)
+  - Markdown-to-Confluence storage format conversion
+  - Space and parent page selection
+- 🐙 **GitHub Issues Integration**: Create GitHub issues from outputs
+  - GitHub personal access token or OAuth app
+  - Repository selection, label/assignee mapping
+  - Markdown passthrough (GitHub natively supports markdown)
+
+**Implementation Details**:
+- New Python module: `integrations/slack.py` — webhook posting with Block Kit formatting
+- Modify `integrationsAPI` — add 8+ new IPC methods (2 per integration: test + export)
+- Modify `Settings.tsx` — extend Integrations tab with Slack, Linear, Confluence, GitHub sections
+- New components: `ExportToSlackDialog.tsx`, `ExportToLinearDialog.tsx`, `ExportToConfluenceDialog.tsx`, `ExportToGitHubDialog.tsx`
+- ~12 new Rust commands for 4 integrations (test + export + list resources per integration)
+- Update `Settings` struct with 8+ new encrypted token fields
+
+**Sprint 2: Cloud Sync & Backup**
+
+Project portability, backup, and cross-device access.
+
+- 📦 **Project Archive Export**: Export entire project as `.pmide` archive (SQLite data + git history + document contents)
+  - Single-file portable format (ZIP with known structure)
+  - Includes all outputs, context docs, workflows, insights, settings
+  - Version-stamped for forward compatibility
+- 📥 **Project Archive Import**: Import `.pmide` archive into a new or existing project
+  - Conflict resolution for duplicate IDs (merge, overwrite, skip)
+  - Preview of archive contents before import
+- 💾 **Auto-Backup**: Configurable automatic backup to a local directory
+  - Schedule: hourly, daily, weekly, or on every change
+  - Retention: keep last N backups with automatic cleanup
+  - Settings: backup directory path, schedule, retention count
+- ☁️ **Optional Cloud Sync**: Sync projects to user's own cloud storage
+  - Support S3-compatible storage (AWS S3, MinIO, Backblaze B2)
+  - Encrypted at rest before upload (AES-256-GCM, user-provided passphrase)
+  - Manual sync trigger or configurable auto-sync interval
+  - Conflict detection with last-write-wins or manual resolution
+
+**Implementation Details**:
+- New Rust module: `backup.rs` — archive creation/extraction, scheduled backup logic
+- New Rust module: `cloud_sync.rs` — S3 client with presigned uploads, encryption wrapper
+- Add `rusqlite` backup API for consistent SQLite snapshots
+- New component: `BackupSettings.tsx` — backup configuration UI
+- New component: `ProjectArchiveDialog.tsx` — export/import archive with preview
+- ~10 new Rust commands for backup/sync operations
+- New DB table: `backup_log` — tracks backup history and sync status
+- Add `aws-sdk-s3` or `rusoto` crate for S3 compatibility
+
+**Sprint 3: Collaboration**
+
+Enable team use with sharing, comments, and activity tracking.
+
+- 🔗 **Project Sharing**: Generate shareable project links (read-only or edit)
+  - Lightweight sharing server (optional self-hosted companion) or peer-to-peer via WebRTC
+  - Share tokens with expiry and permission levels (view, comment, edit)
+  - Shared projects appear in a "Shared with me" section on the home screen
+- 💬 **Comments on Outputs**: Inline and general comments on framework outputs
+  - Comment threads per output section (anchored to markdown headers)
+  - General comments on the full output
+  - Resolve/unresolve comment threads
+  - Comments stored locally with sync support for shared projects
+- 📰 **Activity Feed**: Per-project timeline of actions
+  - Output created/updated/deleted, workflow run, export events, comments
+  - Filterable by action type and user
+  - "What changed since I last looked" summary
+- 👥 **User Presence**: Show who's viewing a shared project
+  - Lightweight heartbeat-based presence (poll or WebSocket)
+  - Avatar/name indicators in project header
+
+**Implementation Details**:
+- New DB tables: `comments`, `activity_log`, `share_tokens`
+- New components: `CommentThread.tsx`, `ActivityFeed.tsx`, `ShareDialog.tsx`, `PresenceIndicator.tsx`
+- New Rust commands: ~15 for comments CRUD, activity logging, share token management
+- Optional companion server: `pm-ide-server/` — lightweight Rust/Axum server for relay
+- WebRTC data channel option for peer-to-peer sync without a server
+
+**Sprint 4: Plugin & Extension System**
+
+Make PM IDE extensible for power users and custom workflows.
+
+- 🔌 **Plugin Architecture**: Load external framework/prompt packs from JSON/YAML bundles
+  - Plugin manifest format: `plugin.json` with metadata, frameworks, prompts, and optional scripts
+  - Install from local directory or URL
+  - Enable/disable plugins without removing them
+  - Plugin isolation — custom frameworks appear with plugin badge
+- 🪝 **Webhook Triggers**: Notify external systems on events
+  - Configurable webhooks per project (output created, workflow completed, insight generated)
+  - Webhook payload includes event type, project context, and output summary
+  - Retry logic with exponential backoff
+- 🌐 **REST API for Headless Access**: Generate frameworks programmatically
+  - Local HTTP API (optional, disabled by default) for scripting and automation
+  - Endpoints: create project, add context, generate framework, list outputs
+  - API key auth for local access
+  - Use case: CI/CD integration, batch generation, external tools
+- 🎨 **Custom Themes**: User-defined color schemes beyond the default Codex dark theme
+  - Theme file format: JSON with color token overrides
+  - Built-in themes: Codex Dark (default), Light, Solarized, Nord
+  - Import/export custom themes
+
+**Implementation Details**:
+- New Rust module: `plugins.rs` — plugin discovery, loading, validation, lifecycle management
+- New DB table: `plugins` — installed plugins with metadata and enabled/disabled state
+- New component: `PluginManager.tsx` — browse, install, enable/disable, remove plugins
+- New component: `WebhookSettings.tsx` — configure webhook URLs and event subscriptions
+- New component: `ThemeEditor.tsx` — visual theme customization with live preview
+- New Rust HTTP server (optional): `api_server.rs` — lightweight Axum server on localhost
+- ~20 new Rust commands for plugins, webhooks, themes, and API management
+- New DB tables: `plugins`, `webhooks`, `themes`
+
+**Phase 9 Totals**:
+- ~12 new components, ~57 new Rust commands, ~6 new DB tables
+- Optional companion server for collaboration relay
+- Total commands after Phase 9: ~177
+
+---
+
 ## 📊 Overall Success Metrics
 
 **Current State** (Phase 7 Complete):
@@ -773,6 +1007,20 @@ Added workflow builder, AI insights, git-based version history, and Jira/Notion 
 - ✅ Framework editing with Monaco editor, category management
 - ✅ ~105 Rust IPC commands, SQLite with 12 tables
 - ✅ AES-256-GCM encryption for all API keys and tokens
+
+**Target State** (Phase 8 — Polish & Power):
+- 🎯 Inline output editing with section-level AI regeneration
+- 🎯 Multi-model support (Claude, Gemini, Ollama alongside GPT-5)
+- 🎯 Analytics dashboard with cost trends, breakdowns, and export
+- 🎯 First-run wizard, loading skeletons, toast notifications, and UX polish
+- 🎯 ~120 Rust IPC commands, 13 DB tables
+
+**Target State** (Phase 9 — Scale & Extend):
+- 🎯 Slack, Linear, Confluence, and GitHub Issues integrations
+- 🎯 Project archive export/import (.pmide format) with cloud sync
+- 🎯 Team collaboration with comments, sharing, and activity feed
+- 🎯 Plugin system for custom framework packs and webhook triggers
+- 🎯 ~177 Rust IPC commands, 19 DB tables
 
 ## 📝 License
 
@@ -803,6 +1051,6 @@ Built with ❤️ for Product Managers by Product Managers.
 
 ---
 
-**Status**: Phase 7 Complete | 45 Frameworks + 30 Prompts + Workflows + AI Insights + Git History + Jira/Notion | Mac Desktop App
+**Status**: Phase 7 Complete | Phase 8-9 Planned | 45 Frameworks + 30 Prompts + Workflows + AI Insights + Git History + Jira/Notion | Mac Desktop App
 **Version**: 0.8.0-phase7
 **Last Updated**: February 2026
