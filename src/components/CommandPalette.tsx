@@ -75,7 +75,8 @@ export default function CommandPalette({ commands, onClose }: CommandPaletteProp
     >
       <div className="absolute inset-0 bg-black/50" />
       <div
-        className="relative bg-codex-surface border border-codex-border rounded-lg shadow-2xl w-full max-w-lg overflow-hidden"
+        className="relative border border-codex-border rounded-lg shadow-2xl w-full max-w-lg overflow-hidden"
+        style={{ backgroundColor: '#2d2d30' }}
         onClick={e => e.stopPropagation()}
         onKeyDown={handleKeyDown}
       >

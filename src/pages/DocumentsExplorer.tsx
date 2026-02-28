@@ -142,6 +142,9 @@ export default function DocumentsExplorer({ projectId }: DocumentsExplorerProps)
 
   // Color picker
   const [colorTarget, setColorTarget] = useState<TreeNode | null>(null);
+  const [isAddingDoc, setIsAddingDoc] = useState(false);
+  const [newDocName, setNewDocName] = useState('');
+  const [newDocContent, setNewDocContent] = useState('');
 
   const tree = buildTree(folders, docs, outputs);
 
@@ -304,6 +307,19 @@ export default function DocumentsExplorer({ projectId }: DocumentsExplorerProps)
     }
   };
 
+  const handleCreateDoc = async () => {
+    if (!newDocName.trim() || !newDocContent.trim()) return;
+    try {
+      await contextDocumentsAPI.create(projectId, newDocName.trim(), 'text', newDocContent.trim());
+      setNewDocName('');
+      setNewDocContent('');
+      setIsAddingDoc(false);
+      await loadData();
+    } catch (err) {
+      console.error('Failed to create document:', err);
+    }
+  };
+
   const handleSearch = useCallback(async (query: string) => {
     setSearchQuery(query);
     if (!query.trim()) {
@@ -347,20 +363,28 @@ export default function DocumentsExplorer({ projectId }: DocumentsExplorerProps)
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }} className="bg-codex-bg">
       {/* Header */}
-      <div style={{ flexShrink: 0 }} className="px-8 pt-8 pb-4">
-        <div className="flex items-start justify-between mb-4">
+      <div style={{ flexShrink: 0 }} className="px-8 pt-6 pb-3">
+        <div className="flex items-start justify-between mb-3">
           <div>
             <h1 className="text-2xl font-semibold text-codex-text-primary">Documents</h1>
             <p className="text-sm text-codex-text-secondary mt-1">
-              {docs.length + outputs.length} items in {folders.length} folders
+              {docs.length + outputs.length} items{folders.length > 0 ? ` in ${folders.length} folder${folders.length > 1 ? 's' : ''}` : ''}
             </p>
           </div>
-          <button
-            onClick={() => setIsCreatingFolder(true)}
-            className="px-3 py-1.5 text-xs bg-codex-surface border border-codex-border rounded-md text-codex-text-secondary hover:text-codex-text-primary hover:bg-codex-surface-hover transition-colors"
-          >
-            + New Folder
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsAddingDoc(true)}
+              className="px-3 py-1.5 text-xs bg-codex-accent text-white rounded-md hover:bg-codex-accent/80 transition-colors"
+            >
+              + New Document
+            </button>
+            <button
+              onClick={() => setIsCreatingFolder(true)}
+              className="px-3 py-1.5 text-xs bg-codex-surface border border-codex-border rounded-md text-codex-text-secondary hover:text-codex-text-primary hover:bg-codex-surface-hover transition-colors"
+            >
+              + Folder
+            </button>
+          </div>
         </div>
 
         {/* Search */}
@@ -383,18 +407,30 @@ export default function DocumentsExplorer({ projectId }: DocumentsExplorerProps)
           </div>
         ) : tree.length === 0 && !isCreatingFolder ? (
           <div className="h-full flex items-center justify-center">
-            <div className="text-center max-w-md px-8">
+            <div className="text-center max-w-lg px-8">
               <div className="text-4xl mb-3">📂</div>
               <h3 className="text-sm font-semibold text-codex-text-primary mb-1">No documents yet</h3>
-              <p className="text-xs text-codex-text-secondary mb-4">
-                Create folders to organize your context documents and framework outputs
+              <p className="text-xs text-codex-text-secondary mb-6">
+                This is your document organizer. Add text documents, context files, and view generated framework outputs here.
               </p>
-              <button
-                onClick={() => setIsCreatingFolder(true)}
-                className="px-4 py-2 text-xs bg-codex-accent text-white rounded-md hover:bg-codex-accent/80 transition-colors"
-              >
-                Create First Folder
-              </button>
+              <div className="flex items-center justify-center gap-3 mb-6">
+                <button
+                  onClick={() => setIsAddingDoc(true)}
+                  className="px-4 py-2 text-xs bg-codex-accent text-white rounded-md hover:bg-codex-accent/80 transition-colors"
+                >
+                  Create Text Document
+                </button>
+                <button
+                  onClick={() => setIsCreatingFolder(true)}
+                  className="px-4 py-2 text-xs bg-codex-surface border border-codex-border text-codex-text-secondary rounded-md hover:bg-codex-surface-hover transition-colors"
+                >
+                  Create Folder
+                </button>
+              </div>
+              <div className="text-[10px] text-codex-text-muted leading-relaxed space-y-1">
+                <p>Documents from the <span className="text-codex-text-secondary">Context</span> tab and outputs from <span className="text-codex-text-secondary">Frameworks</span> also appear here.</p>
+                <p>Organize with folders, drag-and-drop, favorites, and color coding.</p>
+              </div>
             </div>
           </div>
         ) : (
@@ -699,6 +735,62 @@ export default function DocumentsExplorer({ projectId }: DocumentsExplorerProps)
                 className="w-full px-3 py-1.5 text-xs text-codex-text-secondary hover:text-codex-text-primary bg-codex-bg border border-codex-border rounded transition-colors"
               >
                 Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Document Modal */}
+      {isAddingDoc && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          onClick={() => { setIsAddingDoc(false); setNewDocName(''); setNewDocContent(''); }}
+        >
+          <div
+            className="bg-codex-surface border border-codex-border rounded-lg shadow-xl w-[500px] max-h-[80vh] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-4 border-b border-codex-border">
+              <h3 className="text-sm font-semibold text-codex-text-primary">New Text Document</h3>
+              <p className="text-[10px] text-codex-text-muted mt-1">Create a document to use as context for AI conversations and frameworks</p>
+            </div>
+            <div className="p-4 space-y-3">
+              <div>
+                <label className="text-[10px] text-codex-text-muted uppercase tracking-wide block mb-1">Name</label>
+                <input
+                  type="text"
+                  value={newDocName}
+                  onChange={(e) => setNewDocName(e.target.value)}
+                  placeholder="e.g., Product Requirements, User Research Notes..."
+                  autoFocus
+                  className="w-full px-3 py-2 bg-codex-bg border border-codex-border rounded text-xs text-codex-text-primary placeholder-codex-text-muted focus:outline-none focus:ring-1 focus:ring-codex-accent"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-codex-text-muted uppercase tracking-wide block mb-1">Content</label>
+                <textarea
+                  value={newDocContent}
+                  onChange={(e) => setNewDocContent(e.target.value)}
+                  placeholder="Paste or type your document content here..."
+                  rows={12}
+                  className="w-full px-3 py-2 bg-codex-bg border border-codex-border rounded text-xs text-codex-text-primary placeholder-codex-text-muted focus:outline-none focus:ring-1 focus:ring-codex-accent resize-y font-mono"
+                />
+              </div>
+            </div>
+            <div className="p-3 border-t border-codex-border flex items-center justify-end gap-2">
+              <button
+                onClick={() => { setIsAddingDoc(false); setNewDocName(''); setNewDocContent(''); }}
+                className="px-3 py-1.5 text-xs text-codex-text-secondary hover:text-codex-text-primary bg-codex-bg border border-codex-border rounded transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateDoc}
+                disabled={!newDocName.trim() || !newDocContent.trim()}
+                className="px-4 py-1.5 text-xs bg-codex-accent text-white rounded hover:bg-codex-accent/80 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Create Document
               </button>
             </div>
           </div>

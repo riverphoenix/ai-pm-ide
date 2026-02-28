@@ -9,14 +9,16 @@ export interface Shortcut {
 export const SHORTCUTS: Shortcut[] = [
   { id: 'cmd-palette', keys: 'mod+k', label: '\u2318K', description: 'Open command palette', category: 'action' },
   { id: 'tab-chat', keys: 'mod+1', label: '\u23181', description: 'Switch to Chat', category: 'navigation' },
-  { id: 'tab-documents', keys: 'mod+2', label: '\u23182', description: 'Switch to Documents', category: 'navigation' },
-  { id: 'tab-frameworks', keys: 'mod+3', label: '\u23183', description: 'Switch to Frameworks', category: 'navigation' },
-  { id: 'tab-prompts', keys: 'mod+4', label: '\u23184', description: 'Switch to Prompts', category: 'navigation' },
-  { id: 'tab-context', keys: 'mod+5', label: '\u23185', description: 'Switch to Context', category: 'navigation' },
-  { id: 'tab-outputs', keys: 'mod+6', label: '\u23186', description: 'Switch to Outputs', category: 'navigation' },
-  { id: 'tab-workflows', keys: 'mod+7', label: '\u23187', description: 'Switch to Workflows', category: 'navigation' },
+  { id: 'tab-editor', keys: 'mod+2', label: '\u23182', description: 'Switch to Editor', category: 'navigation' },
+  { id: 'tab-documents', keys: 'mod+3', label: '\u23183', description: 'Switch to Documents', category: 'navigation' },
+  { id: 'tab-frameworks', keys: 'mod+4', label: '\u23184', description: 'Switch to Frameworks', category: 'navigation' },
+  { id: 'tab-prompts', keys: 'mod+5', label: '\u23185', description: 'Switch to Prompts', category: 'navigation' },
+  { id: 'tab-context', keys: 'mod+6', label: '\u23186', description: 'Switch to Context', category: 'navigation' },
+  { id: 'tab-outputs', keys: 'mod+7', label: '\u23187', description: 'Switch to Outputs', category: 'navigation' },
+  { id: 'tab-workflows', keys: 'mod+8', label: '\u23188', description: 'Switch to Workflows', category: 'navigation' },
   { id: 'toggle-terminal', keys: 'mod+`', label: '\u2318`', description: 'Toggle terminal panel', category: 'panel' },
   { id: 'toggle-sidebar', keys: 'mod+b', label: '\u2318B', description: 'Toggle sidebar', category: 'panel' },
+  { id: 'search', keys: 'mod+f', label: '\u2318F', description: 'Search', category: 'action' },
 ];
 
 export function parseShortcut(keys: string): { mod: boolean; key: string } {

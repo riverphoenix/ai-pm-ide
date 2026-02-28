@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 interface TopActionBarProps {
   onOpenFile?: () => void;
   onCommit?: () => void;
@@ -17,8 +19,15 @@ export default function TopActionBar({
   currentModel = 'GPT-5',
   terminalActive = false,
 }: TopActionBarProps) {
+  const [tooltip, setTooltip] = useState<string | null>(null);
+
+  const showTooltip = (msg: string) => {
+    setTooltip(msg);
+    setTimeout(() => setTooltip(null), 2500);
+  };
+
   return (
-    <div className="h-10 bg-codex-sidebar border-b border-codex-border flex items-center justify-between px-4 flex-shrink-0">
+    <div className="h-10 bg-codex-sidebar border-b border-codex-border flex items-center justify-between px-4 flex-shrink-0 relative">
       {/* Left: Project Context */}
       <div className="flex items-center gap-2">
         {projectName && (
@@ -28,11 +37,11 @@ export default function TopActionBar({
 
       {/* Center: Action Buttons (Icons only) */}
       <div className="flex items-center gap-1">
-        {/* Open File */}
+        {/* File Explorer */}
         <button
           onClick={onOpenFile}
           className="p-1.5 text-codex-text-secondary hover:text-codex-text-primary hover:bg-codex-surface rounded transition-colors duration-200"
-          title="Open"
+          title="File Explorer (\u23182)"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
@@ -41,10 +50,12 @@ export default function TopActionBar({
 
         {/* Commit (Git) */}
         <button
-          onClick={onCommit}
+          onClick={() => {
+            if (onCommit) onCommit();
+            showTooltip('Git: Outputs are auto-versioned. View history from the Outputs tab.');
+          }}
           className="p-1.5 text-codex-text-dimmed hover:text-codex-text-secondary hover:bg-codex-surface rounded transition-colors duration-200"
-          title="Commit"
-          disabled
+          title="Git Integration"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
@@ -68,10 +79,12 @@ export default function TopActionBar({
 
         {/* IDE Mode Toggle */}
         <button
-          onClick={onToggleIDE}
+          onClick={() => {
+            if (onToggleIDE) onToggleIDE();
+            showTooltip('IDE Mode: Coming soon. Will enable inline code editing.');
+          }}
           className="p-1.5 text-codex-text-dimmed hover:text-codex-text-secondary hover:bg-codex-surface rounded transition-colors duration-200"
-          title="IDE Mode"
-          disabled
+          title="IDE Mode (Coming Soon)"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
@@ -90,6 +103,16 @@ export default function TopActionBar({
           </span>
         </div>
       </div>
+
+      {/* Tooltip */}
+      {tooltip && (
+        <div
+          className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-3 py-2 rounded-lg shadow-lg text-xs max-w-xs text-center z-50"
+          style={{ backgroundColor: '#1c2128', border: '1px solid #30363d', color: '#8b949e' }}
+        >
+          {tooltip}
+        </div>
+      )}
     </div>
   );
 }

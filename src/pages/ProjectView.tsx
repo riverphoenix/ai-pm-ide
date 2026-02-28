@@ -12,22 +12,27 @@ import OutputsLibrary from './OutputsLibrary';
 import DocumentsExplorer from './DocumentsExplorer';
 import PromptsLibrary from './PromptsLibrary';
 import WorkflowsPage from './WorkflowsPage';
+import FileExplorer from './FileExplorer';
 import InsightsPanel from '../components/InsightsPanel';
 
 const MIN_HISTORY_WIDTH = 180;
 const MAX_HISTORY_WIDTH = 400;
 const DEFAULT_HISTORY_WIDTH = 224;
 
-type Tab = 'documents' | 'chat' | 'frameworks' | 'prompts' | 'context' | 'outputs' | 'workflows';
+type Tab = 'documents' | 'chat' | 'frameworks' | 'prompts' | 'context' | 'outputs' | 'workflows' | 'editor';
 
 interface ProjectViewProps {
   projectId: string;
   activeTab: Tab;
   onTabChange: (tab: Tab) => void;
   onModelChange?: (model: string) => void;
+  showInsights?: boolean;
+  onCloseInsights?: () => void;
+  initialChatMessage?: string | null;
+  onInitialChatMessageConsumed?: () => void;
 }
 
-export default function ProjectView({ projectId, activeTab, onTabChange, onModelChange }: ProjectViewProps) {
+export default function ProjectView({ projectId, activeTab, onTabChange, onModelChange, showInsights = false, onCloseInsights, initialChatMessage, onInitialChatMessageConsumed }: ProjectViewProps) {
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState<Settings | null>(null);
@@ -38,7 +43,6 @@ export default function ProjectView({ projectId, activeTab, onTabChange, onModel
     return saved ? parseInt(saved, 10) : DEFAULT_HISTORY_WIDTH;
   });
 
-  const [showInsights, setShowInsights] = useState(false);
   const [selectedFrameworkId, setSelectedFrameworkId] = useState<string | null>(null);
   const [_selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [frameworksView, setFrameworksView] = useState<'home' | 'generator' | 'manager'>('home');
@@ -118,56 +122,8 @@ export default function ProjectView({ projectId, activeTab, onTabChange, onModel
   }
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }} className="bg-codex-bg">
-      {/* Top Bar */}
-      <div style={{ flexShrink: 0 }} className="h-10 border-b border-codex-border bg-codex-sidebar flex items-center px-4">
-        <div className="flex-1">
-          <div className="flex items-center gap-2">
-            <div className="w-5 h-5 bg-codex-accent rounded flex items-center justify-center">
-              <span className="text-sm">📁</span>
-            </div>
-            <div>
-              <h1 className="text-sm text-codex-text-primary">{project.name}</h1>
-              {project.description && (
-                <p className="text-[10px] text-codex-text-muted">{project.description}</p>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div style={{ flexShrink: 0 }} className="h-8 border-b border-codex-border bg-codex-surface/30 flex items-center px-4 gap-1">
-        {(['chat', 'documents', 'frameworks', 'prompts', 'context', 'outputs', 'workflows'] as Tab[]).map(tab => (
-          <button
-            key={tab}
-            onClick={() => {
-              onTabChange(tab);
-              if (tab === 'frameworks') handleBackToFrameworksHome();
-            }}
-            className={`relative px-2 py-1.5 text-xs transition-all duration-200 ${
-              activeTab === tab
-                ? 'text-codex-text-primary'
-                : 'text-codex-text-secondary hover:text-codex-text-primary'
-            }`}
-          >
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
-            {activeTab === tab && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-codex-accent" />
-            )}
-          </button>
-        ))}
-        <div className="flex-1" />
-        <button
-          onClick={() => setShowInsights(!showInsights)}
-          className={`px-2 py-1 text-xs rounded transition-colors ${
-            showInsights ? 'bg-codex-accent/20 text-codex-accent' : 'text-codex-text-secondary hover:text-codex-text-primary'
-          }`}
-        >
-          Insights
-        </button>
-      </div>
-
-      <div style={{ flex: 1, overflow: 'hidden' }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }} className="bg-codex-bg">
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }} className="tab-content-stretch">
         {activeTab === 'chat' && (
           <>
             {!apiKey ? (
@@ -186,7 +142,7 @@ export default function ProjectView({ projectId, activeTab, onTabChange, onModel
                 </div>
               </div>
             ) : settings && (
-              <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
+              <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
                 <ConversationHistory
                   projectId={projectId}
                   currentConversationId={currentConversationId}
@@ -202,6 +158,8 @@ export default function ProjectView({ projectId, activeTab, onTabChange, onModel
                   settings={settings}
                   model="gpt-5"
                   onModelChange={onModelChange}
+                  initialMessage={initialChatMessage}
+                  onInitialMessageConsumed={onInitialChatMessageConsumed}
                 />
               </div>
             )}
@@ -244,6 +202,10 @@ export default function ProjectView({ projectId, activeTab, onTabChange, onModel
           <OutputsLibrary projectId={projectId} />
         )}
 
+        {activeTab === 'editor' && (
+          <FileExplorer />
+        )}
+
         {activeTab === 'workflows' && (
           <WorkflowsPage projectId={projectId} apiKey={apiKey} onTabChange={(tab: string) => onTabChange(tab as Tab)} />
         )}
@@ -257,9 +219,9 @@ export default function ProjectView({ projectId, activeTab, onTabChange, onModel
             setSelectedFrameworkId(frameworkId);
             setFrameworksView('generator');
             onTabChange('frameworks');
-            setShowInsights(false);
+            onCloseInsights?.();
           }}
-          onClose={() => setShowInsights(false)}
+          onClose={() => onCloseInsights?.()}
         />
       )}
     </div>

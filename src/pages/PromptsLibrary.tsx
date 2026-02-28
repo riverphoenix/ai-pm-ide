@@ -283,7 +283,7 @@ export default function PromptsLibrary({ projectId: _projectId }: PromptsLibrary
         </div>
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto' }} className="px-8 pb-8">
+      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }} className="px-8 pb-8">
         {filteredPrompts.length === 0 ? (
           <div className="text-center py-16">
             <div className="text-4xl mb-3">{searchQuery ? '🔍' : '📝'}</div>

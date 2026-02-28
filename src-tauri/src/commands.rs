@@ -12,6 +12,17 @@ use base64::{Engine as _, engine::general_purpose};
 use serde_yaml;
 use git2::{Repository, Signature};
 use std::path::PathBuf;
+use std::collections::HashMap;
+use std::sync::{Mutex, OnceLock};
+
+fn terminal_cwds() -> &'static Mutex<HashMap<String, String>> {
+    static CWD_MAP: OnceLock<Mutex<HashMap<String, String>>> = OnceLock::new();
+    CWD_MAP.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+fn shell_escape(s: &str) -> String {
+    format!("'{}'", s.replace('\'', "'\\''"))
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Project {
@@ -607,10 +618,11 @@ pub fn init_db(app: &tauri::AppHandle) -> Result<(), String> {
 }
 
 fn seed_frameworks(conn: &Connection) -> Result<(), String> {
-    let cat_count: i64 = conn.query_row("SELECT COUNT(*) FROM framework_categories", [], |row| row.get(0))
-        .map_err(|e| format!("Failed to count framework_categories: {}", e))?;
+    let fw_count: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM framework_definitions WHERE is_builtin = 1", [], |row| row.get(0)
+    ).unwrap_or(0);
 
-    if cat_count > 0 {
+    if fw_count >= 45 {
         return Ok(());
     }
 
@@ -2408,6 +2420,17 @@ pub struct CommandHistoryEntry {
 pub struct CommandResult {
     pub output: String,
     pub exit_code: i32,
+    pub cwd: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct FileEntry {
+    pub name: String,
+    pub path: String,
+    pub is_dir: bool,
+    pub size: u64,
+    pub modified: i64,
+    pub extension: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -2598,20 +2621,58 @@ pub async fn execute_shell_command(
 ) -> Result<CommandResult, String> {
     use std::process::Command as StdCommand;
 
-    let output = StdCommand::new("sh")
+    let home_dir = std::env::var("HOME").unwrap_or_else(|_| "/".to_string());
+    let cwd = {
+        let map = terminal_cwds().lock().map_err(|e| format!("Lock error: {}", e))?;
+        map.get(&project_id).cloned().unwrap_or_else(|| home_dir.clone())
+    };
+
+    let user_shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".to_string());
+
+    let cwd_marker = "__PM_IDE_CWD_MARKER__";
+    let wrapped = format!(
+        "cd {} 2>/dev/null && {{ {}; }}; __ec=$?; printf '\\n{}'; pwd; exit $__ec",
+        shell_escape(&cwd),
+        &command,
+        cwd_marker
+    );
+
+    let output = StdCommand::new(&user_shell)
+        .arg("-l")
+        .arg("-i")
         .arg("-c")
-        .arg(&command)
+        .arg(&wrapped)
+        .env("TERM", "xterm-256color")
+        .env("CLICOLOR", "1")
+        .env("CLICOLOR_FORCE", "1")
+        .env("LSCOLORS", "Gxfxcxdxbxegedabagacad")
+        .current_dir(&cwd)
         .output()
         .map_err(|e| format!("Failed to execute command: {}", e))?;
 
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    let combined = if stderr.is_empty() {
-        stdout.to_string()
-    } else if stdout.is_empty() {
-        stderr.to_string()
+    let stdout_raw = String::from_utf8_lossy(&output.stdout).to_string();
+    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+
+    let (user_output, new_cwd) = if let Some(idx) = stdout_raw.rfind(cwd_marker) {
+        let before = stdout_raw[..idx].trim_end().to_string();
+        let after = stdout_raw[idx + cwd_marker.len()..].trim().to_string();
+        let resolved_cwd = if after.is_empty() { cwd.clone() } else { after };
+        (before, resolved_cwd)
     } else {
-        format!("{}\n{}", stdout, stderr)
+        (stdout_raw, cwd.clone())
+    };
+
+    {
+        let mut map = terminal_cwds().lock().map_err(|e| format!("Lock error: {}", e))?;
+        map.insert(project_id.clone(), new_cwd.clone());
+    }
+
+    let combined = if stderr.is_empty() {
+        user_output
+    } else if user_output.is_empty() {
+        stderr
+    } else {
+        format!("{}\n{}", user_output, stderr)
     };
     let exit_code = output.status.code().unwrap_or(-1);
 
@@ -2628,6 +2689,7 @@ pub async fn execute_shell_command(
     Ok(CommandResult {
         output: combined,
         exit_code,
+        cwd: new_cwd,
     })
 }
 
@@ -2666,6 +2728,82 @@ pub async fn get_command_history(
 
     results.reverse();
     Ok(results)
+}
+
+#[tauri::command]
+pub async fn get_terminal_cwd(
+    project_id: String,
+) -> Result<String, String> {
+    let home_dir = std::env::var("HOME").unwrap_or_else(|_| "/".to_string());
+    let map = terminal_cwds().lock().map_err(|e| format!("Lock error: {}", e))?;
+    Ok(map.get(&project_id).cloned().unwrap_or(home_dir))
+}
+
+#[tauri::command]
+pub async fn set_terminal_cwd(
+    project_id: String,
+    cwd: String,
+) -> Result<(), String> {
+    let path = std::path::Path::new(&cwd);
+    if !path.exists() || !path.is_dir() {
+        return Err(format!("Directory does not exist: {}", cwd));
+    }
+    let mut map = terminal_cwds().lock().map_err(|e| format!("Lock error: {}", e))?;
+    map.insert(project_id, cwd);
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn complete_path(
+    project_id: String,
+    partial: String,
+) -> Result<Vec<String>, String> {
+    let home_dir = std::env::var("HOME").unwrap_or_else(|_| "/".to_string());
+    let cwd = {
+        let map = terminal_cwds().lock().map_err(|e| format!("Lock error: {}", e))?;
+        map.get(&project_id).cloned().unwrap_or_else(|| home_dir.clone())
+    };
+
+    let expanded = if partial.starts_with('~') {
+        format!("{}{}", home_dir, &partial[1..])
+    } else {
+        partial.clone()
+    };
+
+    let full_path = if std::path::Path::new(&expanded).is_absolute() {
+        expanded.clone()
+    } else {
+        format!("{}/{}", cwd, expanded)
+    };
+
+    let (dir, prefix) = if full_path.ends_with('/') {
+        (full_path.clone(), String::new())
+    } else {
+        let p = std::path::Path::new(&full_path);
+        let dir = p.parent().map(|d| d.to_string_lossy().to_string()).unwrap_or_else(|| "/".to_string());
+        let prefix = p.file_name().map(|f| f.to_string_lossy().to_string()).unwrap_or_default();
+        (dir, prefix)
+    };
+
+    let mut matches = Vec::new();
+    if let Ok(entries) = std::fs::read_dir(&dir) {
+        for entry in entries.flatten() {
+            let name = entry.file_name().to_string_lossy().to_string();
+            if name.starts_with(&prefix) {
+                let is_dir = entry.file_type().map(|t| t.is_dir()).unwrap_or(false);
+                let suffix = if is_dir { "/" } else { " " };
+                if partial.contains('/') {
+                    let base = &partial[..partial.rfind('/').unwrap() + 1];
+                    matches.push(format!("{}{}{}", base, name, suffix));
+                } else {
+                    matches.push(format!("{}{}", name, suffix));
+                }
+            }
+        }
+    }
+
+    matches.sort();
+    Ok(matches.into_iter().take(20).collect())
 }
 
 // === Saved Prompts CRUD ===
@@ -4582,4 +4720,135 @@ pub async fn export_to_notion(
             error: Some(err_text),
         })
     }
+}
+
+// ─── File Explorer Commands ───────────────────────────────────────────────────
+
+fn expand_home(path: &str) -> String {
+    if path.starts_with('~') {
+        let home = std::env::var("HOME").unwrap_or_else(|_| "/".to_string());
+        format!("{}{}", home, &path[1..])
+    } else {
+        path.to_string()
+    }
+}
+
+fn read_dir_entries(dir: &std::path::Path, include_hidden: bool) -> Result<Vec<FileEntry>, String> {
+    let read_dir = std::fs::read_dir(dir).map_err(|e| format!("Failed to read directory: {}", e))?;
+    let mut entries = Vec::new();
+
+    for entry in read_dir.flatten() {
+        let metadata = match entry.metadata() {
+            Ok(m) => m,
+            Err(_) => continue,
+        };
+        let name = entry.file_name().to_string_lossy().to_string();
+        if !include_hidden && name.starts_with('.') {
+            continue;
+        }
+        let path_str = entry.path().to_string_lossy().to_string();
+        let is_dir = metadata.is_dir();
+        let size = if is_dir { 0 } else { metadata.len() };
+        let modified = metadata.modified()
+            .map(|t| t.duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs() as i64)
+            .unwrap_or(0);
+        let extension = entry.path().extension()
+            .map(|e| e.to_string_lossy().to_string())
+            .unwrap_or_default();
+
+        entries.push(FileEntry { name, path: path_str, is_dir, size, modified, extension });
+    }
+
+    entries.sort_by(|a, b| {
+        match (a.is_dir, b.is_dir) {
+            (true, false) => std::cmp::Ordering::Less,
+            (false, true) => std::cmp::Ordering::Greater,
+            _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
+        }
+    });
+
+    Ok(entries)
+}
+
+#[tauri::command]
+pub async fn list_directory(path: String) -> Result<Vec<FileEntry>, String> {
+    let expanded = expand_home(&path);
+    let dir = std::path::Path::new(&expanded);
+    if !dir.exists() || !dir.is_dir() {
+        return Err(format!("Not a valid directory: {}", expanded));
+    }
+    read_dir_entries(dir, false)
+}
+
+#[tauri::command]
+pub async fn list_directory_all(path: String) -> Result<Vec<FileEntry>, String> {
+    let expanded = expand_home(&path);
+    let dir = std::path::Path::new(&expanded);
+    if !dir.exists() || !dir.is_dir() {
+        return Err(format!("Not a valid directory: {}", expanded));
+    }
+    read_dir_entries(dir, true)
+}
+
+#[tauri::command]
+pub async fn read_file_content(path: String) -> Result<String, String> {
+    let expanded = expand_home(&path);
+    std::fs::read_to_string(&expanded)
+        .map_err(|e| format!("Failed to read file: {}", e))
+}
+
+#[tauri::command]
+pub async fn write_file_content(path: String, content: String) -> Result<(), String> {
+    let expanded = expand_home(&path);
+    std::fs::write(&expanded, &content)
+        .map_err(|e| format!("Failed to write file: {}", e))
+}
+
+#[tauri::command]
+pub async fn create_new_file(path: String) -> Result<(), String> {
+    let expanded = expand_home(&path);
+    if std::path::Path::new(&expanded).exists() {
+        return Err("File already exists".to_string());
+    }
+    std::fs::write(&expanded, "")
+        .map_err(|e| format!("Failed to create file: {}", e))
+}
+
+#[tauri::command]
+pub async fn create_new_directory(path: String) -> Result<(), String> {
+    let expanded = expand_home(&path);
+    if std::path::Path::new(&expanded).exists() {
+        return Err("Directory already exists".to_string());
+    }
+    std::fs::create_dir_all(&expanded)
+        .map_err(|e| format!("Failed to create directory: {}", e))
+}
+
+#[tauri::command]
+pub async fn rename_fs_path(old_path: String, new_path: String) -> Result<(), String> {
+    std::fs::rename(&old_path, &new_path)
+        .map_err(|e| format!("Failed to rename: {}", e))
+}
+
+#[tauri::command]
+pub async fn delete_fs_path(path: String, is_dir: bool) -> Result<(), String> {
+    if is_dir {
+        std::fs::remove_dir_all(&path)
+            .map_err(|e| format!("Failed to delete directory: {}", e))
+    } else {
+        std::fs::remove_file(&path)
+            .map_err(|e| format!("Failed to delete file: {}", e))
+    }
+}
+
+#[tauri::command]
+pub async fn get_home_directory() -> Result<String, String> {
+    std::env::var("HOME").map_err(|_| "HOME not set".to_string())
+}
+
+#[tauri::command]
+pub async fn get_app_directory() -> Result<String, String> {
+    std::env::current_dir()
+        .map(|p| p.to_string_lossy().to_string())
+        .map_err(|e| format!("Failed to get current directory: {}", e))
 }

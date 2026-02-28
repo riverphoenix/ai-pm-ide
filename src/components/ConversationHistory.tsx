@@ -118,8 +118,8 @@ export default function ConversationHistory({
 
   return (
     <div
-      className="border-r border-codex-border bg-codex-surface/50 flex flex-col flex-shrink-0"
-      style={{ width: `${width}px` }}
+      className="border-r border-codex-border flex flex-col flex-shrink-0"
+      style={{ width: `${width}px`, backgroundColor: '#252526' }}
     >
       {/* Header */}
       <div className="p-3 border-b border-codex-border">
@@ -216,7 +216,7 @@ export default function ConversationHistory({
       </div>
 
       {/* Footer Stats */}
-      <div className="p-2 border-t border-codex-border bg-codex-bg/30">
+      <div className="p-2 border-t border-codex-border" style={{ backgroundColor: '#1e1e1e' }}>
         <div className="text-[9px] text-codex-text-muted text-center">
           {conversations.length} {conversations.length === 1 ? 'conversation' : 'conversations'}
         </div>
@@ -225,7 +225,7 @@ export default function ConversationHistory({
       {/* Custom Delete Confirmation Dialog */}
       {deleteConfirm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={handleDeleteCancel}>
-          <div className="bg-codex-surface rounded-lg p-6 max-w-md mx-4 shadow-2xl border border-codex-border" onClick={(e) => e.stopPropagation()}>
+          <div className="rounded-lg p-6 max-w-md mx-4 shadow-2xl border border-codex-border" style={{ backgroundColor: '#2d2d30' }} onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-semibold text-codex-text-primary mb-2">Delete Conversation?</h3>
             <p className="text-sm text-codex-text-secondary mb-6">
               Are you sure you want to delete this conversation? This action cannot be undone.

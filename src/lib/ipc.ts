@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import { Project, Conversation, Message, Settings, SettingsUpdate, TokenUsage, TokenUsageAggregate, ContextDocument, FrameworkOutput, Folder, SearchResult, CommandHistoryEntry, CommandResult, FrameworkDefinition, FrameworkCategory, SavedPrompt, PromptVariable, ImportPreview, ImportResult, BatchExportResult, ConflictAction, Workflow, WorkflowRun, WorkflowRunStep, ProjectInsight, CommitInfo, JiraProject, JiraExportResult, NotionPage, NotionExportResult } from './types';
+import { Project, Conversation, Message, Settings, SettingsUpdate, TokenUsage, TokenUsageAggregate, ContextDocument, FrameworkOutput, Folder, SearchResult, CommandHistoryEntry, CommandResult, FrameworkDefinition, FrameworkCategory, SavedPrompt, PromptVariable, ImportPreview, ImportResult, BatchExportResult, ConflictAction, Workflow, WorkflowRun, WorkflowRunStep, ProjectInsight, CommitInfo, JiraProject, JiraExportResult, NotionPage, NotionExportResult, FileEntry } from './types';
 
 interface FrameworkDefRow {
   id: string;
@@ -247,6 +247,18 @@ export const terminalAPI = {
 
   async getHistory(projectId: string, limit?: number): Promise<CommandHistoryEntry[]> {
     return await invoke('get_command_history', { projectId, limit: limit || 50 });
+  },
+
+  async getCwd(projectId: string): Promise<string> {
+    return await invoke('get_terminal_cwd', { projectId });
+  },
+
+  async setCwd(projectId: string, cwd: string): Promise<void> {
+    return await invoke('set_terminal_cwd', { projectId, cwd });
+  },
+
+  async completePath(projectId: string, partial: string): Promise<string[]> {
+    return await invoke('complete_path', { projectId, partial });
   },
 };
 
@@ -747,5 +759,47 @@ export const integrationsAPI = {
 
   async exportToNotion(outputId: string, parentPageId: string, title: string): Promise<NotionExportResult> {
     return await invoke('export_to_notion', { outputId, parentPageId, title });
+  },
+};
+
+export const fileSystemAPI = {
+  async listDirectory(path: string): Promise<FileEntry[]> {
+    return await invoke('list_directory', { path });
+  },
+
+  async listDirectoryAll(path: string): Promise<FileEntry[]> {
+    return await invoke('list_directory_all', { path });
+  },
+
+  async readFile(path: string): Promise<string> {
+    return await invoke('read_file_content', { path });
+  },
+
+  async writeFile(path: string, content: string): Promise<void> {
+    return await invoke('write_file_content', { path, content });
+  },
+
+  async createFile(path: string): Promise<void> {
+    return await invoke('create_new_file', { path });
+  },
+
+  async createDirectory(path: string): Promise<void> {
+    return await invoke('create_new_directory', { path });
+  },
+
+  async rename(oldPath: string, newPath: string): Promise<void> {
+    return await invoke('rename_fs_path', { oldPath, newPath });
+  },
+
+  async delete(path: string, isDir: boolean): Promise<void> {
+    return await invoke('delete_fs_path', { path, isDir });
+  },
+
+  async getHomeDirectory(): Promise<string> {
+    return await invoke('get_home_directory');
+  },
+
+  async getAppDirectory(): Promise<string> {
+    return await invoke('get_app_directory');
   },
 };

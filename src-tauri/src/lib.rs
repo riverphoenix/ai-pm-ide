@@ -55,6 +55,9 @@ pub fn run() {
             set_folder_color,
             execute_shell_command,
             get_command_history,
+            get_terminal_cwd,
+            set_terminal_cwd,
+            complete_path,
             list_framework_categories,
             get_framework_category,
             create_framework_category,
@@ -117,6 +120,16 @@ pub fn run() {
             test_notion_connection,
             search_notion_pages,
             export_to_notion,
+            list_directory,
+            list_directory_all,
+            read_file_content,
+            write_file_content,
+            create_new_file,
+            create_new_directory,
+            rename_fs_path,
+            delete_fs_path,
+            get_home_directory,
+            get_app_directory,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

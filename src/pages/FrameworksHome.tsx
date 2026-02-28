@@ -132,7 +132,7 @@ export default function FrameworksHome({ onSelectFramework, onManage }: Framewor
       </div>
 
       {/* Categories Grid */}
-      <div style={{ flex: 1, overflowY: 'auto' }} className="px-8 pb-8">
+      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }} className="px-8 pb-8">
         {selectedCategory ? (
           // Show frameworks in selected category
           <div className="max-w-4xl">
@@ -164,55 +164,67 @@ export default function FrameworksHome({ onSelectFramework, onManage }: Framewor
             </div>
           </div>
         ) : !filteredContent.showingResults ? (
-          // Show category cards when not searching
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-6xl">
-            {categories.map((category) => (
-              <div
-                key={category.id}
-                className="bg-codex-surface/60 border border-codex-border rounded-lg p-5 hover:bg-codex-surface-hover hover:border-codex-accent/50 transition-all duration-200 cursor-pointer group"
-                onClick={() => {
-                  // If only 1 framework, open it directly
-                  if (category.frameworks.length === 1) {
-                    onSelectFramework(category.frameworks[0].id, category.id);
-                  } else if (category.frameworks.length > 1) {
-                    // If multiple frameworks, show category drill-down
-                    setSelectedCategoryId(category.id);
-                  }
-                }}
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="text-3xl">{category.icon}</div>
-                  <div className="px-2 py-1 bg-codex-surface/50 rounded text-xs font-medium text-codex-text-secondary">
-                    {category.frameworks.length} frameworks
-                  </div>
-                </div>
-                <h3 className="text-sm font-semibold text-codex-text-primary mb-1 group-hover:text-codex-accent transition-colors">
-                  {category.name}
-                </h3>
-                <p className="text-[10px] text-codex-text-muted leading-relaxed">
-                  {category.description}
-                </p>
-                {category.frameworks.length > 0 && (
-                  <div className="mt-3 pt-3 border-t border-codex-border/50">
-                    <div className="flex flex-wrap gap-1">
-                      {category.frameworks.slice(0, 3).map((fw) => (
-                        <span
-                          key={fw.id}
-                          className="text-[10px] px-2 py-1 bg-codex-surface/30 text-codex-text-secondary rounded"
-                        >
-                          {fw.name}
-                        </span>
-                      ))}
-                      {category.frameworks.length > 3 && (
-                        <span className="text-[10px] px-2 py-1 text-codex-text-muted">
-                          +{category.frameworks.length - 3} more
-                        </span>
-                      )}
+          // Show category cards + all frameworks below
+          <div className="max-w-6xl">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+              {categories.map((category) => (
+                <div
+                  key={category.id}
+                  className="bg-codex-surface/60 border border-codex-border rounded-lg p-5 hover:bg-codex-surface-hover hover:border-codex-accent/50 transition-all duration-200 cursor-pointer group"
+                  onClick={() => {
+                    if (category.frameworks.length === 1) {
+                      onSelectFramework(category.frameworks[0].id, category.id);
+                    } else if (category.frameworks.length > 1) {
+                      setSelectedCategoryId(category.id);
+                    }
+                  }}
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="text-3xl">{category.icon}</div>
+                    <div className="px-2 py-1 bg-codex-surface/50 rounded text-xs font-medium text-codex-text-secondary">
+                      {category.frameworks.length}
                     </div>
                   </div>
-                )}
+                  <h3 className="text-sm font-semibold text-codex-text-primary mb-1 group-hover:text-codex-accent transition-colors">
+                    {category.name}
+                  </h3>
+                  <p className="text-[10px] text-codex-text-muted leading-relaxed">
+                    {category.description}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <div className="border-t border-codex-border pt-6">
+              <h2 className="text-sm font-semibold text-codex-text-primary mb-4">
+                All Frameworks ({stats.totalFrameworks})
+              </h2>
+              <div className="space-y-4">
+                {categories.map((category) => (
+                  <div key={category.id}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-lg">{category.icon}</span>
+                      <h3 className="text-xs font-medium text-codex-text-secondary">{category.name}</h3>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 ml-7">
+                      {category.frameworks.map((framework) => (
+                        <div
+                          key={framework.id}
+                          onClick={() => onSelectFramework(framework.id, category.id)}
+                          className="flex items-center gap-2 px-3 py-2 bg-codex-surface/40 border border-codex-border rounded hover:bg-codex-surface-hover hover:border-codex-accent/50 transition-all cursor-pointer"
+                        >
+                          <span className="text-base">{framework.icon}</span>
+                          <span className="text-xs text-codex-text-primary truncate">{framework.name}</span>
+                          {framework.supports_visuals && (
+                            <span className="text-[9px] px-1.5 py-0.5 bg-purple-500/20 text-purple-300 rounded ml-auto flex-shrink-0">V</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
           </div>
         ) : (
           // Show search results grouped by category

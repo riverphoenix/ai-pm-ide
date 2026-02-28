@@ -10,6 +10,8 @@ interface ChatInterfaceProps {
   settings: Settings;
   model?: string;
   onModelChange?: (model: string) => void;
+  initialMessage?: string | null;
+  onInitialMessageConsumed?: () => void;
 }
 
 interface MessageWithContext extends Message {
@@ -24,6 +26,8 @@ export default function ChatInterface({
   settings,
   model: _model = 'gpt-5',
   onModelChange,
+  initialMessage,
+  onInitialMessageConsumed,
 }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<MessageWithContext[]>([]);
   const [input, setInput] = useState('');
@@ -114,6 +118,22 @@ export default function ChatInterface({
     loadContextDocs();
   }, [projectId]);
 
+  // Auto-send initial message from welcome page
+  const initialMessageSentRef = useRef(false);
+  useEffect(() => {
+    if (initialMessage && !initialMessageSentRef.current && !loading) {
+      initialMessageSentRef.current = true;
+      setInput(initialMessage);
+      onInitialMessageConsumed?.();
+      // Defer send to next tick so input state is set
+      setTimeout(() => {
+        setInput('');
+        // Directly trigger send with the message
+        sendMessage(initialMessage);
+      }, 100);
+    }
+  }, [initialMessage]);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({
       behavior: 'smooth',
@@ -168,11 +188,10 @@ export default function ChatInterface({
     return parts.join(' ');
   };
 
-  const handleSend = async () => {
-    if (!input.trim() || loading) return;
+  const sendMessage = async (messageText: string) => {
+    if (!messageText.trim() || loading) return;
 
-    const userMessage = input.trim();
-    setInput('');
+    const userMessage = messageText.trim();
     setLoading(true);
     setStreamingMessage('');
     setError(null);
@@ -400,9 +419,18 @@ export default function ChatInterface({
       console.log('Conversation stats updated successfully');
     } catch (error) {
       console.error('Failed to send message:', error);
-      let errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      let errorMessage: string;
 
-      // Handle token limit errors specifically
+      if (error instanceof TypeError && (error.message.includes('fetch') || error.message.includes('Failed to fetch') || error.message.includes('NetworkError'))) {
+        errorMessage = 'Cannot connect to AI server. Please ensure the Python sidecar is running (cd python-sidecar && python main.py).';
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      } else {
+        errorMessage = 'Failed to connect to AI server. Check that the sidecar is running on port 8000.';
+      }
+
       if (errorMessage.includes('tokens exceed') || errorMessage.includes('token limit')) {
         errorMessage = 'Context is too large! Try removing some documents or using a shorter message. Consider using GPT-5 instead of GPT-5-nano for larger contexts.';
       }
@@ -411,6 +439,13 @@ export default function ChatInterface({
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSend = async () => {
+    if (!input.trim() || loading) return;
+    const msg = input.trim();
+    setInput('');
+    await sendMessage(msg);
   };
 
   const togglePromptExpansion = (messageId: string) => {
@@ -525,7 +560,7 @@ export default function ChatInterface({
               <div className="max-w-3xl mx-auto px-6 py-4">
                 <div className="flex gap-3">
                   <div className="flex-shrink-0 mt-0.5">
-                    <div className="w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold bg-codex-text-primary text-codex-bg">
+                    <div className="w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold bg-codex-accent text-white animate-pulse">
                       AI
                     </div>
                   </div>
@@ -533,10 +568,13 @@ export default function ChatInterface({
                     <div className="text-xs font-medium text-codex-text-muted mb-1.5">
                       Assistant
                     </div>
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-1.5 h-1.5 bg-codex-text-muted rounded-full animate-pulse"></div>
-                      <div className="w-1.5 h-1.5 bg-codex-text-muted rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-                      <div className="w-1.5 h-1.5 bg-codex-text-muted rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1">
+                        <div className="w-2 h-2 bg-codex-accent rounded-full animate-bounce" style={{ animationDelay: '0ms', animationDuration: '1s' }}></div>
+                        <div className="w-2 h-2 bg-codex-accent rounded-full animate-bounce" style={{ animationDelay: '150ms', animationDuration: '1s' }}></div>
+                        <div className="w-2 h-2 bg-codex-accent rounded-full animate-bounce" style={{ animationDelay: '300ms', animationDuration: '1s' }}></div>
+                      </div>
+                      <span className="text-xs text-codex-text-muted animate-pulse">Thinking...</span>
                     </div>
                   </div>
                 </div>

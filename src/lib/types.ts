@@ -205,6 +205,7 @@ export interface CommandHistoryEntry {
 export interface CommandResult {
   output: string;
   exit_code: number;
+  cwd: string;
 }
 
 export interface FrameworkDefinition {
@@ -371,4 +372,13 @@ export interface NotionExportResult {
   success: boolean;
   page_url?: string;
   error?: string;
+}
+
+export interface FileEntry {
+  name: string;
+  path: string;
+  is_dir: boolean;
+  size: number;
+  modified: number;
+  extension: string;
 }
