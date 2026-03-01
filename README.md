@@ -1,1056 +1,135 @@
-# PM IDE - AI-Powered Product Management Workspace
+# PM IDE
 
-A Mac-first IDE specifically designed for Product Managers to manage context, generate PM frameworks with AI, and streamline product workflows.
+An AI-powered desktop IDE for Product Managers. Built with Tauri 2, React 19, and GPT-5.
 
-## 🎯 Vision
+## Features
 
-PM IDE enables product managers to:
-- **Manage persistent context** across projects (PRDs, memos, research, strategy docs)
-- **Generate PM frameworks** using AI with context-driven prompts (not form-based)
-- **Apply 45+ PM frameworks** across Strategy, Prioritization, Discovery, Development, Execution, Decision, and Communication
-- **Use 30+ prompt templates** with `{variable}` substitution for repeatable PM workflows
-- **Upload context documents** (PDFs, URLs, Google Docs, plain text) with automatic content extraction
-- **Import/export frameworks and prompts** as .md files with YAML front matter for sharing and backup
-- **Chain multi-step workflows** that pipe output from one framework to the next
-- **Get AI-powered insights** with proactive suggestions based on project activity
-- **Track version history** with automatic git-based versioning for every output
-- **Export to Jira and Notion** directly from the outputs library
-- **Save and organize outputs** in a searchable library with visual diagrams
-- **Chat with AI** about product strategy, frameworks, and ideas
+- **AI Chat** - Strategy conversations with GPT-5 (streaming, multi-model)
+- **45+ PM Frameworks** - PRD, RICE, SWOT, JTBD, Customer Journey Maps, and more
+- **30+ Prompt Templates** - With `{variable}` substitution and auto-detection
+- **Workflow Builder** - Chain frameworks into multi-step pipelines with output piping
+- **Context Documents** - Upload PDFs, URLs, Google Docs as AI context
+- **File Explorer** - Hierarchical folders with Monaco code editor
+- **Outputs Library** - Save, search, and export generated frameworks
+- **AI Insights** - Proactive project suggestions based on activity
+- **Git Versioning** - Auto-commit every output with diff viewer and rollback
+- **Jira & Notion Export** - Push outputs directly to external tools
+- **xterm.js Terminal** - Built-in terminal with autocomplete and ANSI colors
+- **Import/Export** - Share frameworks and prompts as `.md` files with YAML front matter
 
-## 🛠 Tech Stack
+## Tech Stack
 
-- **Frontend**: React 19 + Vite + TypeScript + Tailwind CSS v4
-- **Desktop**: Tauri 2.0 (Rust backend with WKWebView on Mac)
-- **Python Sidecar**: FastAPI + OpenAI SDK + PyMuPDF + BeautifulSoup4
-- **LLM**: GPT-5 (OpenAI Frontier Models: gpt-5, gpt-5-mini, gpt-5-nano)
-- **Database**: SQLite with CASCADE delete patterns
-- **Version Control**: git2 (libgit2) for per-project output versioning
-- **Integrations**: Jira REST API v3, Notion API v2022-06-28
-- **Encryption**: AES-256-GCM for API keys and integration tokens
-- **Diagrams**: Mermaid for Customer Journey Maps and visual frameworks
+| Layer | Tech |
+|-------|------|
+| Frontend | React 19, TypeScript, Tailwind CSS v4, Vite |
+| Desktop | Tauri 2.0 (Rust, WKWebView on macOS) |
+| AI Sidecar | Python, FastAPI, OpenAI SDK |
+| Database | SQLite (12 tables, CASCADE deletes) |
+| LLMs | GPT-5, GPT-5 Mini, GPT-5 Nano |
+| Encryption | AES-256-GCM (API keys, tokens) |
+| Versioning | libgit2 (per-project repos) |
 
-## ✅ Current Status: Phase 7 Complete (Advanced Features)
+## Prerequisites
 
-### Core Features Implemented
+- **macOS** (primary target)
+- **Rust** 1.70+ with `cargo`
+- **Node.js** 18+
+- **Python** 3.11+
+- **OpenAI API key** (GPT-5 access)
 
-#### 1. **Project Management** ✅
-- Create and manage unlimited projects
-- Organize PM work in dedicated workspaces
-- Delete projects with CASCADE cleanup of all related data
-
-#### 2. **Context Documents** ✅
-- **Auto-extraction from PDFs** using PyMuPDF
-- **Auto-fetch from URLs** using BeautifulSoup (HTML parsing)
-- **Google Docs import** via export API (public docs only)
-- **Plain text documents** for custom content
-- **Global context** - documents available to all prompts
-- Size tracking and content display
-
-#### 3. **Framework Generation (AI-Driven)** ✅
-- **45 frameworks** across 7 categories (Strategy, Prioritization, Discovery, Development, Execution, Decision, Communication)
-- **Context-driven generation**: Upload documents + user prompt → AI generates complete framework output
-- **Visual generation**: Mermaid diagrams for Customer Journey Maps
-- **Save/Export**: Save to library, download markdown, copy to clipboard
-
-#### 3b. **Framework Management (Phase 4)** ✅
-- **SQLite-backed frameworks**: All definitions stored in database with full CRUD
-- **Prompt editing**: Monaco editor for customizing system prompts and guiding questions
-- **Framework Manager**: Browse, create, edit, duplicate, and delete frameworks
-- **Category Manager**: Create custom categories, edit existing ones
-- **Reset to Default**: Restore built-in frameworks from seed data
-- **Search**: Full-text search across framework names and descriptions
-
-#### 3c. **Prompts Library (Phase 5)** ✅
-- **30 pre-loaded prompt templates** across 7 categories (PRD, Analysis, Stories, Communication, Data, Prioritization, Strategy)
-- **Variable system**: Dynamic `{variable}` placeholders with text, textarea, and select input types
-- **Auto-detection**: Variables extracted automatically from prompt text as you type
-- **Prompt Picker**: Select saved prompts in FrameworkGenerator, fill variables, preview resolved text
-- **CRUD management**: Create, edit, duplicate, delete custom prompts (built-in prompts protected)
-- **Usage tracking**: Track how often each prompt is used, sort by most-used
-- **Favorites**: Star prompts for quick access
-- **Search & filter**: Full-text search + category filtering
-
-#### 3d. **Framework Marketplace (Phase 6)** ✅
-- **Export frameworks/prompts** as .md files with YAML front matter metadata
-- **Import from .md files** with preview, conflict detection, and resolution (overwrite/copy/skip)
-- **Batch export**: Select multiple items, export to a directory
-- **Multi-file import**: Select multiple .md files, review all with per-file conflict actions
-- **Category auto-creation**: Unknown categories in imported files are auto-created
-- **Validation**: Type checking, required fields, export version validation
-- **Round-trip safe**: Export → re-import preserves all data including variables
-
-#### 4. **Outputs Library** ✅
-- View all saved framework outputs
-- Filter by category (Strategy, Prioritization, etc.)
-- Search across output names and content
-- Preview with rich markdown rendering + Mermaid diagrams
-
-#### 5. **Chat Interface** ✅
-- GPT-5 chat integration with streaming responses
-- Conversation history per project
-- Token usage tracking and cost calculation
-- Model selector (GPT-5 / GPT-5 Mini / GPT-5 Nano)
-
-#### 6. **Documents Explorer (Phase 2)** ✅
-- **Folder tree**: Hierarchical file management with unlimited depth
-- **Drag & drop**: Move files between folders with @dnd-kit
-- **Search**: Fuzzy search across all documents and outputs
-- **Favorites**: Star items for quick access
-- **Folder colors**: 6 preset color labels for organization
-- **Inline rename**: Double-click to rename files and folders
-- **Breadcrumb navigation**: Path display above preview panel
-
-#### 7. **Console Integration (Phase 3)** ✅
-- **Command Palette (Cmd+K)**: Fuzzy-search all commands, keyboard navigation, shortcut hints
-- **Global Keyboard Shortcuts**: Cmd+1-5 (tabs), Cmd+` (terminal), Cmd+B (sidebar)
-- **Terminal Panel**: Execute shell commands, command history, exit code display
-- **Resizable Bottom Panel**: Drag-to-resize with Terminal/Output tabs
-- **Sidebar Toggle**: Show/hide sidebar with keyboard or button
-
-#### 8. **Workflow Builder (Phase 7)** ✅
-- **Multi-step workflows**: Chain multiple frameworks sequentially with output piping
-- **Output chaining**: `{prev_output}` placeholder passes each step's output to the next
-- **3 built-in templates**: Complete Product Brief (4 steps), Feature Validation (3 steps), Strategic Review (3 steps)
-- **Workflow Editor**: Add/remove steps, configure framework, prompt, model, and context docs per step
-- **Workflow Runner**: Real-time execution with step progress indicators and streaming output
-- **Run history**: Track all workflow executions with per-step status and output
-
-#### 9. **AI Insights (Phase 7)** ✅
-- **Proactive suggestions**: AI analyzes project activity and recommends next steps
-- **3 insight types**: Suggestions, patterns, and next-step recommendations
-- **Priority levels**: High/medium/low priority for each insight
-- **Dismissible**: Mark insights as dismissed to keep the panel focused
-- **Framework linking**: Next-step insights link directly to suggested frameworks
-
-#### 10. **Git-Based Version History (Phase 7)** ✅
-- **Auto-commit**: Every output save/update automatically commits to a per-project git repo
-- **Version history panel**: Browse all commits for any output
-- **Diff viewer**: Line-by-line diff with color-coded additions/deletions
-- **Rollback**: Restore any output to a previous version with one click
-
-#### 11. **Jira & Notion Integration (Phase 7)** ✅
-- **Jira export**: Create Jira issues from framework outputs with project/issue-type selection
-- **Notion export**: Create Notion pages from framework outputs under any parent page
-- **Settings-based config**: API tokens encrypted with AES-256-GCM
-- **Connection testing**: Validate credentials before use
-- **Conditional UI**: Export buttons only shown when integration is configured
-
-#### 12. **Settings** ✅
-- Secure API key storage with AES-256-GCM encryption
-- User profile context (name, role, company)
-- Jira integration (URL, email, API token, project key)
-- Notion integration (API token, parent page ID)
-
-### Architecture
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                    Tauri Window (WKWebView)              │
-│  ┌────────────────────────────────────────────────────┐ │
-│  │         React Frontend (Vite + TypeScript)         │ │
-│  │                                                    │ │
-│  │  ├─ FrameworksHome (category browser)            │ │
-│  │  ├─ FrameworkGenerator (AI generation)           │ │
-│  │  ├─ FrameworkManager (CRUD + editing)            │ │
-│  │  ├─ FrameworkCustomizer (prompt editor)          │ │
-│  │  ├─ CategoryManager (category CRUD)              │ │
-│  │  ├─ PromptsLibrary (browse/manage prompts)      │ │
-│  │  ├─ PromptEditorModal (create/edit prompts)     │ │
-│  │  ├─ PromptPickerModal (use prompts in gen)      │ │
-│  │  ├─ ImportPreviewDialog (single import preview) │ │
-│  │  ├─ BatchExportDialog (multi-item export)       │ │
-│  │  ├─ BatchImportDialog (multi-file import)       │ │
-│  │  ├─ WorkflowsPage (workflow list + editor)      │ │
-│  │  ├─ WorkflowRunner (streaming execution)        │ │
-│  │  ├─ InsightsPanel (AI project insights)         │ │
-│  │  ├─ VersionHistory (git commit browser)         │ │
-│  │  ├─ DiffViewer (line-level diff display)        │ │
-│  │  ├─ ExportToJiraDialog (Jira issue export)      │ │
-│  │  ├─ ExportToNotionDialog (Notion page export)   │ │
-│  │  ├─ ContextManager (document management)         │ │
-│  │  ├─ OutputsLibrary (saved outputs + export)      │ │
-│  │  ├─ DocumentsExplorer (folder tree + preview)    │ │
-│  │  ├─ ChatInterface (GPT-5 chat)                   │ │
-│  │  ├─ CommandPalette (Cmd+K quick actions)         │ │
-│  │  ├─ BottomPanel (terminal + output)              │ │
-│  │  └─ Settings (API keys, integrations)            │ │
-│  └────────────────────────────────────────────────────┘ │
-│                          ↕                              │
-│  ┌────────────────────────────────────────────────────┐ │
-│  │              Tauri Core (Rust)                     │ │
-│  │                                                    │ │
-│  │  ├─ IPC Commands (~105 commands)                 │ │
-│  │  ├─ SQLite Database (12 tables)                  │ │
-│  │  ├─ Git Version Control (per-project repos)      │ │
-│  │  ├─ HTTP Client (Jira, Notion APIs)              │ │
-│  │  ├─ AES-256-GCM Encryption                       │ │
-│  │  └─ Shell Command Execution                       │ │
-│  └────────────────────────────────────────────────────┘ │
-│                          ↕                              │
-│  ┌────────────────────────────────────────────────────┐ │
-│  │         Python Sidecar (FastAPI Server)            │ │
-│  │                                                    │ │
-│  │  ├─ OpenAI API Client (GPT-5)                    │ │
-│  │  ├─ Framework Generation Engine                   │ │
-│  │  ├─ AI Insights Engine                            │ │
-│  │  ├─ Document Parsing (PDF, URL, Google Docs)     │ │
-│  │  └─ Framework Definition Loader                   │ │
-│  └────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────┘
-```
-
-## 💻 Development
-
-### Prerequisites
-
-- **Rust** 1.93+ (for Tauri backend)
-- **Node.js** 18+ (for React frontend)
-- **Python** 3.11+ (for AI integration sidecar)
-- **Tauri CLI**: `cargo install tauri-cli`
-
-### Getting Started
+## Installation
 
 ```bash
-# Clone the repository
-git clone <your-repo-url>
+git clone git@github.com:riverphoenix/ai-pm-ide.git
 cd pm-ide
 
-# Install Node dependencies
+# Frontend dependencies
 npm install
 
-# Set up Python sidecar
+# Python sidecar
 cd python-sidecar
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+source venv/bin/activate
 pip install -r requirements.txt
 cd ..
+```
 
-# Run in development mode (starts both Tauri and Python sidecar)
+## Running Locally
+
+You need two processes running: the Python sidecar and the Tauri app.
+
+**Terminal 1 - Start the AI sidecar:**
+
+```bash
+cd python-sidecar
+source venv/bin/activate
+python main.py
+```
+
+This starts the FastAPI server on `http://localhost:8000`. You can verify with:
+
+```bash
+curl http://localhost:8000/health
+```
+
+**Terminal 2 - Start the app:**
+
+```bash
 npm run tauri dev
+```
 
-# Build for production (creates Mac .dmg)
+This starts the Vite dev server and opens the Tauri window. Hot-reload is enabled for both frontend and Rust changes.
+
+## Building for Production
+
+```bash
 npm run tauri build
 ```
 
-### Project Structure
+Outputs a `.dmg` installer in `src-tauri/target/release/bundle/dmg/`.
+
+## First Run Setup
+
+1. Launch the app
+2. Go to **Settings** (gear icon in the left sidebar)
+3. Enter your **OpenAI API key**
+4. Optionally configure Jira/Notion integration tokens
+5. Return to Home and start chatting or generating frameworks
+
+## Project Structure
 
 ```
 pm-ide/
-├── src/                          # React frontend
-│   ├── components/               # React components
-│   │   ├── ChatInterface.tsx     # GPT-5 chat UI
-│   │   ├── FrameworkGenerator.tsx # Framework generation UI
-│   │   ├── FrameworkManager.tsx  # Framework CRUD management
-│   │   ├── FrameworkCustomizer.tsx # Prompt editor slide-over
-│   │   ├── CategoryManager.tsx   # Category CRUD modal
-│   │   ├── PromptEditor.tsx      # Monaco editor wrapper
-│   │   ├── PromptEditorModal.tsx # Create/edit saved prompts
-│   │   ├── PromptPickerModal.tsx # Select prompt + fill variables
-│   │   ├── ImportPreviewDialog.tsx # Single file import preview
-│   │   ├── BatchExportDialog.tsx # Multi-item export selector
-│   │   ├── BatchImportDialog.tsx # Multi-file import review
-│   │   ├── FolderTree.tsx        # Drag-and-drop folder tree
-│   │   ├── TreeItem.tsx          # Individual tree node
-│   │   ├── CommandPalette.tsx    # Cmd+K command palette
-│   │   ├── BottomPanel.tsx       # Terminal/output panel
-│   │   ├── TerminalView.tsx      # Shell command terminal
-│   │   ├── TopActionBar.tsx      # IDE action buttons
-│   │   ├── ResizableDivider.tsx  # Drag-to-resize panels
-│   │   ├── WorkflowEditor.tsx    # Workflow step builder
-│   │   ├── WorkflowRunner.tsx    # Streaming workflow executor
-│   │   ├── InsightsPanel.tsx     # AI project insights panel
-│   │   ├── VersionHistory.tsx    # Git commit history viewer
-│   │   ├── DiffViewer.tsx        # Line-level diff display
-│   │   ├── ExportToJiraDialog.tsx # Jira issue creation dialog
-│   │   ├── ExportToNotionDialog.tsx # Notion page creation dialog
-│   │   ├── MermaidRenderer.tsx   # Mermaid diagram renderer
-│   │   └── MarkdownWithMermaid.tsx # Custom markdown renderer
-│   ├── hooks/                    # Custom React hooks
-│   │   └── useKeyboardShortcuts.ts # Global keyboard shortcuts
-│   ├── lib/                      # Utilities and helpers
-│   │   ├── ipc.ts                # Tauri IPC wrappers
-│   │   ├── types.ts              # TypeScript types
-│   │   ├── shortcuts.ts          # Keyboard shortcut registry
-│   │   ├── commandRegistry.ts    # Command palette definitions
-│   │   └── frameworks.ts         # Framework loader utility
-│   ├── pages/                    # Page components
-│   │   ├── ProjectView.tsx       # Main project workspace
-│   │   ├── DocumentsExplorer.tsx # Folder tree + preview panel
-│   │   ├── FrameworksHome.tsx    # Framework category browser
-│   │   ├── PromptsLibrary.tsx   # Prompt templates browser
-│   │   ├── ContextManager.tsx    # Document management
-│   │   ├── OutputsLibrary.tsx    # Saved outputs + export
-│   │   └── WorkflowsPage.tsx    # Workflow list + management
-│   ├── frameworks/               # Framework JSON definitions (seed data)
-│   │   ├── categories.json       # 7 category definitions
-│   │   ├── strategy/             # 8 frameworks
-│   │   ├── prioritization/       # 6 frameworks
-│   │   ├── discovery/            # 8 frameworks
-│   │   ├── development/          # 5 frameworks
-│   │   ├── execution/            # 6 frameworks
-│   │   ├── decision/             # 5 frameworks
-│   │   └── communication/        # 7 frameworks
-│   └── prompts/                  # Prompt template seed data (30 prompts)
-│       ├── prd/                  # 5 prompts
-│       ├── analysis/             # 5 prompts
-│       ├── stories/              # 5 prompts
-│       ├── communication/        # 5 prompts
-│       ├── data/                 # 4 prompts
-│       ├── prioritization/       # 3 prompts
-│       └── strategy/             # 3 prompts
-├── src-tauri/                    # Tauri / Rust backend
+├── src/                    # React frontend
+│   ├── components/         # UI components (ActivityBar, ChatInterface, TerminalView, etc.)
+│   ├── pages/              # Page views (ProjectView, FileExplorer, FrameworksHome, etc.)
+│   ├── lib/                # IPC wrappers, types, shortcuts
+│   ├── hooks/              # Custom React hooks
+│   ├── frameworks/         # 45 framework JSON seed definitions
+│   └── prompts/            # 30 prompt template seed files
+├── src-tauri/              # Rust backend
 │   └── src/
-│       ├── main.rs               # Entry point
-│       ├── lib.rs                # Command registration (~105 commands)
-│       └── commands.rs           # All IPC commands + SQLite schema
-├── python-sidecar/               # Python FastAPI server
-│   ├── main.py                   # FastAPI app
-│   ├── openai_client.py          # OpenAI API client
-│   ├── framework_loader.py       # Framework definition loader
-│   └── document_parser.py        # PDF/URL/Google Docs parsing
+│       ├── main.rs         # Entry point
+│       ├── lib.rs          # ~132 IPC command registrations
+│       └── commands.rs     # All commands, SQLite schema, business logic
+├── python-sidecar/         # Python FastAPI server
+│   ├── main.py             # API routes (chat, frameworks, insights, parsing)
+│   ├── openai_client.py    # OpenAI streaming client
+│   ├── framework_loader.py # Framework definition loader
+│   └── document_parser.py  # PDF, URL, Google Docs extraction
 └── README.md
 ```
 
-### Database Schema
+## Keyboard Shortcuts
 
-#### Projects
-```sql
-CREATE TABLE projects (
-    id TEXT PRIMARY KEY NOT NULL,
-    name TEXT NOT NULL,
-    description TEXT,
-    created_at INTEGER NOT NULL,
-    updated_at INTEGER NOT NULL
-);
-```
-
-#### Folders (Phase 2)
-```sql
-CREATE TABLE folders (
-    id TEXT PRIMARY KEY NOT NULL,
-    project_id TEXT NOT NULL,
-    parent_id TEXT,           -- NULL for root
-    name TEXT NOT NULL,
-    color TEXT,               -- red, orange, yellow, green, blue, purple
-    sort_order INTEGER NOT NULL DEFAULT 0,
-    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
-    FOREIGN KEY (parent_id) REFERENCES folders(id) ON DELETE CASCADE
-);
-```
-
-#### Context Documents (with folder support)
-```sql
-CREATE TABLE context_documents (
-    id TEXT PRIMARY KEY NOT NULL,
-    project_id TEXT NOT NULL,
-    name TEXT NOT NULL,
-    type TEXT NOT NULL,       -- 'pdf', 'url', 'google_doc', 'text'
-    content TEXT NOT NULL,
-    folder_id TEXT,           -- NULL = root level
-    is_favorite INTEGER NOT NULL DEFAULT 0,
-    tags TEXT DEFAULT '[]',
-    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
-);
-```
-
-#### Command History (Phase 3)
-```sql
-CREATE TABLE command_history (
-    id TEXT PRIMARY KEY NOT NULL,
-    project_id TEXT NOT NULL,
-    command TEXT NOT NULL,
-    output TEXT NOT NULL,
-    exit_code INTEGER NOT NULL,
-    created_at INTEGER NOT NULL,
-    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
-);
-```
-
-#### Framework Categories (Phase 4)
-```sql
-CREATE TABLE framework_categories (
-    id TEXT PRIMARY KEY NOT NULL,
-    name TEXT NOT NULL,
-    description TEXT NOT NULL,
-    icon TEXT NOT NULL,
-    is_builtin INTEGER NOT NULL DEFAULT 1,
-    sort_order INTEGER NOT NULL DEFAULT 0,
-    created_at INTEGER NOT NULL,
-    updated_at INTEGER NOT NULL
-);
-```
-
-#### Framework Definitions (Phase 4)
-```sql
-CREATE TABLE framework_definitions (
-    id TEXT PRIMARY KEY NOT NULL,
-    category TEXT NOT NULL,
-    name TEXT NOT NULL,
-    description TEXT NOT NULL,
-    icon TEXT NOT NULL,
-    example_output TEXT NOT NULL DEFAULT '',
-    system_prompt TEXT NOT NULL DEFAULT '',
-    guiding_questions TEXT NOT NULL DEFAULT '[]',
-    supports_visuals INTEGER NOT NULL DEFAULT 0,
-    visual_instructions TEXT,
-    is_builtin INTEGER NOT NULL DEFAULT 0,
-    sort_order INTEGER NOT NULL DEFAULT 0,
-    created_at INTEGER NOT NULL,
-    updated_at INTEGER NOT NULL,
-    FOREIGN KEY (category) REFERENCES framework_categories(id)
-);
-```
-
-#### Saved Prompts (Phase 5)
-```sql
-CREATE TABLE saved_prompts (
-    id TEXT PRIMARY KEY NOT NULL,
-    name TEXT NOT NULL,
-    description TEXT NOT NULL DEFAULT '',
-    category TEXT NOT NULL DEFAULT 'general',
-    prompt_text TEXT NOT NULL,
-    variables TEXT NOT NULL DEFAULT '[]',   -- JSON array of variable definitions
-    framework_id TEXT,
-    is_builtin INTEGER NOT NULL DEFAULT 0,
-    is_favorite INTEGER NOT NULL DEFAULT 0,
-    usage_count INTEGER NOT NULL DEFAULT 0,
-    sort_order INTEGER NOT NULL DEFAULT 0,
-    created_at INTEGER NOT NULL,
-    updated_at INTEGER NOT NULL,
-    FOREIGN KEY (framework_id) REFERENCES framework_definitions(id) ON DELETE SET NULL
-);
-```
-
-#### Workflows (Phase 7)
-```sql
-CREATE TABLE workflows (
-    id TEXT PRIMARY KEY,
-    project_id TEXT NOT NULL,
-    name TEXT NOT NULL,
-    description TEXT NOT NULL DEFAULT '',
-    steps TEXT NOT NULL DEFAULT '[]',      -- JSON array of WorkflowStepDef
-    is_template INTEGER NOT NULL DEFAULT 0,
-    created_at INTEGER NOT NULL,
-    updated_at INTEGER NOT NULL,
-    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
-);
-
-CREATE TABLE workflow_runs (
-    id TEXT PRIMARY KEY,
-    workflow_id TEXT NOT NULL,
-    project_id TEXT NOT NULL,
-    status TEXT NOT NULL DEFAULT 'pending',  -- pending, running, completed, failed, cancelled
-    started_at INTEGER,
-    completed_at INTEGER,
-    created_at INTEGER NOT NULL,
-    FOREIGN KEY (workflow_id) REFERENCES workflows(id) ON DELETE CASCADE
-);
-
-CREATE TABLE workflow_run_steps (
-    id TEXT PRIMARY KEY,
-    run_id TEXT NOT NULL,
-    step_index INTEGER NOT NULL,
-    framework_id TEXT NOT NULL,
-    status TEXT NOT NULL DEFAULT 'pending',  -- pending, running, completed, failed, skipped
-    input_prompt TEXT,
-    output_content TEXT,
-    output_id TEXT,
-    error TEXT,
-    started_at INTEGER,
-    completed_at INTEGER,
-    FOREIGN KEY (run_id) REFERENCES workflow_runs(id) ON DELETE CASCADE
-);
-```
-
-#### Project Insights (Phase 7)
-```sql
-CREATE TABLE project_insights (
-    id TEXT PRIMARY KEY,
-    project_id TEXT NOT NULL,
-    insight_type TEXT NOT NULL,  -- suggestion, pattern, next_step
-    title TEXT NOT NULL,
-    description TEXT NOT NULL,
-    priority TEXT NOT NULL DEFAULT 'medium',
-    framework_id TEXT,
-    is_dismissed INTEGER NOT NULL DEFAULT 0,
-    created_at INTEGER NOT NULL,
-    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
-);
-```
-
-## 🎨 Framework Definitions
-
-Each framework is defined in JSON format with:
-
-```json
-{
-  "id": "customer-journey-map",
-  "name": "Customer Journey Map",
-  "category": "discovery",
-  "description": "Map the customer's end-to-end experience",
-  "icon": "🗺️",
-  "system_prompt": "You are a PM expert in customer journey mapping...",
-  "example_output": "# Customer Journey Map\n\n## Overview...",
-  "guiding_questions": [
-    "Who is the target customer persona?",
-    "What are the key stages in their journey?"
-  ],
-  "supports_visuals": true,
-  "visual_instructions": "Include a Mermaid journey diagram..."
-}
-```
-
-### Adding New Frameworks
-
-**Via UI (recommended):**
-1. Go to Frameworks tab → click "Manage"
-2. Click "New Framework" → fill in name, category, description, icon
-3. Edit the system prompt using the built-in Monaco editor
-4. Add guiding questions and example output
-
-**Via seed data (built-in):**
-1. Create a JSON file in `src/frameworks/{category}/`
-2. Add an `include_str!` entry in `commands.rs` (both `seed_frameworks` and `reset_framework_def`)
-3. The framework will be seeded on first launch via `INSERT OR IGNORE`
-
-## 🚀 API Endpoints
-
-Python sidecar runs on `http://127.0.0.1:8000` and provides:
-
-### Framework Generation
-- `POST /generate-framework` - Generate framework output from context
-- `POST /generate-framework/stream` - Streaming version (SSE)
-
-### Document Parsing
-- `POST /parse-url?url={url}` - Auto-fetch and extract content from URLs
-- `POST /parse-pdf` - Extract text from PDF bytes
-
-### Chat
-- `POST /chat` - GPT-5 chat (non-streaming)
-- `POST /chat/stream` - GPT-5 chat (streaming SSE)
-
-### AI Insights
-- `POST /insights/generate` - Generate project insights from metadata (SSE streaming)
-
-### Field Suggestions
-- `POST /suggest-field` - AI suggestions for template fields
-
-### Health
-- `GET /` - Health check
-- `GET /health` - Health status
-- `GET /models` - Available OpenAI models
-
-## 🎯 What's Working Now
-
-✅ **Project Management** - Create unlimited projects
-✅ **Context Documents** - Upload PDFs, fetch URLs, import Google Docs
-✅ **AI Framework Generation** - 45 frameworks with context-driven prompts
-✅ **Framework Management** - Create, edit, duplicate, delete frameworks with Monaco editor
-✅ **Prompts Library** - 30 pre-loaded templates with {variable} substitution, CRUD, usage tracking
-✅ **Framework Marketplace** - Import/export frameworks and prompts as .md files with YAML front matter
-✅ **Workflow Builder** - Chain multi-step workflows with output piping, 3 built-in templates
-✅ **AI Insights** - Proactive suggestions based on project activity analysis
-✅ **Version History** - Git-based auto-commit, diff viewer, rollback for all outputs
-✅ **Jira Integration** - Export outputs as Jira issues with project/type selection
-✅ **Notion Integration** - Export outputs as Notion pages under any parent page
-✅ **Visual Diagrams** - Mermaid rendering for Customer Journey Maps
-✅ **Outputs Library** - Save, search, filter, view, and export outputs
-✅ **Document Parsing** - Automatic content extraction (PDF, HTML)
-✅ **Chat Interface** - GPT-5 chat with streaming, history, cost tracking
-✅ **Documents Explorer** - Folder tree, drag-and-drop, search, favorites, colors
-✅ **Command Palette** - Cmd+K with fuzzy search and keyboard navigation
-✅ **Keyboard Shortcuts** - Cmd+1-7 tabs, Cmd+` terminal, Cmd+B sidebar
-✅ **Terminal Panel** - Execute shell commands with history
-✅ **Settings** - API keys, user profile, Jira & Notion integration config
-
-## 🔮 Roadmap: 9-Phase Transformation Plan
-
-**📋 Full Implementation Plan**: [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)
-**Timeline**: 34 weeks (~8.5 months)
-**Status**: Phase 0 (MVP) ✅ | Phase 1 (UI) ✅ | Phase 2 (Files) ✅ | Phase 3 (Console) ✅ | Phase 4 (Frameworks) ✅ | Phase 5 (Prompts) ✅ | Phase 6 (Marketplace) ✅ | Phase 7 (Advanced) ✅ | Phase 8 (Polish) 🔜 | Phase 9 (Scale) 🔜
-
----
-
-### **Phase 1: UI Redesign (4-5 weeks)** - Codex-Inspired ✅
-**Status**: Complete
-
-Transformed the interface into a modern, agent-native workspace inspired by OpenAI's Codex.
-
-**Completed**:
-- 🎨 **Codex Design System**: Dark theme with custom color tokens (codex-bg, codex-surface, codex-sidebar, codex-accent), refined typography
-- 🔧 **Redesigned Sidebar**: Flat nav items with SVG icons, "Threads" section, Settings at bottom
-- ⚡ **Top Action Bar**: Project name display, Open, Commit, Terminal, IDE toggles
-- 📦 **Codex-Style Pages**: Settings (sidebar nav + form layout), Frameworks (card grid), Context, Outputs (split panel), Chat (centered "Let's build" empty state, model selector below input)
-- 🔲 **ResizableDivider**: Drag-to-resize panels for sidebar and split views
-- 🛠 **Scrolling Fix**: Inline styles on full parent chain with calc(100vh) for reliable overflow containment in Tailwind v4
-- ✨ **Clean Components**: Modern inputs, buttons, cards with consistent hover states
-
----
-
-### **Phase 2: File System & Project Structure (3-4 weeks)** - VSCode-Like 📁 ✅
-**Status**: Complete
-
-Added VSCode-style file management with folder tree and organization.
-
-**Completed**:
-- 🌲 **Folder Tree**: Hierarchical folders with expand/collapse, depth indicators
-- 🎯 **Drag & Drop**: @dnd-kit integration with visual drop targets
-- ⚙️ **File Operations**: Create folders, rename (inline), delete, move to folder
-- 🔍 **Fuzzy Search**: Backend SQL LIKE search across documents and outputs
-- 🏷️ **Metadata**: Favorites (star toggle), 6 folder color labels, breadcrumbs
-- 📄 **Preview Panel**: Split view with content preview for selected items
-
----
-
-### **Phase 3: Console Integration (2-3 weeks)** - Power User Features ⌨️ ✅
-**Status**: Complete
-
-Added IDE-style terminal, command palette, and keyboard shortcuts.
-
-**Completed**:
-- 💻 **Terminal Panel**: Resizable bottom panel with shell command execution
-- 🎯 **Command Palette (Cmd+K)**: Fuzzy-search commands with keyboard navigation
-- ⚡ **Keyboard Shortcuts**: 8 shortcuts (tabs, terminal, sidebar, palette)
-- 📊 **Bottom Panel**: Terminal/Output tabs, drag-to-resize, close button
-
-**Keyboard Shortcuts**:
 | Shortcut | Action |
 |----------|--------|
-| `Cmd+K` | Command palette |
-| `Cmd+1-7` | Switch tabs (Chat, Documents, Frameworks, Prompts, Context, Outputs, Workflows) |
-| `Cmd+B` | Toggle sidebar |
+| `Cmd+K` | Command Palette |
+| `Cmd+F` | Search |
+| `Cmd+1-8` | Switch tabs |
 | `` Cmd+` `` | Toggle terminal |
+| `Cmd+B` | Toggle sidebar |
 
----
+## License
 
-### **Phase 4: Framework Expansion + Editing (4-6 weeks)** - Complete PM Toolkit 🎯 ✅
-**Status**: Complete
-
-Expanded from 8 to 45 frameworks, migrated to SQLite, added full editing and management UI.
-
-**Completed**:
-- 📚 **45 Frameworks** across 7 categories, all stored in SQLite with full CRUD
-- ✏️ **Monaco Prompt Editor**: Edit system prompts with syntax highlighting and Codex dark theme
-- 🏷️ **Category Management**: Create, edit, and delete custom categories
-- 🔧 **Framework Manager**: Browse, create, edit, duplicate, and delete frameworks
-- 🔄 **Reset to Default**: Restore any built-in framework from seed data
-- 🔍 **Full-text Search**: Search frameworks by name and description
-- 📊 **13 New Rust Commands**: Complete CRUD for categories and framework definitions
-- 🗃️ **Database Migration**: `INSERT OR IGNORE` seeding — existing installs get new frameworks without overwriting customizations
-
-**Frameworks by Category (45 total)**:
-- **Strategy** (8): Business Model Canvas, SWOT, Porter's Five Forces, Lean Canvas, Value Proposition Canvas, Blue Ocean Strategy, Ansoff Matrix, Strategic Planning
-- **Prioritization** (6): RICE, MoSCoW, Kano Model, ICE Scoring, Value-Effort Matrix, Weighted Scoring
-- **Discovery** (8): JTBD, Customer Journey Map, User Personas, Empathy Map, Problem Statement, Competitive Analysis, Survey Design, Feature Audit
-- **Development** (5): Sprint Planning, Technical Spec, Architecture Decision Record, Definition of Done, Release Plan
-- **Execution** (6): OKRs, North Star Metric, KPI Dashboard, Retrospective, Roadmap Template, Success Metrics
-- **Decision** (5): Decision Matrix, RACI, Pre-Mortem, Opportunity Assessment, Trade-Off Analysis
-- **Communication** (7): PRD, User Stories, Stakeholder Update, Launch Plan, Feature Brief, Product Vision, Changelog
-
----
-
-### **Phase 5: Prompts Library (2-3 weeks)** - Reusable Templates 📝 ✅
-**Status**: Complete
-
-Added saved prompts with `{variable}` template system for repeatable PM workflows.
-
-**Completed**:
-- 📝 **30 Pre-loaded Prompt Templates** across 7 categories with rich, senior-PM-quality prompt text
-- 🔤 **Variable System**: Dynamic `{variable_name}` placeholders with 3 input types (text, textarea, select)
-- 🔧 **Prompt Editor**: Monaco editor with auto-variable detection, type config, required toggle, preview panel
-- 📂 **PromptsLibrary Page**: Browse, search, filter by category, sort (most-used, recent, alpha, favorites)
-- 🎯 **PromptPickerModal**: Select prompt in FrameworkGenerator, fill variables, preview resolved text
-- 📊 **Usage Tracking**: Increment usage count on each use, sort by most-used
-- ⭐ **Favorites & CRUD**: Star prompts, create/edit/duplicate/delete custom prompts (built-in protected)
-- 🗃️ **8 New Rust Commands**: Full CRUD + search + duplicate + increment usage (64 total)
-
-**Prompts by Category (30 total)**:
-- **PRD** (5): PRD from JTBD, Technical PRD, One-Pager, Feature Spec, API Specification
-- **Analysis** (5): Competitive Analysis, Feature Comparison, Market Positioning, Feedback Synthesis, Churn Analysis
-- **Stories** (5): JTBD to Stories, Epic Breakdown, INVEST Criteria, Acceptance Criteria, Story Estimation
-- **Communication** (5): Stakeholder Email, Executive Summary, Product Announcement, Release Notes, Team Update
-- **Data** (4): Metrics Analysis, A/B Test Analysis, KPI Review, Funnel Analysis
-- **Prioritization** (3): Quarterly Priorities, Feature Scoring, Resource Allocation
-- **Strategy** (3): OKR Drafting, Strategic Initiative, Vision Alignment
-
----
-
-### **Phase 6: Framework Marketplace (3-4 weeks)** - Import/Export 📦 ✅
-**Status**: Complete
-
-Added .md file import/export for frameworks and prompts, enabling portability and sharing.
-
-**Completed**:
-- 📥 **Single Export**: Export any framework or prompt as a .md file with YAML front matter + markdown body
-- 📤 **Single Import**: Import .md file with preview, conflict detection (already exists, built-in conflict)
-- 📦 **Batch Export**: Select multiple items via checkbox, export all to a directory
-- 📂 **Multi-File Import**: Select multiple .md files, review all with per-file conflict actions (Import/Copy/Overwrite/Skip)
-- ⚠️ **Conflict Resolution**: 3 actions for duplicate IDs — overwrite existing, import as copy (new ID), or skip
-- 🏷️ **Category Auto-Creation**: Unknown categories in imported files are auto-created as custom categories
-- ✅ **Validation**: Type field, export version, required fields, descriptive error messages
-- 🔧 **10 New Rust Commands**: Export/import for both frameworks and prompts (74 total)
-- 🎨 **3 New Dialog Components**: ImportPreviewDialog, BatchExportDialog, BatchImportDialog
-
-**Export Format** (.md with YAML front matter):
-```markdown
----
-type: framework
-id: swot
-name: "SWOT Analysis"
-category: strategy
-description: "Analyze Strengths, Weaknesses, Opportunities, and Threats"
-icon: "⚖️"
-supports_visuals: false
-exported_at: "2026-02-17T14:30:00Z"
-export_version: 1
----
-
-# System Prompt
-[Full system prompt text]
-
-# Guiding Questions
-1. What product or business are you analyzing?
-2. Who is your target customer?
-
-# Example Output
-[Full example output markdown]
-```
-
----
-
-### **Phase 7: Advanced Features (6-8 weeks)** - Workflows, Insights, Git, Integrations 🤖 ✅
-**Status**: Complete
-
-Added workflow builder, AI insights, git-based version history, and Jira/Notion integrations.
-
-**Completed**:
-- 🔗 **Workflow Builder**: Chain multiple frameworks into multi-step workflows with sequential execution
-  - 3 built-in templates: Complete Product Brief (4 steps), Feature Validation (3 steps), Strategic Review (3 steps)
-  - `{prev_output}` placeholder for output chaining between steps
-  - Workflow Editor with per-step framework, prompt, model, and context doc configuration
-  - Workflow Runner with real-time progress indicators and streaming output
-  - 15 new Rust commands for workflow CRUD, run management, and step tracking
-- 💡 **AI Insights**: Proactive project analysis and recommendations
-  - Python endpoint analyzes project metadata (outputs, docs, conversations) via GPT-5-mini
-  - 3 insight types: suggestions, patterns, and next-step recommendations with priority levels
-  - Collapsible InsightsPanel in project view with dismiss and framework-linking actions
-  - 4 new Rust commands for insight CRUD
-- 📦 **Git Version History**: Automatic versioning for all framework outputs
-  - Per-project git repos (libgit2) initialized lazily on first output save
-  - Auto-commit on every `create_framework_output` and `update_framework_output`
-  - VersionHistory panel with commit browser, DiffViewer with line-level color coding
-  - Rollback to any previous version with one click
-  - 6 new Rust commands for git operations
-- 🔌 **Jira Integration**: Export framework outputs as Jira issues
-  - REST API v3 with basic auth (email + API token)
-  - Project picker, issue type selector (Story/Task/Bug), markdown-to-Jira format conversion
-  - Connection testing and encrypted token storage
-- 📓 **Notion Integration**: Export framework outputs as Notion pages
-  - API v2022-06-28 with bearer token auth
-  - Parent page selection, markdown-to-Notion blocks conversion
-  - Connection testing and encrypted token storage
-- ⚙️ **Settings Expansion**: Integrations tab with Jira URL/email/token/project + Notion token/parent page
-- 🔐 **AES-256-GCM Encryption**: All integration tokens encrypted at rest using machine-derived keys
-- 📊 **~31 new Rust commands** (total ~105), 4 new DB tables (total 12)
-
----
-
-### **Phase 8: Polish & Power (4-6 weeks)** - Daily Driver 🔧
-**Status**: Planned
-
-Transform PM IDE from a feature-complete tool into a daily driver with output refinement, multi-model AI support, enhanced analytics, and UX polish.
-
-**Sprint 1: Output Refinement**
-
-Add inline editing and section-level regeneration for framework outputs.
-
-- ✏️ **Inline Markdown Editor**: Toggle between read-only preview and editable markdown (CodeMirror or textarea with live preview)
-- 📑 **Section Detection**: Parse markdown headers (H1/H2/H3) into selectable, individually addressable blocks
-- 🔄 **Section Regeneration**: Right-click or button on any section → re-run AI generation for just that section with full document context
-- 💬 **Refinement Chat**: Conversational editing — "make the competitive analysis section more detailed" applies changes to the specific section
-- 📝 **Edit History**: All inline edits auto-committed via existing git integration, showing both AI and manual changes
-- 🔀 **Split View Editing**: Side-by-side markdown source + rendered preview with synced scrolling
-
-**Implementation Details**:
-- New component: `OutputEditor.tsx` — wraps markdown editing with section selection UI
-- New component: `SectionActions.tsx` — floating toolbar per section (regenerate, edit, copy, delete)
-- New Python endpoint: `POST /refine-section/stream` — regenerate one section given full document context + user instruction
-- Modify `OutputsLibrary.tsx` — add edit mode toggle, wire to OutputEditor
-- ~4 new Rust commands for section metadata tracking
-- Update `frameworkOutputsAPI.update()` to handle partial section updates
-
-**Sprint 2: Multi-Model Support**
-
-Support Claude, Gemini, and local Ollama models alongside GPT-5.
-
-- 🤖 **Provider Abstraction**: Python sidecar adapter pattern — `OpenAIClient`, `AnthropicClient`, `GeminiClient`, `OllamaClient` all implementing a common `LLMClient` interface
-- 🔑 **Multi-Key Settings**: Settings UI extended with API keys per provider (OpenAI, Anthropic, Google AI, Ollama base URL)
-- 🎛️ **Provider + Model Selector**: Two-level dropdown in FrameworkGenerator and ChatInterface — select provider first, then model
-- 💰 **Per-Provider Costs**: Cost calculation updated per provider's pricing (Claude, Gemini, GPT-5, free for Ollama)
-- 🔄 **Fallback Logic**: If primary provider fails, suggest switching to an available alternative
-- ✅ **Connection Validation**: "Test Connection" button per provider in Settings
-
-**Models Supported**:
-| Provider | Models |
-|----------|--------|
-| OpenAI | gpt-5, gpt-5-mini, gpt-5-nano |
-| Anthropic | claude-sonnet-4-5, claude-haiku-4-5 |
-| Google | gemini-2.5-pro, gemini-2.5-flash |
-| Ollama (local) | llama3, mistral, codellama, custom |
-
-**Implementation Details**:
-- New Python module: `providers/` — base `LLMClient` class + 4 provider implementations
-- New Python module: `providers/cost_calculator.py` — unified cost calculation across providers
-- Modify `main.py` — route to correct provider based on model prefix or explicit provider param
-- Modify `Settings.tsx` — add API key fields for Claude, Gemini, Ollama under Integrations tab
-- Modify `FrameworkGenerator.tsx` + `ChatInterface.tsx` — replace hardcoded model list with dynamic provider/model selector
-- Update `Settings` + `SettingsUpdate` Rust structs with 4 new encrypted key fields
-- ~3 new Rust commands for provider management
-- ~5 new IPC methods
-
-**Sprint 3: Analytics Dashboard**
-
-Enhanced usage analytics with trends, breakdowns, and exportable reports.
-
-- 📊 **Usage Dashboard**: Dedicated analytics tab or enhanced Usage section in Settings
-- 📈 **Token Trends**: Daily/weekly/monthly token usage line charts (lightweight chart lib or SVG-based)
-- 🏷️ **Breakdown Views**: Cost by provider, model, framework category, and project
-- 📋 **Generation History Log**: Searchable table of all generations — output name, model used, tokens, cost, timestamp
-- 🎯 **Project Metrics**: Per-project stats — total outputs, most-used frameworks, total tokens, cost over time
-- 📥 **Export Reports**: Download usage data as CSV for expense tracking or team reporting
-- ⚡ **Cost Alerts**: Optional threshold warnings (e.g., "You've spent $X this month")
-
-**Implementation Details**:
-- New DB table: `generation_log` — records every generation with provider, model, tokens, cost, duration
-- New component: `AnalyticsDashboard.tsx` — charts + tables + filters
-- New component: `UsageChart.tsx` — lightweight SVG line/bar chart (no external chart lib dependency)
-- ~6 new Rust commands for analytics queries (aggregate by date, provider, category, project)
-- Modify `create_framework_output` to also insert into `generation_log`
-- Modify `record_token_usage` to include provider and framework_id fields
-
-**Sprint 4: Onboarding & UX Polish**
-
-First-run experience and quality-of-life improvements.
-
-- 🚀 **First-Run Wizard**: Step-by-step setup on first launch — API key entry, user profile, create first project
-- 💀 **Loading Skeletons**: Animated placeholder UI for all data-loading views (outputs, frameworks, workflows)
-- 📭 **Enhanced Empty States**: Actionable CTAs in empty views (e.g., "No outputs yet → Generate your first framework")
-- ⌨️ **Shortcut Cheat Sheet**: `Cmd+/` overlay showing all keyboard shortcuts
-- 🔔 **Toast Notifications**: Non-blocking success/error feedback for async operations (export complete, save success, connection failed)
-- 🎨 **Theme Refinements**: Improved contrast ratios, focus indicators, consistent hover states across all components
-- 📱 **Responsive Panels**: Minimum/maximum width constraints on all resizable panels with graceful collapse
-
-**Implementation Details**:
-- New component: `SetupWizard.tsx` — 4-step onboarding flow (Welcome → API Key → Profile → First Project)
-- New component: `Skeleton.tsx` — reusable skeleton loader matching Codex theme
-- New component: `Toast.tsx` + `ToastProvider.tsx` — notification system with auto-dismiss
-- New component: `ShortcutOverlay.tsx` — keyboard shortcut reference (reads from `shortcuts.ts`)
-- Modify `App.tsx` — detect first-run (no settings/projects), show SetupWizard
-- Modify all list views — add skeleton loading states and improved empty states
-- ~2 new Rust commands (first-run detection, onboarding completion flag)
-
-**Phase 8 Totals**:
-- ~8 new components, ~15 new Rust commands, 1 new DB table, ~2 new Python endpoints
-- ~10 modified files across frontend, backend, and sidecar
-- Total commands after Phase 8: ~120
-
----
-
-### **Phase 9: Scale & Extend (6-8 weeks)** - Team & Ecosystem 🌐
-**Status**: Planned
-
-Expand PM IDE beyond single-user desktop use with additional integrations, backup/sync, collaboration features, and an extensible plugin system.
-
-**Sprint 1: Additional Integrations**
-
-Export to and sync with more tools PMs use daily.
-
-- 💬 **Slack Integration**: Send output summaries to Slack channels via Incoming Webhooks
-  - Settings: Slack webhook URL per project (encrypted)
-  - "Share to Slack" button on any output — posts formatted summary with link to full content
-  - Workflow completion notifications — auto-post when a multi-step workflow finishes
-- 📋 **Linear Integration**: Create Linear issues from framework outputs
-  - OAuth2 auth flow or API key
-  - Issue creation with title, description (markdown), project, team, and label mapping
-  - Bi-directional status display — show Linear issue status badge on exported outputs
-- 📝 **Confluence Integration**: Export outputs as Confluence wiki pages
-  - Atlassian API with OAuth2 or API token (reuse Jira credentials if same Atlassian account)
-  - Markdown-to-Confluence storage format conversion
-  - Space and parent page selection
-- 🐙 **GitHub Issues Integration**: Create GitHub issues from outputs
-  - GitHub personal access token or OAuth app
-  - Repository selection, label/assignee mapping
-  - Markdown passthrough (GitHub natively supports markdown)
-
-**Implementation Details**:
-- New Python module: `integrations/slack.py` — webhook posting with Block Kit formatting
-- Modify `integrationsAPI` — add 8+ new IPC methods (2 per integration: test + export)
-- Modify `Settings.tsx` — extend Integrations tab with Slack, Linear, Confluence, GitHub sections
-- New components: `ExportToSlackDialog.tsx`, `ExportToLinearDialog.tsx`, `ExportToConfluenceDialog.tsx`, `ExportToGitHubDialog.tsx`
-- ~12 new Rust commands for 4 integrations (test + export + list resources per integration)
-- Update `Settings` struct with 8+ new encrypted token fields
-
-**Sprint 2: Cloud Sync & Backup**
-
-Project portability, backup, and cross-device access.
-
-- 📦 **Project Archive Export**: Export entire project as `.pmide` archive (SQLite data + git history + document contents)
-  - Single-file portable format (ZIP with known structure)
-  - Includes all outputs, context docs, workflows, insights, settings
-  - Version-stamped for forward compatibility
-- 📥 **Project Archive Import**: Import `.pmide` archive into a new or existing project
-  - Conflict resolution for duplicate IDs (merge, overwrite, skip)
-  - Preview of archive contents before import
-- 💾 **Auto-Backup**: Configurable automatic backup to a local directory
-  - Schedule: hourly, daily, weekly, or on every change
-  - Retention: keep last N backups with automatic cleanup
-  - Settings: backup directory path, schedule, retention count
-- ☁️ **Optional Cloud Sync**: Sync projects to user's own cloud storage
-  - Support S3-compatible storage (AWS S3, MinIO, Backblaze B2)
-  - Encrypted at rest before upload (AES-256-GCM, user-provided passphrase)
-  - Manual sync trigger or configurable auto-sync interval
-  - Conflict detection with last-write-wins or manual resolution
-
-**Implementation Details**:
-- New Rust module: `backup.rs` — archive creation/extraction, scheduled backup logic
-- New Rust module: `cloud_sync.rs` — S3 client with presigned uploads, encryption wrapper
-- Add `rusqlite` backup API for consistent SQLite snapshots
-- New component: `BackupSettings.tsx` — backup configuration UI
-- New component: `ProjectArchiveDialog.tsx` — export/import archive with preview
-- ~10 new Rust commands for backup/sync operations
-- New DB table: `backup_log` — tracks backup history and sync status
-- Add `aws-sdk-s3` or `rusoto` crate for S3 compatibility
-
-**Sprint 3: Collaboration**
-
-Enable team use with sharing, comments, and activity tracking.
-
-- 🔗 **Project Sharing**: Generate shareable project links (read-only or edit)
-  - Lightweight sharing server (optional self-hosted companion) or peer-to-peer via WebRTC
-  - Share tokens with expiry and permission levels (view, comment, edit)
-  - Shared projects appear in a "Shared with me" section on the home screen
-- 💬 **Comments on Outputs**: Inline and general comments on framework outputs
-  - Comment threads per output section (anchored to markdown headers)
-  - General comments on the full output
-  - Resolve/unresolve comment threads
-  - Comments stored locally with sync support for shared projects
-- 📰 **Activity Feed**: Per-project timeline of actions
-  - Output created/updated/deleted, workflow run, export events, comments
-  - Filterable by action type and user
-  - "What changed since I last looked" summary
-- 👥 **User Presence**: Show who's viewing a shared project
-  - Lightweight heartbeat-based presence (poll or WebSocket)
-  - Avatar/name indicators in project header
-
-**Implementation Details**:
-- New DB tables: `comments`, `activity_log`, `share_tokens`
-- New components: `CommentThread.tsx`, `ActivityFeed.tsx`, `ShareDialog.tsx`, `PresenceIndicator.tsx`
-- New Rust commands: ~15 for comments CRUD, activity logging, share token management
-- Optional companion server: `pm-ide-server/` — lightweight Rust/Axum server for relay
-- WebRTC data channel option for peer-to-peer sync without a server
-
-**Sprint 4: Plugin & Extension System**
-
-Make PM IDE extensible for power users and custom workflows.
-
-- 🔌 **Plugin Architecture**: Load external framework/prompt packs from JSON/YAML bundles
-  - Plugin manifest format: `plugin.json` with metadata, frameworks, prompts, and optional scripts
-  - Install from local directory or URL
-  - Enable/disable plugins without removing them
-  - Plugin isolation — custom frameworks appear with plugin badge
-- 🪝 **Webhook Triggers**: Notify external systems on events
-  - Configurable webhooks per project (output created, workflow completed, insight generated)
-  - Webhook payload includes event type, project context, and output summary
-  - Retry logic with exponential backoff
-- 🌐 **REST API for Headless Access**: Generate frameworks programmatically
-  - Local HTTP API (optional, disabled by default) for scripting and automation
-  - Endpoints: create project, add context, generate framework, list outputs
-  - API key auth for local access
-  - Use case: CI/CD integration, batch generation, external tools
-- 🎨 **Custom Themes**: User-defined color schemes beyond the default Codex dark theme
-  - Theme file format: JSON with color token overrides
-  - Built-in themes: Codex Dark (default), Light, Solarized, Nord
-  - Import/export custom themes
-
-**Implementation Details**:
-- New Rust module: `plugins.rs` — plugin discovery, loading, validation, lifecycle management
-- New DB table: `plugins` — installed plugins with metadata and enabled/disabled state
-- New component: `PluginManager.tsx` — browse, install, enable/disable, remove plugins
-- New component: `WebhookSettings.tsx` — configure webhook URLs and event subscriptions
-- New component: `ThemeEditor.tsx` — visual theme customization with live preview
-- New Rust HTTP server (optional): `api_server.rs` — lightweight Axum server on localhost
-- ~20 new Rust commands for plugins, webhooks, themes, and API management
-- New DB tables: `plugins`, `webhooks`, `themes`
-
-**Phase 9 Totals**:
-- ~12 new components, ~57 new Rust commands, ~6 new DB tables
-- Optional companion server for collaboration relay
-- Total commands after Phase 9: ~177
-
----
-
-## 📊 Overall Success Metrics
-
-**Current State** (Phase 7 Complete):
-- ✅ 45 frameworks across 7 categories with full CRUD
-- ✅ 30 prompt templates across 7 categories with {variable} substitution
-- ✅ Import/export frameworks and prompts as .md files with YAML front matter
-- ✅ Multi-step workflow builder with output chaining and 3 built-in templates
-- ✅ AI-powered project insights with priority-based recommendations
-- ✅ Git-based version history with auto-commit, diff viewer, and rollback
-- ✅ Jira and Notion integration for output export
-- ✅ Core features complete (projects, context, generation, outputs, chat)
-- ✅ Mac desktop app with Tauri + Codex UI
-- ✅ VSCode-like folder tree with drag-and-drop
-- ✅ Command palette, keyboard shortcuts, terminal panel
-- ✅ Framework editing with Monaco editor, category management
-- ✅ ~105 Rust IPC commands, SQLite with 12 tables
-- ✅ AES-256-GCM encryption for all API keys and tokens
-
-**Target State** (Phase 8 — Polish & Power):
-- 🎯 Inline output editing with section-level AI regeneration
-- 🎯 Multi-model support (Claude, Gemini, Ollama alongside GPT-5)
-- 🎯 Analytics dashboard with cost trends, breakdowns, and export
-- 🎯 First-run wizard, loading skeletons, toast notifications, and UX polish
-- 🎯 ~120 Rust IPC commands, 13 DB tables
-
-**Target State** (Phase 9 — Scale & Extend):
-- 🎯 Slack, Linear, Confluence, and GitHub Issues integrations
-- 🎯 Project archive export/import (.pmide format) with cloud sync
-- 🎯 Team collaboration with comments, sharing, and activity feed
-- 🎯 Plugin system for custom framework packs and webhook triggers
-- 🎯 ~177 Rust IPC commands, 19 DB tables
-
-## 📝 License
-
-MIT License
-
-## 🤝 Contributing
-
-Contributions welcome! This is an open-source project aimed at empowering Product Managers with AI-powered tools.
-
-To contribute:
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
-
-## 🙏 Acknowledgments
-
-Built with ❤️ for Product Managers by Product Managers.
-
-**Tech Stack Credits:**
-- [Tauri](https://tauri.app/) - Rust-powered desktop framework
-- [React](https://react.dev/) + [Vite](https://vitejs.dev/) - Modern frontend tooling
-- [Tailwind CSS](https://tailwindcss.com/) - Utility-first CSS framework
-- [OpenAI GPT-5](https://openai.com/) - Frontier language models
-- [Mermaid](https://mermaid.js.org/) - Diagram generation
-- [PyMuPDF](https://pymupdf.readthedocs.io/) - PDF text extraction
-- [BeautifulSoup](https://www.crummy.com/software/BeautifulSoup/) - HTML parsing
-
----
-
-**Status**: Phase 7 Complete | Phase 8-9 Planned | 45 Frameworks + 30 Prompts + Workflows + AI Insights + Git History + Jira/Notion | Mac Desktop App
-**Version**: 0.8.0-phase7
-**Last Updated**: February 2026
+Private - All rights reserved.
